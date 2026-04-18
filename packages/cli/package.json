@@ -18,7 +18,7 @@
   "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "postbuild": "node -e \"const f='dist/bin/cli.js';const s=require('fs').readFileSync(f,'utf8');if(!s.startsWith('#!'))require('fs').writeFileSync(f,'#!/usr/bin/env node\\n'+s);require('fs').chmodSync(f,0o755);\"",
+    "postbuild": "node -e \"const f='dist/bin/cli.js';const fs=require('fs');if(!fs.existsSync(f))process.exit(0);const s=fs.readFileSync(f,'utf8');if(!s.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+s);fs.chmodSync(f,0o755);\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.check.json",
