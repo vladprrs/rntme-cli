@@ -20,6 +20,7 @@ export default [
         RequestInit: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        URLSearchParams: 'readonly',
       },
     },
     plugins: {
