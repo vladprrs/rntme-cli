@@ -78,14 +78,24 @@ export class FakeStore {
   }
 
   readonly organizations: OrganizationRepo = {
-    findById: async (id) => ok(this.orgs.get(id) ?? null),
-    findBySlug: async (slug) => ok([...this.orgs.values()].find((o) => o.slug === slug) ?? null),
-    findByWorkosId: async (wid) => ok([...this.orgs.values()].find((o) => o.workosOrganizationId === wid) ?? null),
+    findById: async (id) => {
+      const o = this.orgs.get(id);
+      return ok(o && !o.archivedAt ? o : null);
+    },
+    findBySlug: async (slug) =>
+      ok([...this.orgs.values()].find((o) => o.slug === slug && !o.archivedAt) ?? null),
+    findByWorkosId: async (wid) =>
+      ok([...this.orgs.values()].find((o) => o.workosOrganizationId === wid && !o.archivedAt) ?? null),
+    findByIdIncludingArchived: async (id) => ok(this.orgs.get(id) ?? null),
+    findBySlugIncludingArchived: async (slug) =>
+      ok([...this.orgs.values()].find((o) => o.slug === slug) ?? null),
+    findByWorkosIdIncludingArchived: async (wid) =>
+      ok([...this.orgs.values()].find((o) => o.workosOrganizationId === wid) ?? null),
     listForAccount: async (accountId) => {
       const ids = new Set(
         [...this.memberships.values()].filter((m) => m.accountId === accountId).map((m) => m.orgId),
       );
-      return ok([...this.orgs.values()].filter((o) => ids.has(o.id)));
+      return ok([...this.orgs.values()].filter((o) => ids.has(o.id) && !o.archivedAt));
     },
     upsertFromWorkos: async (a) => {
       const existing = [...this.orgs.values()].find((o) => o.workosOrganizationId === a.workosOrganizationId);
@@ -98,7 +108,10 @@ export class FakeStore {
       return ok(o);
     },
     archive: async (id) => {
-      this.orgs.delete(id);
+      const existing = this.orgs.get(id);
+      if (existing) {
+        this.orgs.set(id, { ...existing, archivedAt: this.now(), updatedAt: this.now() });
+      }
       return ok(undefined);
     },
   };
@@ -362,6 +375,16 @@ export class FakeStore {
       const t = this.tokens.get(id);
       if (t) this.tokens.set(id, { ...t, revokedAt: this.now() });
       return ok(undefined);
+    },
+    revokeAllForOrg: async (orgId) => {
+      let n = 0;
+      for (const [id, t] of this.tokens) {
+        if (t.orgId === orgId && !t.revokedAt) {
+          this.tokens.set(id, { ...t, revokedAt: this.now() });
+          n++;
+        }
+      }
+      return ok(n);
     },
     touchLastUsed: async (id) => {
       const t = this.tokens.get(id);

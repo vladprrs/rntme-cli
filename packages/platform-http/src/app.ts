@@ -89,11 +89,13 @@ export function createApp(deps: AppDeps): Hono {
     webhookWorkosRoute({
       workos: deps.workos,
       secret: deps.env.WORKOS_WEBHOOK_SECRET,
+      pool: deps.pool,
       repos: {
         organizations: deps.poolRepos.organizations,
         accounts: deps.poolRepos.accounts,
         memberships: deps.poolRepos.memberships,
         projects: deps.poolRepos.projects,
+        tokens: deps.poolRepos.tokens,
         workosEventLog: deps.poolRepos.workosEventLog,
       },
     }),

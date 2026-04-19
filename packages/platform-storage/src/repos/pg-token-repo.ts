@@ -72,6 +72,18 @@ export class PgTokenRepo implements TokenRepo {
     }
   }
 
+  async revokeAllForOrg(orgId: string): Promise<Result<number, PlatformError>> {
+    try {
+      const r = await this.pool.query(
+        `UPDATE api_token SET revoked_at=now() WHERE org_id=$1 AND revoked_at IS NULL`,
+        [orgId],
+      );
+      return ok(r.rowCount ?? 0);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
+    }
+  }
+
   async touchLastUsed(id: string): Promise<Result<void, PlatformError>> {
     try {
       await this.pool.query(`UPDATE api_token SET last_used_at=now() WHERE id=$1`, [id]);

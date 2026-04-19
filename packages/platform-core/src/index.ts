@@ -19,6 +19,7 @@ export * from './use-cases/versions.js';
 export * from './use-cases/tokens.js';
 export * from './use-cases/publish-version.js';
 export * from './use-cases/workos-sync.js';
+export * from './use-cases/archive-org-cascade.js';
 
 export * from './repos/org-repo.js';
 export * from './repos/account-repo.js';

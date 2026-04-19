@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { ok, err, type Result, type PlatformError } from '@rntme-cli/platform-core';
 import type { OrganizationRepo } from '@rntme-cli/platform-core';
 import type { Organization } from '@rntme-cli/platform-core';
@@ -26,6 +26,19 @@ export class PgOrganizationRepo implements OrganizationRepo {
 
   async findById(id: string): Promise<Result<Organization | null, PlatformError>> {
     try {
+      const rows = await this.db
+        .select()
+        .from(organization)
+        .where(and(eq(organization.id, id), isNull(organization.archivedAt)))
+        .limit(1);
+      return ok(rows[0] ? rowToOrg(rows[0]) : null);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
+    }
+  }
+
+  async findByIdIncludingArchived(id: string): Promise<Result<Organization | null, PlatformError>> {
+    try {
       const rows = await this.db.select().from(organization).where(eq(organization.id, id)).limit(1);
       return ok(rows[0] ? rowToOrg(rows[0]) : null);
     } catch (cause) {
@@ -35,6 +48,19 @@ export class PgOrganizationRepo implements OrganizationRepo {
 
   async findBySlug(slug: string): Promise<Result<Organization | null, PlatformError>> {
     try {
+      const rows = await this.db
+        .select()
+        .from(organization)
+        .where(and(eq(organization.slug, slug), isNull(organization.archivedAt)))
+        .limit(1);
+      return ok(rows[0] ? rowToOrg(rows[0]) : null);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
+    }
+  }
+
+  async findBySlugIncludingArchived(slug: string): Promise<Result<Organization | null, PlatformError>> {
+    try {
       const rows = await this.db.select().from(organization).where(eq(organization.slug, slug)).limit(1);
       return ok(rows[0] ? rowToOrg(rows[0]) : null);
     } catch (cause) {
@@ -43,6 +69,21 @@ export class PgOrganizationRepo implements OrganizationRepo {
   }
 
   async findByWorkosId(workosId: string): Promise<Result<Organization | null, PlatformError>> {
+    try {
+      const rows = await this.db
+        .select()
+        .from(organization)
+        .where(and(eq(organization.workosOrganizationId, workosId), isNull(organization.archivedAt)))
+        .limit(1);
+      return ok(rows[0] ? rowToOrg(rows[0]) : null);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
+    }
+  }
+
+  async findByWorkosIdIncludingArchived(
+    workosId: string,
+  ): Promise<Result<Organization | null, PlatformError>> {
     try {
       const rows = await this.db
         .select()
@@ -61,7 +102,7 @@ export class PgOrganizationRepo implements OrganizationRepo {
         .select({ o: organization })
         .from(organization)
         .innerJoin(membershipMirror, eq(membershipMirror.orgId, organization.id))
-        .where(eq(membershipMirror.accountId, accountId));
+        .where(and(eq(membershipMirror.accountId, accountId), isNull(organization.archivedAt)));
       return ok(rows.map((r) => rowToOrg(r.o)));
     } catch (cause) {
       return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
@@ -91,7 +132,10 @@ export class PgOrganizationRepo implements OrganizationRepo {
 
   async archive(id: string): Promise<Result<void, PlatformError>> {
     try {
-      await this.db.delete(organization).where(eq(organization.id, id));
+      await this.db
+        .update(organization)
+        .set({ archivedAt: new Date(), updatedAt: new Date() })
+        .where(eq(organization.id, id));
       return ok(undefined);
     } catch (cause) {
       return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);

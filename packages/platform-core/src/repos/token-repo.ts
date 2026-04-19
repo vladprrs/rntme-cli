@@ -16,5 +16,7 @@ export interface TokenRepo {
   findByPrefix(prefix: string): Promise<Result<ApiToken | null, PlatformError>>;
   list(orgId: string): Promise<Result<readonly ApiToken[], PlatformError>>;
   revoke(orgId: string, id: string): Promise<Result<void, PlatformError>>;
+  /** Revoke every live (non-revoked) token for the org. Returns count of rows updated. */
+  revokeAllForOrg(orgId: string): Promise<Result<number, PlatformError>>;
   touchLastUsed(id: string): Promise<Result<void, PlatformError>>;
 }
