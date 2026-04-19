@@ -36,7 +36,7 @@
     "vitest": "^2.1.1"
   },
   "dependencies": {
-    "zod": "^3.23.8",
+    "zod": "^4.0.0",
     "@truestamp/canonify": "^1.0.0"
   }
 }
