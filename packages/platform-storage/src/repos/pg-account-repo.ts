@@ -22,6 +22,15 @@ export class PgAccountRepo implements AccountRepo {
     this.db = createDb(pool);
   }
 
+  async findById(id: string): Promise<Result<Account | null, PlatformError>> {
+    try {
+      const rows = await this.db.select().from(account).where(eq(account.id, id)).limit(1);
+      return ok(rows[0] ? toAccount(rows[0]) : null);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
+    }
+  }
+
   async findByWorkosUserId(wid: string): Promise<Result<Account | null, PlatformError>> {
     try {
       const rows = await this.db.select().from(account).where(eq(account.workosUserId, wid)).limit(1);

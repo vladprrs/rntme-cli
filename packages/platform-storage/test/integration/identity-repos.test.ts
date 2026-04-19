@@ -31,6 +31,22 @@ describe.skipIf(skipContainers)('identity repos', () => {
     if (isOk(a) && isOk(b)) expect(a.value.id).toBe(b.value.id);
   });
 
+  it('findById returns org and account rows', async () => {
+    const orgs = new PgOrganizationRepo(env.pool);
+    const accts = new PgAccountRepo(env.pool);
+    const o = await orgs.upsertFromWorkos({ workosOrganizationId: 'org_x', slug: 'ox', displayName: 'Ox' });
+    const a = await accts.upsertFromWorkos({ workosUserId: 'user_x', email: null, displayName: 'Ux' });
+    expect(isOk(o) && isOk(a)).toBe(true);
+    if (!isOk(o) || !isOk(a)) return;
+    const byOrg = await orgs.findById(o.value.id);
+    const byAcct = await accts.findById(a.value.id);
+    expect(isOk(byOrg) && isOk(byAcct)).toBe(true);
+    if (isOk(byOrg) && isOk(byAcct)) {
+      expect(byOrg.value?.slug).toBe('ox');
+      expect(byAcct.value?.workosUserId).toBe('user_x');
+    }
+  });
+
   it('account + membership + workos log round-trip', async () => {
     const orgs = new PgOrganizationRepo(env.pool);
     const accts = new PgAccountRepo(env.pool);

@@ -23,6 +23,15 @@ export class PgOrganizationRepo implements OrganizationRepo {
     this.db = createDb(pool);
   }
 
+  async findById(id: string): Promise<Result<Organization | null, PlatformError>> {
+    try {
+      const rows = await this.db.select().from(organization).where(eq(organization.id, id)).limit(1);
+      return ok(rows[0] ? rowToOrg(rows[0]) : null);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
+    }
+  }
+
   async findBySlug(slug: string): Promise<Result<Organization | null, PlatformError>> {
     try {
       const rows = await this.db.select().from(organization).where(eq(organization.slug, slug)).limit(1);

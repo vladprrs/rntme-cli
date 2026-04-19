@@ -73,6 +73,7 @@ export class FakeStore {
   }
 
   readonly organizations: OrganizationRepo = {
+    findById: async (id) => ok(this.orgs.get(id) ?? null),
     findBySlug: async (slug) => ok([...this.orgs.values()].find((o) => o.slug === slug) ?? null),
     findByWorkosId: async (wid) => ok([...this.orgs.values()].find((o) => o.workosOrganizationId === wid) ?? null),
     listForAccount: async (accountId) => {
@@ -98,6 +99,7 @@ export class FakeStore {
   };
 
   readonly accountsRepo: AccountRepo = {
+    findById: async (id) => ok(this.accounts.get(id) ?? null),
     findByWorkosUserId: async (wid) => ok([...this.accounts.values()].find((a) => a.workosUserId === wid) ?? null),
     upsertFromWorkos: async (a) => {
       const existing = [...this.accounts.values()].find((x) => x.workosUserId === a.workosUserId);
