@@ -6,5 +6,6 @@ export default defineConfig({
     reporters: 'default',
     testTimeout: 60_000,
     hookTimeout: 120_000,
+    passWithNoTests: true,
   },
 });
