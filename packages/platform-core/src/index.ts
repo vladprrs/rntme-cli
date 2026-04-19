@@ -10,6 +10,15 @@ export * from './auth/provider.js';
 export * from './clock.js';
 export * from './ids.js';
 export { canonicalize, sha256Hex, canonicalDigest } from './validation/canonical-json.js';
+export * from './validation/bundle.js';
+
+export * from './use-cases/projects.js';
+export * from './use-cases/services.js';
+export * from './use-cases/tags.js';
+export * from './use-cases/versions.js';
+export * from './use-cases/tokens.js';
+export * from './use-cases/publish-version.js';
+export * from './use-cases/workos-sync.js';
 
 export * from './repos/org-repo.js';
 export * from './repos/account-repo.js';

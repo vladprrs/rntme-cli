@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "OrderItem": {
+      "table": "order_items",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "orderId": { "type": "integer", "nullable": false, "column": "order_id" },
+        "productId": { "type": "integer", "nullable": false, "column": "product_id" },
+        "unitPrice": { "type": "decimal", "nullable": false, "column": "unit_price" },
+        "quantity": { "type": "integer", "nullable": false, "column": "quantity" },
+        "status": { "type": "string", "nullable": false, "column": "status" }
+      },
+      "relations": {
+        "order": {
+          "to": "Order",
+          "cardinality": "one",
+          "localKey": "orderId",
+          "foreignKey": "id"
+        },
+        "product": {
+          "to": "Product",
+          "cardinality": "one",
+          "localKey": "productId",
+          "foreignKey": "id"
+        }
+      },
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["active"],
+        "transitions": {
+          "place": {
+            "from": null,
+            "to": "active",
+            "affects": ["orderId", "productId", "unitPrice", "quantity"]
+          }
+        }
+      }
+    },
+    "Order": {
+      "table": "orders",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "createdAt": { "type": "datetime", "nullable": false, "column": "created_at" },
+        "status": { "type": "string", "nullable": false, "column": "status" }
+      },
+      "relations": {},
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["active"],
+        "transitions": {
+          "create": { "from": null, "to": "active", "affects": ["createdAt"] }
+        }
+      }
+    },
+    "Product": {
+      "table": "products",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "categoryId": { "type": "integer", "nullable": false, "column": "category_id" },
+        "name": { "type": "string", "nullable": false, "column": "name" },
+        "status": { "type": "string", "nullable": false, "column": "status" }
+      },
+      "relations": {
+        "category": {
+          "to": "Category",
+          "cardinality": "one",
+          "localKey": "categoryId",
+          "foreignKey": "id"
+        }
+      },
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["active"],
+        "transitions": {
+          "create": { "from": null, "to": "active", "affects": ["categoryId", "name"] }
+        }
+      }
+    },
+    "Category": {
+      "table": "categories",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "name": { "type": "string", "nullable": true, "column": "name" },
+        "status": { "type": "string", "nullable": false, "column": "status" }
+      },
+      "relations": {},
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["active"],
+        "transitions": {
+          "create": { "from": null, "to": "active", "affects": ["name"] }
+        }
+      }
+    }
+  }
+}

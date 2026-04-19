@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "graphSpecRef": "commerce.graphs.v1",
+  "pdmRef": "commerce.domain.v1",
+  "qsmRef": "commerce.read.v1",
+  "openapi": {
+    "info": { "title": "Commerce API", "version": "0.0.1" },
+    "servers": [{ "url": "http://localhost:3000", "description": "local" }]
+  },
+  "bindings": {
+    "getCategorySales": {
+      "graph": "getCategorySales",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/category-sales",
+        "parameters": [
+          { "name": "dateFrom", "in": "query", "bindTo": "dateFrom", "required": true },
+          { "name": "dateTo", "in": "query", "bindTo": "dateTo", "required": true },
+          { "name": "minRevenue", "in": "query", "bindTo": "minRevenue", "required": false },
+          { "name": "limit", "in": "query", "bindTo": "limit", "required": false }
+        ],
+        "summary": "Category sales aggregate"
+      }
+    }
+  }
+}

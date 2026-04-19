@@ -1,0 +1,41 @@
+{
+  "projections": {
+    "CategorySalesMirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "OrderItem" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": ["id", "orderId", "productId", "quantity", "unitPrice"],
+      "table": "order_items"
+    },
+    "OrderMirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "Order" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": ["id", "createdAt"],
+      "table": "orders"
+    },
+    "ProductMirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "Product" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": ["id", "categoryId", "name"],
+      "table": "products"
+    },
+    "CategoryMirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "Category" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": ["id", "name"],
+      "table": "categories"
+    }
+  },
+  "relations": {
+    "CategorySalesMirror.order":   { "to": "OrderMirror",    "localKey": "orderId",    "foreignKey": "id", "cardinality": "one", "role": "fact" },
+    "CategorySalesMirror.product": { "to": "ProductMirror",  "localKey": "productId",  "foreignKey": "id", "cardinality": "one", "role": "dimension" },
+    "ProductMirror.category":      { "to": "CategoryMirror", "localKey": "categoryId", "foreignKey": "id", "cardinality": "one", "role": "dimension" }
+  }
+}
