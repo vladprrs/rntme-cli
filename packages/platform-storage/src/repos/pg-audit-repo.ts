@@ -1,5 +1,5 @@
-import type { Pool } from 'pg';
 import { ok, err, type Result, type PlatformError, type AuditRepo, type AuditLogEntry } from '@rntme-cli/platform-core';
+import type { PgQueryable } from '../pg/pool.js';
 
 function row(r: Record<string, unknown>): AuditLogEntry {
   const idVal = r['id'];
@@ -17,7 +17,7 @@ function row(r: Record<string, unknown>): AuditLogEntry {
 }
 
 export class PgAuditRepo implements AuditRepo {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly db: PgQueryable) {}
 
   async list(
     orgId: string,
@@ -44,7 +44,7 @@ export class PgAuditRepo implements AuditRepo {
         vals.push(opts.since);
       }
       vals.push(opts.limit);
-      const q = await this.pool.query(
+      const q = await this.db.query(
         `SELECT * FROM audit_log WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT $${i}`,
         vals,
       );

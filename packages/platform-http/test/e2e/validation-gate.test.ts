@@ -11,21 +11,21 @@ describe.skipIf(!e2eContainersAvailable())('validation gate', () => {
 
   beforeAll(async () => {
     env = await bootE2e();
-    const org = await env.deps.repos.organizations.upsertFromWorkos({
+    const org = await env.deps.poolRepos.organizations.upsertFromWorkos({
       workosOrganizationId: 'org_gate',
       slug: 'gate',
       displayName: 'Gate',
     });
-    const acc = await env.deps.repos.accounts.upsertFromWorkos({
+    const acc = await env.deps.poolRepos.accounts.upsertFromWorkos({
       workosUserId: 'gate_user',
       email: null,
       displayName: 'G',
     });
     if (!org.ok || !acc.ok) throw new Error('seed');
-    await env.deps.repos.memberships.upsert({ orgId: org.value.id, accountId: acc.value.id, role: 'admin' });
+    await env.deps.poolRepos.memberships.upsert({ orgId: org.value.id, accountId: acc.value.id, role: 'admin' });
     const plain = 'rntme_pat_' + 'g'.repeat(22);
     const hash = new Uint8Array(createHash('sha256').update(plain).digest());
-    await env.deps.repos.tokens.create({
+    await env.deps.poolRepos.tokens.create({
       id: randomUUID(),
       orgId: org.value.id,
       accountId: acc.value.id,

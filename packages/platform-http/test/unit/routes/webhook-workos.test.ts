@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { FakeStore } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
+import type { Pool } from 'pg';
 import { webhookWorkosRoute } from '../../../src/routes/webhook-workos.js';
 
 const passingMock = {
@@ -12,6 +13,9 @@ const failingMock = {
   webhooks: { constructEvent: async () => Promise.reject(new Error('bad sig')) },
 } as never;
 
+// Non-organization.deleted branches never touch the pool; a stub is enough.
+const stubPool = {} as unknown as Pool;
+
 describe('workos webhook', () => {
   it('rejects invalid signature with 400', async () => {
     const store = new FakeStore();
@@ -20,11 +24,13 @@ describe('workos webhook', () => {
       webhookWorkosRoute({
         workos: failingMock,
         secret: 'x',
+        pool: stubPool,
         repos: {
           organizations: store.organizations,
           accounts: store.accountsRepo,
           memberships: store.membershipMirror,
           projects: store.projects,
+          tokens: store.tokensRepo,
           workosEventLog: store.workosEventLog,
         },
       }),
@@ -44,11 +50,13 @@ describe('workos webhook', () => {
       webhookWorkosRoute({
         workos: passingMock,
         secret: 'x',
+        pool: stubPool,
         repos: {
           organizations: store.organizations,
           accounts: store.accountsRepo,
           memberships: store.membershipMirror,
           projects: store.projects,
+          tokens: store.tokensRepo,
           workosEventLog: store.workosEventLog,
         },
       }),

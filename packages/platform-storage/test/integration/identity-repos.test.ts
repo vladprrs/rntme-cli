@@ -46,6 +46,19 @@ describe.skipIf(!integrationContainersAvailable())('identity repos', () => {
     }
   });
 
+  it('upsertFromWorkos preserves the original slug on update (slug is immutable)', async () => {
+    await resetSchema(env.pool);
+    const repo = new PgOrganizationRepo(env.pool);
+    const first = await repo.upsertFromWorkos({ workosOrganizationId: 'w1', slug: 'original', displayName: 'One' });
+    expect(first.ok).toBe(true);
+    const second = await repo.upsertFromWorkos({ workosOrganizationId: 'w1', slug: 'renamed', displayName: 'Two' });
+    expect(second.ok).toBe(true);
+    if (second.ok) {
+      expect(second.value.slug).toBe('original');
+      expect(second.value.displayName).toBe('Two');
+    }
+  });
+
   it('account + membership + workos log round-trip', async () => {
     const orgs = new PgOrganizationRepo(env.pool);
     const accts = new PgAccountRepo(env.pool);

@@ -5,7 +5,9 @@ import { loggerMiddleware } from './middleware/logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { rateLimit, InMemoryRateLimiter } from './middleware/rate-limit.js';
+import { bodyLimit } from './middleware/body-limit.js';
 import { requireAuth } from './middleware/auth.js';
+import { openOrgScopedTx } from './middleware/tx.js';
 import { authRoutes } from './routes/auth.js';
 import { webhookWorkosRoute } from './routes/webhook-workos.js';
 import { orgRoutes } from './routes/orgs.js';
@@ -27,12 +29,7 @@ import type {
   MembershipMirrorRepo,
   WorkosEventLogRepo,
   ProjectRepo,
-  ServiceRepo,
-  ArtifactRepo,
-  TagRepo,
   TokenRepo,
-  AuditRepo,
-  OutboxRepo,
   BlobStore,
   Ids,
 } from '@rntme-cli/platform-core';
@@ -45,18 +42,14 @@ export type AppDeps = {
   pool: Pool;
   blob: BlobStore;
   ids: Ids;
-  repos: {
+  /** Pool-scoped repos used by pre-auth routes only (webhook, auth callback, ops). */
+  poolRepos: {
     organizations: OrganizationRepo;
     accounts: AccountRepo;
     memberships: MembershipMirrorRepo;
     workosEventLog: WorkosEventLogRepo;
     projects: ProjectRepo;
-    services: ServiceRepo;
-    artifacts: ArtifactRepo;
-    tags: TagRepo;
     tokens: TokenRepo;
-    audit: AuditRepo;
-    outbox: OutboxRepo;
   };
 };
 
@@ -68,18 +61,31 @@ export function createApp(deps: AppDeps): Hono {
   app.use('*', errorHandler());
   app.use('*', corsMiddleware(deps.env.PLATFORM_CORS_ORIGINS));
 
+  // Pre-auth body-size guard (Errata §3.8): 10 MiB for publish-version POSTs,
+  // 1 MiB for all other POSTs. Must run before auth so DoS protection does not
+  // depend on authentication.
+  app.use('*', async (c, next) => {
+    if (c.req.method !== 'POST') return next();
+    const url = new URL(c.req.url);
+    const isPublish = /\/v1\/orgs\/[^/]+\/projects\/[^/]+\/services\/[^/]+\/versions\/?$/.test(
+      url.pathname,
+    );
+    const cap = isPublish ? 10 * 1024 * 1024 : 1 * 1024 * 1024;
+    return bodyLimit(cap)(c, next);
+  });
+
   const apiTokenProvider = new ApiTokenProvider({
-    tokens: deps.repos.tokens,
-    organizations: deps.repos.organizations,
-    accounts: deps.repos.accounts,
-    memberships: deps.repos.memberships,
+    tokens: deps.poolRepos.tokens,
+    organizations: deps.poolRepos.organizations,
+    accounts: deps.poolRepos.accounts,
+    memberships: deps.poolRepos.memberships,
   });
   const workosProvider = new WorkOSAuthKitProvider({
     workos: deps.workos,
     cookiePassword: deps.cookiePassword,
-    organizations: deps.repos.organizations,
-    accounts: deps.repos.accounts,
-    memberships: deps.repos.memberships,
+    organizations: deps.poolRepos.organizations,
+    accounts: deps.poolRepos.accounts,
+    memberships: deps.poolRepos.memberships,
   });
 
   app.route(
@@ -97,16 +103,19 @@ export function createApp(deps: AppDeps): Hono {
     webhookWorkosRoute({
       workos: deps.workos,
       secret: deps.env.WORKOS_WEBHOOK_SECRET,
+      pool: deps.pool,
       repos: {
-        organizations: deps.repos.organizations,
-        accounts: deps.repos.accounts,
-        memberships: deps.repos.memberships,
-        projects: deps.repos.projects,
-        workosEventLog: deps.repos.workosEventLog,
+        organizations: deps.poolRepos.organizations,
+        accounts: deps.poolRepos.accounts,
+        memberships: deps.poolRepos.memberships,
+        projects: deps.poolRepos.projects,
+        tokens: deps.poolRepos.tokens,
+        workosEventLog: deps.poolRepos.workosEventLog,
       },
     }),
   );
 
+  // Pre-auth /v1/auth (login, callback, logout) stays on pool-scoped repos.
   app.route(
     '/v1/auth',
     authRoutes({
@@ -114,9 +123,9 @@ export function createApp(deps: AppDeps): Hono {
       env: deps.env,
       cookiePassword: deps.cookiePassword,
       repos: {
-        organizations: deps.repos.organizations,
-        accounts: deps.repos.accounts,
-        memberships: deps.repos.memberships,
+        organizations: deps.poolRepos.organizations,
+        accounts: deps.poolRepos.accounts,
+        memberships: deps.poolRepos.memberships,
       },
     }),
   );
@@ -124,40 +133,22 @@ export function createApp(deps: AppDeps): Hono {
   const rateLimiter = new InMemoryRateLimiter({ windowMs: 60_000, max: 1000 });
   const authed = new Hono()
     .use('*', requireAuth([apiTokenProvider, workosProvider]))
-    .use('*', rateLimit(rateLimiter, (c) => c.get('subject').tokenId ?? c.get('subject').account.id));
+    .use('*', rateLimit(rateLimiter, (c) => c.get('subject').tokenId ?? c.get('subject').account.id))
+    .use('*', openOrgScopedTx(deps.pool));
 
-  authed.route('/v1/orgs', orgRoutes({ organizations: deps.repos.organizations }));
-  authed.route(
-    '/v1/orgs/:orgSlug/projects',
-    projectRoutes({
-      organizations: deps.repos.organizations,
-      projects: deps.repos.projects,
-      ids: deps.ids,
-    }),
-  );
-  authed.route(
-    '/v1/orgs/:orgSlug/projects/:projSlug/services',
-    serviceRoutes({
-      organizations: deps.repos.organizations,
-      projects: deps.repos.projects,
-      services: deps.repos.services,
-      ids: deps.ids,
-    }),
-  );
+  authed.get('/v1/auth/me', (c) => {
+    const s = c.get('subject');
+    return c.json({ account: s.account, org: s.org, role: s.role, scopes: s.scopes });
+  });
+  authed.route('/v1/orgs', orgRoutes({ ids: deps.ids }));
+  authed.route('/v1/orgs/:orgSlug/projects', projectRoutes({ ids: deps.ids }));
+  authed.route('/v1/orgs/:orgSlug/projects/:projSlug/services', serviceRoutes({ ids: deps.ids }));
   authed.route(
     '/v1/orgs/:orgSlug/projects/:projSlug/services/:svcSlug',
-    versionRoutes({
-      organizations: deps.repos.organizations,
-      projects: deps.repos.projects,
-      services: deps.repos.services,
-      artifacts: deps.repos.artifacts,
-      tags: deps.repos.tags,
-      blob: deps.blob,
-      ids: deps.ids,
-    }),
+    versionRoutes({ blob: deps.blob, ids: deps.ids }),
   );
-  authed.route('/v1/orgs/:orgSlug/tokens', tokenRoutes({ tokens: deps.repos.tokens, ids: deps.ids }));
-  authed.route('/v1/orgs/:orgSlug/audit', auditRoutes({ audit: deps.repos.audit }));
+  authed.route('/v1/orgs/:orgSlug/tokens', tokenRoutes({ ids: deps.ids }));
+  authed.route('/v1/orgs/:orgSlug/audit', auditRoutes());
 
   app.route('/', authed);
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { FakeStore, SeededIds, ok } from '@rntme-cli/platform-core';
+import { SeededIds, ok } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { serviceRoutes } from '../../../src/routes/services.js';
 import { requireAuth } from '../../../src/middleware/auth.js';
 
@@ -18,12 +19,23 @@ async function makeApp() {
     tokenId: undefined,
   };
   const fakeProvider = { name: 'api-token' as const, authenticate: async () => ok(subject as never) };
+  const resolveDeps = () =>
+    ({
+      organizations: store.organizations,
+      accounts: store.accountsRepo,
+      memberships: store.membershipMirror,
+      workosEventLog: store.workosEventLog,
+      projects: store.projects,
+      services: store.services,
+      artifacts: store.artifacts,
+      tags: store.tags,
+      tokens: store.tokensRepo,
+      audit: store.auditRepo,
+      outbox: store.outboxRepo,
+    }) as never;
   const app = new Hono()
     .use(requireAuth([fakeProvider]))
-    .route(
-      '/v1/orgs/:orgSlug/projects/:projSlug/services',
-      serviceRoutes({ organizations: store.organizations, projects: store.projects, services: store.services, ids }),
-    );
+    .route('/v1/orgs/:orgSlug/projects/:projSlug/services', serviceRoutes({ ids, resolveDeps }));
   return { app, store };
 }
 

@@ -19,6 +19,7 @@ export * from './use-cases/versions.js';
 export * from './use-cases/tokens.js';
 export * from './use-cases/publish-version.js';
 export * from './use-cases/workos-sync.js';
+export * from './use-cases/archive-org-cascade.js';
 
 export * from './repos/org-repo.js';
 export * from './repos/account-repo.js';
@@ -33,5 +34,3 @@ export * from './repos/audit-repo.js';
 export * from './repos/outbox-repo.js';
 
 export * from './blob/store.js';
-
-export { FakeStore } from './testing/fakes.js';

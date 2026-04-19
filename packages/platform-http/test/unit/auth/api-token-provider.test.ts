@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
-import { FakeStore, isOk } from '@rntme-cli/platform-core';
+import { isOk } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { ApiTokenProvider } from '../../../src/auth/api-token-provider.js';
 
 async function setup() {
@@ -62,5 +63,20 @@ describe('ApiTokenProvider', () => {
     const r = await p.authenticate({ authorizationHeader: undefined, cookieHeader: undefined });
     expect(isOk(r)).toBe(false);
     if (!isOk(r)) expect(r.errors[0]!.code).toBe('PLATFORM_AUTH_MISSING');
+  });
+  it('returns PLATFORM_AUTH_INVALID when the account is not a member of the org', async () => {
+    const { store, plain } = await setup();
+    const p = new ApiTokenProvider({
+      tokens: store.tokensRepo,
+      organizations: store.organizations,
+      accounts: store.accountsRepo,
+      memberships: { find: async () => ({ ok: true, value: null }) } as never,
+    });
+    const r = await p.authenticate({
+      authorizationHeader: `Bearer ${plain}`,
+      cookieHeader: undefined,
+    });
+    expect(isOk(r)).toBe(false);
+    if (!isOk(r)) expect(r.errors[0]!.code).toBe('PLATFORM_AUTH_INVALID');
   });
 });

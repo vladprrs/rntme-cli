@@ -9,12 +9,7 @@ import {
   PgMembershipMirrorRepo,
   PgWorkosEventLogRepo,
   PgProjectRepo,
-  PgServiceRepo,
-  PgArtifactRepo,
-  PgTagRepo,
   PgTokenRepo,
-  PgAuditRepo,
-  PgOutboxRepo,
   S3BlobStore,
 } from '@rntme-cli/platform-storage';
 import { parseEnv } from '../config/env.js';
@@ -38,7 +33,16 @@ async function main() {
   await blob.ensureBucket();
   const workos = createWorkos(env);
   const ids = new RandomIds();
-  const cookiePassword = (env.PLATFORM_COOKIE_PASSWORD ?? '').padEnd(32, 'x').slice(0, 64);
+  const cookiePassword = env.PLATFORM_COOKIE_PASSWORD;
+
+  const poolRepos = {
+    organizations: new PgOrganizationRepo(pool),
+    accounts: new PgAccountRepo(pool),
+    memberships: new PgMembershipMirrorRepo(pool),
+    workosEventLog: new PgWorkosEventLogRepo(pool),
+    projects: new PgProjectRepo(pool),
+    tokens: new PgTokenRepo(pool),
+  };
 
   const app = createApp({
     env,
@@ -48,19 +52,7 @@ async function main() {
     pool,
     blob,
     ids,
-    repos: {
-      organizations: new PgOrganizationRepo(pool),
-      accounts: new PgAccountRepo(pool),
-      memberships: new PgMembershipMirrorRepo(pool),
-      workosEventLog: new PgWorkosEventLogRepo(pool),
-      projects: new PgProjectRepo(pool),
-      services: new PgServiceRepo(pool),
-      artifacts: new PgArtifactRepo(pool),
-      tags: new PgTagRepo(pool),
-      tokens: new PgTokenRepo(pool),
-      audit: new PgAuditRepo(pool),
-      outbox: new PgOutboxRepo(pool),
-    },
+    poolRepos,
   });
 
   serve({ fetch: app.fetch, port: env.PORT });

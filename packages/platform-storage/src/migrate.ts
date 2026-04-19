@@ -9,6 +9,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, '..');
 
 export async function runMigrations(db: Db, pool: Pool): Promise<void> {
+  if (process.env.PLATFORM_CREATE_ROLES === '1') {
+    const roles = await readFile(resolve(pkgRoot, 'src/sql/roles.sql'), 'utf8');
+    await pool.query(roles);
+  }
   await migrate(db, { migrationsFolder: resolve(pkgRoot, 'drizzle') });
   const policies = await readFile(resolve(pkgRoot, 'src/sql/policies.sql'), 'utf8');
   await pool.query(policies);

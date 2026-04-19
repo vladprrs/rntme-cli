@@ -3,16 +3,39 @@ import { createPool, createDb, type Db } from '../../src/pg/pool.js';
 import { runMigrations } from '../../src/migrate.js';
 import type { Pool } from 'pg';
 
-export async function startPostgres(): Promise<{
+export type PgHandles = {
   container: StartedPostgreSqlContainer;
+  ownerUrl: string;
+  appUrl: string;
   pool: Pool;
+  appPool: Pool;
   db: Db;
-}> {
+};
+
+export async function startPostgres(): Promise<PgHandles> {
+  process.env.PLATFORM_CREATE_ROLES = '1';
   const container = await new PostgreSqlContainer('postgres:16-alpine').start();
-  const pool = createPool(container.getConnectionUri());
+  const ownerUrl = container.getConnectionUri();
+  const pool = createPool(ownerUrl);
   const db = createDb(pool);
   await runMigrations(db, pool);
-  return { container, pool, db };
+
+  await pool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO platform_app`);
+  await pool.query(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO platform_app`);
+
+  const parsed = new URL(ownerUrl);
+  parsed.username = 'platform_app';
+  parsed.password = 'platform_app';
+  const appUrl = parsed.toString();
+  const appPool = createPool(appUrl);
+
+  return { container, ownerUrl, appUrl, pool, appPool, db };
+}
+
+export async function stopPostgres(h: PgHandles): Promise<void> {
+  await h.appPool.end();
+  await h.pool.end();
+  await h.container.stop();
 }
 
 export async function resetSchema(pool: Pool): Promise<void> {

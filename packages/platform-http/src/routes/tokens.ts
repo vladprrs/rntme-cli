@@ -1,21 +1,28 @@
 import { Hono } from 'hono';
 import { CreateTokenInputSchema, createToken, listTokens, revokeToken } from '@rntme-cli/platform-core';
-import type { TokenRepo, Ids } from '@rntme-cli/platform-core';
+import type { Ids } from '@rntme-cli/platform-core';
 import { requireScope, requireOrgMatch } from '../middleware/auth.js';
 import { respond } from './helpers.js';
+import { resolveDeps as defaultResolveDeps, type RequestRepos } from '../resolve-deps.js';
+import type { PoolClient } from 'pg';
 
-export function tokenRoutes(deps: { tokens: TokenRepo; ids: Ids }): Hono {
+export function tokenRoutes(deps: {
+  ids: Ids;
+  resolveDeps?: (tx: PoolClient) => RequestRepos;
+}): Hono {
   const app = new Hono();
+  const resolve = deps.resolveDeps ?? defaultResolveDeps;
   app.use('*', requireOrgMatch('orgSlug'), requireScope('token:manage'));
 
   app.post('/', async (c) => {
+    const repos = resolve(c.get('tx'));
     const body = await c.req.json().catch(() => null);
     const parsed = CreateTokenInputSchema.safeParse(body);
     if (!parsed.success)
       return c.json({ error: { code: 'PLATFORM_PARSE_BODY_INVALID', message: parsed.error.message } }, 400);
     const s = c.get('subject');
     const r = await createToken(
-      { repos: { tokens: deps.tokens }, ids: deps.ids },
+      { repos: { tokens: repos.tokens }, ids: deps.ids },
       {
         orgId: s.org.id,
         accountId: s.account.id,
@@ -42,8 +49,9 @@ export function tokenRoutes(deps: { tokens: TokenRepo; ids: Ids }): Hono {
   });
 
   app.get('/', async (c) => {
+    const repos = resolve(c.get('tx'));
     const s = c.get('subject');
-    const r = await listTokens({ repos: { tokens: deps.tokens } }, { orgId: s.org.id });
+    const r = await listTokens({ repos: { tokens: repos.tokens } }, { orgId: s.org.id });
     if (!r.ok) return respond(c, r);
     return c.json({
       tokens: r.value.map((t) => ({
@@ -60,8 +68,9 @@ export function tokenRoutes(deps: { tokens: TokenRepo; ids: Ids }): Hono {
   });
 
   app.delete('/:id', async (c) => {
+    const repos = resolve(c.get('tx'));
     const s = c.get('subject');
-    const r = await revokeToken({ repos: { tokens: deps.tokens } }, { orgId: s.org.id, id: c.req.param('id') });
+    const r = await revokeToken({ repos: { tokens: repos.tokens } }, { orgId: s.org.id, id: c.req.param('id') });
     return respond(c, r, 204);
   });
 

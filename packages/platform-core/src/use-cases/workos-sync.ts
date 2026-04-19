@@ -3,16 +3,56 @@ import type { OrganizationRepo } from '../repos/org-repo.js';
 import type { AccountRepo } from '../repos/account-repo.js';
 import type { MembershipMirrorRepo } from '../repos/membership-mirror-repo.js';
 import type { ProjectRepo } from '../repos/project-repo.js';
+import type { TokenRepo } from '../repos/token-repo.js';
 import type { WorkosEventLogRepo } from '../repos/workos-event-log-repo.js';
+import { archiveOrgCascade } from './archive-org-cascade.js';
 
-type Deps = {
+/**
+ * A minimal transaction port. The caller (HTTP layer) injects a function that
+ * opens a pg transaction, SET LOCAL app.org_id, and passes an opaque `TxHandle`
+ * into `fn`. The same handle is then passed to `makeTxRepos` to build
+ * TX-scoped repos. This keeps `platform-core` free of any `pg` import while
+ * still letting the `organization.deleted` branch run atomically.
+ *
+ * `fn` may return a sentinel so the caller can distinguish "claimed" vs
+ * "already processed" deliveries. Throwing from `fn` must trigger ROLLBACK.
+ */
+export type OrgTxRunner<THandle> = <T>(
+  orgId: string,
+  fn: (tx: THandle) => Promise<T>,
+) => Promise<T>;
+
+export type TxCascadeRepos = {
+  organizations: OrganizationRepo;
+  projects: ProjectRepo;
+  tokens: TokenRepo;
+};
+
+/**
+ * Claim the workos_event_log row INSIDE the TX. Returns true iff this caller
+ * won the race (INSERT actually wrote the row).
+ */
+export type ClaimWorkosEvent<THandle> = (
+  tx: THandle,
+  eventId: string,
+  eventType: string,
+) => Promise<boolean>;
+
+type Deps<THandle> = {
   repos: {
     organizations: OrganizationRepo;
     accounts: AccountRepo;
     memberships: MembershipMirrorRepo;
     projects: ProjectRepo;
+    tokens: TokenRepo;
     workosEventLog: WorkosEventLogRepo;
   };
+  /** Opens an org-scoped TX. Required for the `organization.deleted` branch. */
+  withOrgTx?: OrgTxRunner<THandle>;
+  /** Builds TX-scoped cascade repos from a handle. Required if `withOrgTx` set. */
+  makeTxCascadeRepos?: (tx: THandle) => TxCascadeRepos;
+  /** Atomic idempotency claim inside the TX. Required if `withOrgTx` set. */
+  claimWorkosEvent?: ClaimWorkosEvent<THandle>;
 };
 
 export type WorkosEvent =
@@ -31,10 +71,18 @@ export type WorkosEvent =
       data: { id: string; organization_id: string; user_id: string };
     };
 
-export async function syncWorkosEvent(deps: Deps, ev: WorkosEvent): Promise<Result<void, PlatformError>> {
-  const seen = await deps.repos.workosEventLog.hasProcessed(ev.id);
-  if (!isOk(seen)) return seen;
-  if (seen.value) return ok(undefined);
+export async function syncWorkosEvent<THandle = unknown>(
+  deps: Deps<THandle>,
+  ev: WorkosEvent,
+): Promise<Result<void, PlatformError>> {
+  // `organization.deleted` has its OWN idempotency claim inside the TX — skip
+  // the outer hasProcessed short-circuit so two concurrent deliveries race on
+  // the INSERT, not on this check.
+  if (ev.type !== 'organization.deleted') {
+    const seen = await deps.repos.workosEventLog.hasProcessed(ev.id);
+    if (!isOk(seen)) return seen;
+    if (seen.value) return ok(undefined);
+  }
 
   switch (ev.type) {
     case 'user.created':
@@ -64,19 +112,42 @@ export async function syncWorkosEvent(deps: Deps, ev: WorkosEvent): Promise<Resu
       break;
     }
     case 'organization.deleted': {
-      const found = await deps.repos.organizations.findByWorkosId(ev.data.id);
+      // Use the including-archived finder so re-deliveries after the org is
+      // already archived still locate it (and then no-op via the claim).
+      const found = await deps.repos.organizations.findByWorkosIdIncludingArchived(ev.data.id);
       if (!isOk(found)) return found;
-      if (found.value) {
-        const list = await deps.repos.projects.list(found.value.id, { includeArchived: false });
-        if (!isOk(list)) return list;
-        for (const p of list.value) {
-          const a = await deps.repos.projects.archive(found.value.id, p.id);
-          if (!isOk(a)) return a;
-        }
-        const d = await deps.repos.organizations.archive(found.value.id);
-        if (!isOk(d)) return d;
+      if (!found.value) {
+        // Nothing to cascade. Still record the event in the log so retries are
+        // cheap. Safe via the outer markProcessed below.
+        const mark = await deps.repos.workosEventLog.markProcessed(ev.id, ev.type);
+        if (!isOk(mark)) return mark;
+        return ok(undefined);
       }
-      break;
+      if (!deps.withOrgTx || !deps.makeTxCascadeRepos || !deps.claimWorkosEvent) {
+        return err([
+          {
+            code: 'PLATFORM_INTERNAL',
+            message:
+              'organization.deleted handler requires withOrgTx + makeTxCascadeRepos + claimWorkosEvent',
+          },
+        ]);
+      }
+      const orgIdResolved = found.value.id;
+      try {
+        await deps.withOrgTx(orgIdResolved, async (tx) => {
+          const claimed = await deps.claimWorkosEvent!(tx, ev.id, ev.type);
+          if (!claimed) return;
+          const repos = deps.makeTxCascadeRepos!(tx);
+          const cascade = await archiveOrgCascade({ repos }, { orgId: orgIdResolved });
+          if (!isOk(cascade)) {
+            throw new Error(`cascade failed: ${JSON.stringify(cascade.errors)}`);
+          }
+        });
+      } catch (cause) {
+        return err([{ code: 'PLATFORM_INTERNAL', message: String(cause), cause }]);
+      }
+      // Claim lives inside the TX; skip the outer markProcessed for this branch.
+      return ok(undefined);
     }
     case 'organization_membership.created': {
       const org = await deps.repos.organizations.findByWorkosId(ev.data.organization_id);

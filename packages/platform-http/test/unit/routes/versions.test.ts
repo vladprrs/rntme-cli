@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { FakeStore, SeededIds, ok } from '@rntme-cli/platform-core';
+import { SeededIds, ok } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { versionRoutes } from '../../../src/routes/versions.js';
 import { requireAuth } from '../../../src/middleware/auth.js';
 import { minimalValidBundle } from '../../../../platform-core/test/fixtures/bundles/minimal-valid.js';
@@ -27,19 +28,25 @@ async function makeApp() {
     scopes: ['project:read', 'project:write', 'version:publish'] as readonly string[],
     tokenId: undefined,
   };
+  const resolveDeps = () =>
+    ({
+      organizations: store.organizations,
+      accounts: store.accountsRepo,
+      memberships: store.membershipMirror,
+      workosEventLog: store.workosEventLog,
+      projects: store.projects,
+      services: store.services,
+      artifacts: store.artifacts,
+      tags: store.tags,
+      tokens: store.tokensRepo,
+      audit: store.auditRepo,
+      outbox: store.outboxRepo,
+    }) as never;
   const app = new Hono()
     .use(requireAuth([{ name: 'api-token', authenticate: async () => ok(subject as never) }]))
     .route(
       '/v1/orgs/:orgSlug/projects/:projSlug/services/:svcSlug',
-      versionRoutes({
-        organizations: store.organizations,
-        projects: store.projects,
-        services: store.services,
-        artifacts: store.artifacts,
-        tags: store.tags,
-        blob: store.blob,
-        ids,
-      }),
+      versionRoutes({ blob: store.blob, ids, resolveDeps }),
     );
   return { app, store };
 }

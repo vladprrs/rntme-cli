@@ -1,9 +1,7 @@
 import type { Context } from 'hono';
 import { isOk } from '@rntme-cli/platform-core';
 import type { Result, PlatformError } from '@rntme-cli/platform-core';
-import type { OrganizationRepo } from '@rntme-cli/platform-core';
-import type { ProjectRepo } from '@rntme-cli/platform-core';
-import type { ServiceRepo } from '@rntme-cli/platform-core';
+import type { OrganizationRepo, ProjectRepo, ServiceRepo } from '@rntme-cli/platform-core';
 import { errorEnvelope, statusForCode } from '../middleware/error-handler.js';
 
 export function respond<T>(c: Context, r: Result<T, PlatformError>, okStatus = 200) {
@@ -13,14 +11,14 @@ export function respond<T>(c: Context, r: Result<T, PlatformError>, okStatus = 2
 }
 
 export async function resolveProject(
-  deps: { organizations: OrganizationRepo; projects: ProjectRepo },
+  repos: { organizations: OrganizationRepo; projects: ProjectRepo },
   orgSlug: string,
   projSlug: string,
 ) {
-  const org = await deps.organizations.findBySlug(orgSlug);
+  const org = await repos.organizations.findBySlug(orgSlug);
   if (!isOk(org)) return org;
   if (!org.value) return { ok: false as const, errors: [{ code: 'PLATFORM_TENANCY_ORG_NOT_FOUND' as const, message: orgSlug }] };
-  const proj = await deps.projects.findBySlug(org.value.id, projSlug);
+  const proj = await repos.projects.findBySlug(org.value.id, projSlug);
   if (!isOk(proj)) return proj;
   if (!proj.value)
     return { ok: false as const, errors: [{ code: 'PLATFORM_TENANCY_PROJECT_NOT_FOUND' as const, message: projSlug }] };
@@ -30,14 +28,14 @@ export async function resolveProject(
 }
 
 export async function resolveService(
-  deps: { organizations: OrganizationRepo; projects: ProjectRepo; services: ServiceRepo },
+  repos: { organizations: OrganizationRepo; projects: ProjectRepo; services: ServiceRepo },
   orgSlug: string,
   projSlug: string,
   svcSlug: string,
 ) {
-  const p = await resolveProject(deps, orgSlug, projSlug);
+  const p = await resolveProject(repos, orgSlug, projSlug);
   if (!p.ok) return p;
-  const s = await deps.services.findBySlug(p.value.project.id, svcSlug);
+  const s = await repos.services.findBySlug(p.value.project.id, svcSlug);
   if (!isOk(s)) return s;
   if (!s.value)
     return { ok: false as const, errors: [{ code: 'PLATFORM_TENANCY_SERVICE_NOT_FOUND' as const, message: svcSlug }] };

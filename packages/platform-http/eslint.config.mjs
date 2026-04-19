@@ -15,6 +15,13 @@ export default [
         process: 'readonly',
         URL: 'readonly',
         setTimeout: 'readonly',
+        // Web/Fetch APIs available in Node 20+
+        Request: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+        Blob: 'readonly',
+        BlobPart: 'readonly',
+        ReadableStream: 'readonly',
       },
     },
     plugins: {

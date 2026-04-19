@@ -9,12 +9,7 @@ import {
   PgMembershipMirrorRepo,
   PgWorkosEventLogRepo,
   PgProjectRepo,
-  PgServiceRepo,
-  PgArtifactRepo,
-  PgTagRepo,
   PgTokenRepo,
-  PgAuditRepo,
-  PgOutboxRepo,
   S3BlobStore,
 } from '@rntme-cli/platform-storage';
 import { RandomIds } from '@rntme-cli/platform-core';
@@ -32,6 +27,7 @@ export type E2eEnv = {
 };
 
 export async function bootE2e(): Promise<E2eEnv> {
+  process.env.PLATFORM_CREATE_ROLES = '1';
   const pg = await new PostgreSqlContainer('postgres:16-alpine').start();
   const minio = await new GenericContainer('minio/minio:latest')
     .withCommand(['server', '/data'])
@@ -52,10 +48,22 @@ export async function bootE2e(): Promise<E2eEnv> {
     PLATFORM_BASE_URL: 'http://localhost',
     PLATFORM_SESSION_COOKIE_DOMAIN: 'localhost',
     PLATFORM_CORS_ORIGINS: '*',
+    PLATFORM_COOKIE_PASSWORD: 'x'.repeat(32),
   });
-  const pool = createPool(env.DATABASE_URL);
-  const db = createDb(pool);
-  await runMigrations(db, pool);
+
+  // Run migrations as the owner, then grant the platform_app role rights and
+  // hand control of the app pool to platform_app so e2e actually exercises RLS.
+  const ownerPool = createPool(pg.getConnectionUri());
+  const ownerDb = createDb(ownerPool);
+  await runMigrations(ownerDb, ownerPool);
+  await ownerPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO platform_app`);
+  await ownerPool.query(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO platform_app`);
+  await ownerPool.end();
+  const parsed = new URL(pg.getConnectionUri());
+  parsed.username = 'platform_app';
+  parsed.password = 'platform_app';
+  const pool = createPool(parsed.toString());
+
   const blob = new S3BlobStore({
     endpoint,
     bucket: env.RUSTFS_BUCKET,
@@ -66,6 +74,14 @@ export async function bootE2e(): Promise<E2eEnv> {
   const workos = makeWorkosStub();
   const logger = createLogger(env);
   const ids = new RandomIds();
+  const poolRepos = {
+    organizations: new PgOrganizationRepo(pool),
+    accounts: new PgAccountRepo(pool),
+    memberships: new PgMembershipMirrorRepo(pool),
+    workosEventLog: new PgWorkosEventLogRepo(pool),
+    projects: new PgProjectRepo(pool),
+    tokens: new PgTokenRepo(pool),
+  };
   const deps: AppDeps = {
     env,
     logger,
@@ -74,19 +90,7 @@ export async function bootE2e(): Promise<E2eEnv> {
     pool,
     blob,
     ids,
-    repos: {
-      organizations: new PgOrganizationRepo(pool),
-      accounts: new PgAccountRepo(pool),
-      memberships: new PgMembershipMirrorRepo(pool),
-      workosEventLog: new PgWorkosEventLogRepo(pool),
-      projects: new PgProjectRepo(pool),
-      services: new PgServiceRepo(pool),
-      artifacts: new PgArtifactRepo(pool),
-      tags: new PgTagRepo(pool),
-      tokens: new PgTokenRepo(pool),
-      audit: new PgAuditRepo(pool),
-      outbox: new PgOutboxRepo(pool),
-    },
+    poolRepos,
   };
   const app = createApp(deps);
   return {

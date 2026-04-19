@@ -16,6 +16,7 @@ export const OrganizationSchema = z.object({
   workosOrganizationId: WorkosIdSchema,
   slug: SlugSchema,
   displayName: z.string().min(1).max(120),
+  archivedAt: z.date().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

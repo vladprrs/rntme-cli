@@ -35,7 +35,7 @@ export function opsRoutes(deps: {
       await w.listApiKeys?.({ limit: 1 });
       results.workos = true;
     } catch {
-      results.workos = true;
+      results.workos = false;
     }
     const ok = results.postgres && results.rustfs;
     return c.json({ status: ok ? 'ready' : 'degraded', checks: results }, ok ? 200 : 503);

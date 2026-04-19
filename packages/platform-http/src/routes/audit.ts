@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AuditRepo } from '@rntme-cli/platform-core';
 import { requireOrgMatch } from '../middleware/auth.js';
 import { respond } from './helpers.js';
+import { resolveDeps as defaultResolveDeps, type RequestRepos } from '../resolve-deps.js';
+import type { PoolClient } from 'pg';
 
 const QuerySchema = z.object({
   resource: z.string().optional(),
@@ -12,11 +13,13 @@ const QuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 
-export function auditRoutes(deps: { audit: AuditRepo }): Hono {
+export function auditRoutes(deps: { resolveDeps?: (tx: PoolClient) => RequestRepos } = {}): Hono {
   const app = new Hono();
+  const resolve = deps.resolveDeps ?? defaultResolveDeps;
   app.use('*', requireOrgMatch('orgSlug'));
 
   app.get('/', async (c) => {
+    const repos = resolve(c.get('tx'));
     const q = QuerySchema.safeParse({
       resource: c.req.query('resource'),
       actor: c.req.query('actor'),
@@ -37,7 +40,7 @@ export function auditRoutes(deps: { audit: AuditRepo }): Hono {
     if (q.data.actor !== undefined) opts.actorAccountId = q.data.actor;
     if (q.data.action !== undefined) opts.action = q.data.action;
     if (q.data.since !== undefined) opts.since = new Date(q.data.since);
-    const r = await deps.audit.list(s.org.id, opts);
+    const r = await repos.audit.list(s.org.id, opts);
     return respond(c, r);
   });
   return app;

@@ -72,9 +72,9 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
 
   it('publish assigns seq=1, writes audit + outbox', async () => {
     const { orgId, accountId, serviceId } = await seed();
-    const repo = new PgArtifactRepo(env.pool);
-    const r = await withTransaction(env.pool, orgId, async () =>
-      repo.publish({
+    const r = await withTransaction(env.pool, orgId, async (client) => {
+      const repo = new PgArtifactRepo(client);
+      return repo.publish({
         serviceId,
         expectedPreviousSeq: undefined,
         row: baseRow(serviceId, orgId, accountId),
@@ -82,23 +82,27 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
         auditActorAccountId: accountId,
         auditActorTokenId: null,
         moveTags: [],
-      }),
-    );
+      });
+    });
     expect(isOk(r)).toBe(true);
     if (isOk(r)) expect(r.value.seq).toBe(1);
 
-    const outbox = await env.pool.query('SELECT COUNT(*)::int AS c FROM event_outbox');
+    const outbox = await withTransaction(env.pool, orgId, async (client) =>
+      client.query('SELECT COUNT(*)::int AS c FROM event_outbox'),
+    );
     expect(outbox.rows[0].c).toBe(1);
-    const audit = await env.pool.query(`SELECT COUNT(*)::int AS c FROM audit_log WHERE action='version.published'`);
+    const audit = await withTransaction(env.pool, orgId, async (client) =>
+      client.query(`SELECT COUNT(*)::int AS c FROM audit_log WHERE action='version.published'`),
+    );
     expect(audit.rows[0].c).toBe(1);
   });
 
   it('idempotency: same bundleDigest returns existing row', async () => {
     const { orgId, accountId, serviceId } = await seed();
-    const repo = new PgArtifactRepo(env.pool);
     const row = baseRow(serviceId, orgId, accountId);
-    const r1 = await withTransaction(env.pool, orgId, async () =>
-      repo.publish({
+    const r1 = await withTransaction(env.pool, orgId, async (client) => {
+      const repo = new PgArtifactRepo(client);
+      return repo.publish({
         serviceId,
         expectedPreviousSeq: undefined,
         row,
@@ -106,10 +110,11 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
         auditActorAccountId: accountId,
         auditActorTokenId: null,
         moveTags: [],
-      }),
-    );
-    const r2 = await withTransaction(env.pool, orgId, async () =>
-      repo.publish({
+      });
+    });
+    const r2 = await withTransaction(env.pool, orgId, async (client) => {
+      const repo = new PgArtifactRepo(client);
+      return repo.publish({
         serviceId,
         expectedPreviousSeq: undefined,
         row: { ...row, id: randomUUID() },
@@ -117,17 +122,17 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
         auditActorAccountId: accountId,
         auditActorTokenId: null,
         moveTags: [],
-      }),
-    );
+      });
+    });
     expect(isOk(r1) && isOk(r2)).toBe(true);
     if (isOk(r1) && isOk(r2)) expect(r1.value.id).toBe(r2.value.id);
   });
 
   it('concurrency conflict when previousVersionSeq wrong', async () => {
     const { orgId, accountId, serviceId } = await seed();
-    const repo = new PgArtifactRepo(env.pool);
-    const r = await withTransaction(env.pool, orgId, async () =>
-      repo.publish({
+    const r = await withTransaction(env.pool, orgId, async (client) => {
+      const repo = new PgArtifactRepo(client);
+      return repo.publish({
         serviceId,
         expectedPreviousSeq: 42,
         row: baseRow(serviceId, orgId, accountId),
@@ -135,9 +140,37 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
         auditActorAccountId: accountId,
         auditActorTokenId: null,
         moveTags: [],
-      }),
-    );
+      });
+    });
     expect(isOk(r)).toBe(false);
     if (!isOk(r)) expect(r.errors[0]!.code).toBe('PLATFORM_CONCURRENCY_VERSION_CONFLICT');
+  });
+
+  it('enlists in the caller transaction and rolls back with it', async () => {
+    const { orgId, accountId, serviceId } = await seed();
+    const client = await env.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`SET LOCAL app.org_id = $1`, [orgId]);
+      const repo = new PgArtifactRepo(client);
+      const r = await repo.publish({
+        serviceId,
+        expectedPreviousSeq: undefined,
+        row: baseRow(serviceId, orgId, accountId),
+        outboxPayload: { serviceId, bundleDigest: 'deadbeef', orgId },
+        auditActorAccountId: accountId,
+        auditActorTokenId: null,
+        moveTags: [],
+      });
+      expect(isOk(r)).toBe(true);
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
+    const after = await env.pool.query(
+      `SELECT count(*)::int AS n FROM artifact_version WHERE service_id=$1`,
+      [serviceId],
+    );
+    expect(after.rows[0].n).toBe(0);
   });
 });

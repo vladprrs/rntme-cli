@@ -62,7 +62,13 @@ export class WorkOSAuthKitProvider implements IdentityProvider {
       }
 
       const mem = await this.deps.memberships.find(org.value.id, acct.value.id);
-      const role: Role = isOk(mem) && mem.value?.role === 'admin' ? 'admin' : 'member';
+      if (!isOk(mem)) return mem;
+      if (!mem.value) {
+        return err([
+          { code: 'PLATFORM_AUTH_INVALID' as const, message: 'account not a member of organization' },
+        ]);
+      }
+      const role: Role = mem.value.role === 'admin' ? 'admin' : 'member';
 
       const subject: AuthSubject = {
         account: {
