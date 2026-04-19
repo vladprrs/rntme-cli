@@ -13,6 +13,7 @@ export default [
       globals: {
         console: 'readonly',
         process: 'readonly',
+        Buffer: 'readonly',
         URL: 'readonly',
         fetch: 'readonly',
         AbortController: 'readonly',
