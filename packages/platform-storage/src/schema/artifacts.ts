@@ -7,6 +7,7 @@ import {
   jsonb,
   unique,
   index,
+  primaryKey,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { organization, account } from './identity.js';
@@ -62,5 +63,7 @@ export const artifactTag = pgTable(
       .notNull()
       .references(() => account.id),
   },
-  (t) => ({ pk: unique('artifact_tag_pk').on(t.serviceId, t.name) }),
+  (t) => ({
+    pk: primaryKey({ columns: [t.serviceId, t.name], name: 'artifact_tag_pk' }),
+  }),
 );
