@@ -40,6 +40,10 @@ export class FakeStore {
   public outbox: { id: bigint; eventType: string; payload: Record<string, unknown>; deliveredAt: Date | null }[] = [];
   public workosEvents = new Set<string>();
   public blobs = new Map<string, Buffer>();
+  /** Alias for `blobs`; reads the same map so tests can spell it either way. */
+  public get uploads(): Map<string, Buffer> {
+    return this.blobs;
+  }
 
   private autoId = 1;
   private now = () => new Date();

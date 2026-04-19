@@ -7,6 +7,7 @@ import type { Ids } from '../ids.js';
 import type { BundleInput } from '../schemas/requests.js';
 import { validateBundle } from '../validation/bundle.js';
 import { perFileDigest, bundleDigest, blobKey } from '../blob/store.js';
+import { canonicalize } from '../validation/canonical-json.js';
 
 type Deps = {
   repos: { artifacts: ArtifactRepo; services: ServiceRepo };
@@ -61,7 +62,7 @@ export async function publishVersion(
   ];
   for (const [k, body] of uploads) {
     const key = blobKey(per[k]);
-    const up = await deps.blob.putIfAbsent(key, Buffer.from(JSON.stringify(body)));
+    const up = await deps.blob.putIfAbsent(key, Buffer.from(canonicalize(body), 'utf8'));
     if (!isOk(up)) return up;
   }
 
