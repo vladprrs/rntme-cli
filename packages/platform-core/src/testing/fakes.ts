@@ -100,7 +100,7 @@ export class FakeStore {
     upsertFromWorkos: async (a) => {
       const existing = [...this.orgs.values()].find((o) => o.workosOrganizationId === a.workosOrganizationId);
       if (existing) {
-        const updated = { ...existing, slug: a.slug, displayName: a.displayName, updatedAt: this.now() };
+        const updated = { ...existing, displayName: a.displayName, updatedAt: this.now() };
         this.orgs.set(existing.id, updated);
         return ok(updated);
       }

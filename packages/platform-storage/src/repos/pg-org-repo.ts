@@ -121,7 +121,7 @@ export class PgOrganizationRepo implements OrganizationRepo {
         .values({ id, workosOrganizationId: a.workosOrganizationId, slug: a.slug, displayName: a.displayName })
         .onConflictDoUpdate({
           target: organization.workosOrganizationId,
-          set: { slug: a.slug, displayName: a.displayName, updatedAt: new Date() },
+          set: { displayName: a.displayName, updatedAt: new Date() },
         })
         .returning();
       return ok(rowToOrg(rows[0]!));
