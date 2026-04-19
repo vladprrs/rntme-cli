@@ -1,0 +1,83 @@
+{
+  "projections": {
+    "IssueView": {
+      "backing": "entity-mirror",
+      "source": { "entity": "Issue" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": [
+        "id",
+        "projectId",
+        "reporterId",
+        "assigneeId",
+        "sprintId",
+        "title",
+        "status",
+        "priority",
+        "storyPoints",
+        "resolvedAt"
+      ],
+      "table": "projection_issue"
+    },
+    "project_mirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "Project" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": [
+        "id",
+        "key",
+        "name",
+        "leadId",
+        "status",
+        "description"
+      ],
+      "table": "projects"
+    },
+    "user_mirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "User" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": [
+        "id",
+        "username",
+        "email",
+        "role",
+        "status",
+        "joinedAt"
+      ],
+      "table": "users"
+    },
+    "sprint_mirror": {
+      "backing": "entity-mirror",
+      "source": { "entity": "Sprint" },
+      "keys": ["id"],
+      "grain": ["id"],
+      "exposed": [
+        "id",
+        "projectId",
+        "name",
+        "goal",
+        "startsAt",
+        "endsAt",
+        "status"
+      ],
+      "table": "sprints"
+    },
+    "reportedIssueCountByProject": {
+      "backing": "derived",
+      "source": { "graph": "reportedIssueCountByProject" },
+      "keys": ["projectId"],
+      "grain": ["projectId"],
+      "exposed": ["projectId", "count"],
+      "table": "projection_reported_count"
+    }
+  },
+  "relations": {
+    "IssueView.project":  { "to": "project_mirror", "localKey": "projectId",  "foreignKey": "id", "cardinality": "one", "role": "dimension" },
+    "IssueView.reporter": { "to": "user_mirror",    "localKey": "reporterId", "foreignKey": "id", "cardinality": "one", "role": "dimension" },
+    "IssueView.assignee": { "to": "user_mirror",    "localKey": "assigneeId", "foreignKey": "id", "cardinality": "one", "role": "dimension" },
+    "IssueView.sprint":   { "to": "sprint_mirror",  "localKey": "sprintId",   "foreignKey": "id", "cardinality": "one", "role": "dimension" }
+  }
+}
