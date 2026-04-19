@@ -6,7 +6,7 @@ import { webhookWorkosRoute } from '../../../src/routes/webhook-workos.js';
 
 const passingMock = {
   webhooks: {
-    constructEvent: async ({ payload }: { payload: string }) => JSON.parse(payload) as unknown as Record<string, unknown>,
+    constructEvent: async ({ payload }: { payload: unknown }) => payload as Record<string, unknown>,
   },
 } as never;
 const failingMock = {

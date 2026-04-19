@@ -29,9 +29,10 @@ export function webhookWorkosRoute(deps: {
   const app = new Hono();
   app.post('/workos', async (c) => {
     const sig = c.req.header('workos-signature') ?? '';
-    const payload = await c.req.text();
+    const rawBody = await c.req.text();
     let event: unknown;
     try {
+      const payload = JSON.parse(rawBody) as unknown;
       event = await deps.workos.webhooks.constructEvent({ payload, sigHeader: sig, secret: deps.secret });
     } catch (cause) {
       return c.json({ error: { code: 'PLATFORM_WORKOS_WEBHOOK_INVALID', message: String(cause) } }, 400);
