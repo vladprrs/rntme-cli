@@ -1,0 +1,50 @@
+export type Ok<T> = { readonly ok: true; readonly value: T };
+export type Err<E> = { readonly ok: false; readonly errors: readonly E[] };
+export type Result<T, E = PlatformError> = Ok<T> | Err<E>;
+
+export const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
+export const err = <E>(errors: readonly E[]): Err<E> => ({ ok: false, errors });
+export const isOk = <T, E>(r: Result<T, E>): r is Ok<T> => r.ok === true;
+export const isErr = <T, E>(r: Result<T, E>): r is Err<E> => r.ok === false;
+
+export const ERROR_CODES = {
+  PLATFORM_AUTH_MISSING: 'PLATFORM_AUTH_MISSING',
+  PLATFORM_AUTH_INVALID: 'PLATFORM_AUTH_INVALID',
+  PLATFORM_AUTH_FORBIDDEN: 'PLATFORM_AUTH_FORBIDDEN',
+  PLATFORM_AUTH_TOKEN_REVOKED: 'PLATFORM_AUTH_TOKEN_REVOKED',
+  PLATFORM_AUTH_TOKEN_EXPIRED: 'PLATFORM_AUTH_TOKEN_EXPIRED',
+  PLATFORM_PARSE_BODY_INVALID: 'PLATFORM_PARSE_BODY_INVALID',
+  PLATFORM_PARSE_PATH_INVALID: 'PLATFORM_PARSE_PATH_INVALID',
+  PLATFORM_TENANCY_ORG_NOT_FOUND: 'PLATFORM_TENANCY_ORG_NOT_FOUND',
+  PLATFORM_TENANCY_PROJECT_NOT_FOUND: 'PLATFORM_TENANCY_PROJECT_NOT_FOUND',
+  PLATFORM_TENANCY_SERVICE_NOT_FOUND: 'PLATFORM_TENANCY_SERVICE_NOT_FOUND',
+  PLATFORM_TENANCY_RESOURCE_ARCHIVED: 'PLATFORM_TENANCY_RESOURCE_ARCHIVED',
+  PLATFORM_VALIDATION_BUNDLE_FAILED: 'PLATFORM_VALIDATION_BUNDLE_FAILED',
+  PLATFORM_STORAGE_BLOB_UPLOAD_FAILED: 'PLATFORM_STORAGE_BLOB_UPLOAD_FAILED',
+  PLATFORM_STORAGE_DB_UNAVAILABLE: 'PLATFORM_STORAGE_DB_UNAVAILABLE',
+  PLATFORM_CONCURRENCY_VERSION_CONFLICT: 'PLATFORM_CONCURRENCY_VERSION_CONFLICT',
+  PLATFORM_CONCURRENCY_LAST_OWNER: 'PLATFORM_CONCURRENCY_LAST_OWNER',
+  PLATFORM_RATE_LIMITED: 'PLATFORM_RATE_LIMITED',
+  PLATFORM_INTERNAL: 'PLATFORM_INTERNAL',
+  PLATFORM_WORKOS_WEBHOOK_INVALID: 'PLATFORM_WORKOS_WEBHOOK_INVALID',
+  PLATFORM_WORKOS_UNAVAILABLE: 'PLATFORM_WORKOS_UNAVAILABLE',
+  PLATFORM_CONFLICT_SLUG_TAKEN: 'PLATFORM_CONFLICT_SLUG_TAKEN',
+} as const;
+
+export type ErrorCode = keyof typeof ERROR_CODES;
+
+export type PlatformError = {
+  readonly code: ErrorCode;
+  readonly message: string;
+  readonly stage?:
+    | 'auth'
+    | 'parse'
+    | 'tenancy'
+    | 'validation'
+    | 'storage'
+    | 'concurrency'
+    | 'internal';
+  readonly pkg?: string;
+  readonly path?: string;
+  readonly cause?: unknown;
+};

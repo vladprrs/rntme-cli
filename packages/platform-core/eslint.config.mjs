@@ -11,6 +11,7 @@ export default [
       parser: tsParser,
       parserOptions: { sourceType: 'module', ecmaVersion: 2022 },
       globals: {
+        Buffer: 'readonly',
         console: 'readonly',
         process: 'readonly',
         URL: 'readonly',
