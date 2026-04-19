@@ -38,7 +38,7 @@ describe('workos webhook', () => {
     const r = await app.request('/v1/webhooks/workos', {
       method: 'POST',
       headers: { 'workos-signature': 'sig' },
-      body: JSON.stringify({ id: 'ev', type: 'user.created', data: {} }),
+      body: JSON.stringify({ id: 'ev', event: 'user.created', data: {} }),
     });
     expect(r.status).toBe(400);
   });
@@ -63,7 +63,7 @@ describe('workos webhook', () => {
     );
     const body = {
       id: 'ev_1',
-      type: 'user.created',
+      event: 'user.created',
       data: { id: 'u_a', email: 'x@y', first_name: 'X', last_name: 'Y' },
     };
     const r = await app.request('/v1/webhooks/workos', {

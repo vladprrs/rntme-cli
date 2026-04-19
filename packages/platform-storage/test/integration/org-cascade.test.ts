@@ -97,7 +97,7 @@ d('archiveOrgCascade (errata §3.3, §3.4)', () => {
 
     const ev = {
       id: 'evt_same',
-      type: 'organization.deleted' as const,
+      event: 'organization.deleted' as const,
       data: { id: 'w2' },
     };
     const deps = {

@@ -40,7 +40,7 @@ describe('syncWorkosEvent', () => {
     const store = new FakeStore();
     const r = await syncWorkosEvent(makeDeps(store), {
       id: 'ev_1',
-      type: 'user.created',
+      event: 'user.created',
       data: { id: 'user_abc', email: 'x@example.com', first_name: 'X', last_name: 'Y' },
     });
     expect(isOk(r)).toBe(true);
@@ -51,7 +51,7 @@ describe('syncWorkosEvent', () => {
     const store = new FakeStore();
     const ev = {
       id: 'ev_2',
-      type: 'user.created' as const,
+      event: 'user.created' as const,
       data: { id: 'u_b', email: null, first_name: 'A', last_name: 'B' },
     };
     await syncWorkosEvent(makeDeps(store), ev);
@@ -81,7 +81,7 @@ describe('syncWorkosEvent', () => {
     });
     const r = await syncWorkosEvent(makeDeps(store), {
       id: 'ev_3',
-      type: 'organization.deleted',
+      event: 'organization.deleted',
       data: { id: 'org_x' },
     });
     expect(isOk(r)).toBe(true);
@@ -112,7 +112,7 @@ describe('syncWorkosEvent', () => {
     const deps = makeDeps(store);
     const ev = {
       id: 'ev_same',
-      type: 'organization.deleted' as const,
+      event: 'organization.deleted' as const,
       data: { id: 'org_y' },
     };
     const [r1, r2] = await Promise.all([syncWorkosEvent(deps, ev), syncWorkosEvent(deps, ev)]);

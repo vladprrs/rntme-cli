@@ -56,18 +56,18 @@ type Deps<THandle> = {
 };
 
 export type WorkosEvent =
-  | { id: string; type: 'user.created' | 'user.updated'; data: { id: string; email: string | null; first_name: string; last_name: string } }
-  | { id: string; type: 'user.deleted'; data: { id: string } }
-  | { id: string; type: 'organization.created' | 'organization.updated'; data: { id: string; name: string; slug?: string } }
-  | { id: string; type: 'organization.deleted'; data: { id: string } }
+  | { id: string; event: 'user.created' | 'user.updated'; data: { id: string; email: string | null; first_name: string; last_name: string } }
+  | { id: string; event: 'user.deleted'; data: { id: string } }
+  | { id: string; event: 'organization.created' | 'organization.updated'; data: { id: string; name: string; slug?: string } }
+  | { id: string; event: 'organization.deleted'; data: { id: string } }
   | {
       id: string;
-      type: 'organization_membership.created';
+      event: 'organization_membership.created';
       data: { id: string; organization_id: string; user_id: string; role: { slug: string } };
     }
   | {
       id: string;
-      type: 'organization_membership.deleted';
+      event: 'organization_membership.deleted';
       data: { id: string; organization_id: string; user_id: string };
     };
 
@@ -78,13 +78,13 @@ export async function syncWorkosEvent<THandle = unknown>(
   // `organization.deleted` has its OWN idempotency claim inside the TX — skip
   // the outer hasProcessed short-circuit so two concurrent deliveries race on
   // the INSERT, not on this check.
-  if (ev.type !== 'organization.deleted') {
+  if (ev.event !== 'organization.deleted') {
     const seen = await deps.repos.workosEventLog.hasProcessed(ev.id);
     if (!isOk(seen)) return seen;
     if (seen.value) return ok(undefined);
   }
 
-  switch (ev.type) {
+  switch (ev.event) {
     case 'user.created':
     case 'user.updated': {
       const r = await deps.repos.accounts.upsertFromWorkos({
@@ -119,7 +119,7 @@ export async function syncWorkosEvent<THandle = unknown>(
       if (!found.value) {
         // Nothing to cascade. Still record the event in the log so retries are
         // cheap. Safe via the outer markProcessed below.
-        const mark = await deps.repos.workosEventLog.markProcessed(ev.id, ev.type);
+        const mark = await deps.repos.workosEventLog.markProcessed(ev.id, ev.event);
         if (!isOk(mark)) return mark;
         return ok(undefined);
       }
@@ -135,7 +135,7 @@ export async function syncWorkosEvent<THandle = unknown>(
       const orgIdResolved = found.value.id;
       try {
         await deps.withOrgTx(orgIdResolved, async (tx) => {
-          const claimed = await deps.claimWorkosEvent!(tx, ev.id, ev.type);
+          const claimed = await deps.claimWorkosEvent!(tx, ev.id, ev.event);
           if (!claimed) return;
           const repos = deps.makeTxCascadeRepos!(tx);
           const cascade = await archiveOrgCascade({ repos }, { orgId: orgIdResolved });
@@ -176,7 +176,7 @@ export async function syncWorkosEvent<THandle = unknown>(
     }
   }
 
-  const mark = await deps.repos.workosEventLog.markProcessed(ev.id, ev.type);
+  const mark = await deps.repos.workosEventLog.markProcessed(ev.id, ev.event);
   if (!isOk(mark)) return mark;
   return ok(undefined);
 }
