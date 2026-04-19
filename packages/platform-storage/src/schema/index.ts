@@ -1,5 +1,5 @@
-import { pgTable, text } from 'drizzle-orm/pg-core';
-
-export const _schemaBootstrap = pgTable('_schema_bootstrap', {
-  id: text('id').primaryKey(),
-});
+export * from './identity.js';
+export * from './projects.js';
+export * from './artifacts.js';
+export * from './tokens.js';
+export * from './audit.js';
