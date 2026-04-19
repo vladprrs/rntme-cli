@@ -100,36 +100,49 @@ Global options:
 |----------|--------|---------|
 | `RNTME_BASE_URL` | API base URL (overrides `--base-url`) | `https://platform.rntme.com` |
 | `RNTME_TOKEN` | Authentication token (overrides credentials file and `--token`) | `pat_...` |
-| `RNTME_ORG` | Default org slug (overrides `rntme.json` and `--org`) | `my-org` |
-| `RNTME_PROJECT` | Default project slug (overrides `rntme.json` and `--project`) | `my-project` |
-| `RNTME_SERVICE` | Default service slug (overrides `rntme.json` and `--service`) | `my-service` |
 | `RNTME_PROFILE` | Credentials profile name (overrides `--profile`) | `work` |
-| `RNTME_NO_COLOR` | Disable colored output (set to any value to enable) | `1` |
 
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | General error (missing argument, invalid input, API error) |
-| `2` | Unknown subcommand |
+| `1` | Generic error or internal failure |
+| `2` | Config or credentials problem |
+| `3` | Authentication failed |
+| `4` | Forbidden (insufficient scope) |
+| `5` | Not found or archived resource |
+| `6` | Validation failed |
+| `7` | Concurrency conflict (version mismatch) |
+| `8` | Rate limited |
+| `9` | Network error |
+| `10` | Server error (5xx from platform) |
 
 ## Error Codes
 
-Error codes follow the format `CLI_<LAYER>_<KIND>`:
+Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.ts](src/errors/exit.ts).
 
-- `CLI_PARSE_MISSING_ARG` — Required argument missing
-- `CLI_PARSE_INVALID_ARG` — Argument parsing failed
-- `CLI_AUTH_MISSING` — No credentials found; run `rntme login`
-- `CLI_AUTH_INVALID` — Token is invalid or expired
-- `CLI_CONFIG_INVALID` — rntme.json is malformed or incomplete
-- `CLI_VALIDATE_FAILED` — Bundle validation failed (detailed errors follow)
-- `CLI_PUBLISH_FAILED` — Publish operation failed
-- `CLI_API_ERROR` — Platform API returned an error
-- `CLI_IO_ERROR` — File system or network I/O error
+### Config Layer
+
+- `CLI_CONFIG_MISSING` — rntme.json not found in any parent directory
+- `CLI_CONFIG_INVALID` — rntme.json is malformed or invalid JSON
+- `CLI_CONFIG_ARTIFACT_NOT_FOUND` — Required artifact file referenced in rntme.json does not exist
+
+### Credentials Layer
+
+- `CLI_CREDENTIALS_MISSING` — Credentials file not found; run `rntme login`
+- `CLI_CREDENTIALS_INVALID` — Credentials file is malformed or corrupted
+- `CLI_CREDENTIALS_PERMISSIONS_TOO_OPEN` — Credentials file has unsafe permissions (not 0600)
+
+### Runtime Layer
+
+- `CLI_RESPONSE_PARSE_FAILED` — Platform API response could not be parsed (exit 10)
+- `CLI_VALIDATE_LOCAL_FAILED` — Local bundle validation failed (exit 6)
+- `CLI_PUBLISH_DIGEST_MISMATCH` — Published digest does not match local bundle (exit 1)
+- `CLI_NETWORK_TIMEOUT` — Network request timed out (exit 9)
+- `CLI_USAGE` — Incorrect command usage (exit 2)
 
 ## See Also
 
-- **Design spec:** [platform-commands-design.md](../../docs/superpowers/specs/2026-04-19-platform-commands-design.md) — Full architecture and command behavior
-- **Platform API design:** [platform-api-design.md](../../docs/superpowers/specs/platform-api-design.md) — REST API contract and integration details
-- **Implementation plan:** [platform-commands-plan.md](../../docs/superpowers/plans/platform-commands-plan.md) — Development phases and task breakdown
+- **CLI design spec:** See `docs/superpowers/specs/2026-04-19-rntme-cli-platform-commands-design.md` in the rntme monorepo
+- **Platform API design:** See `docs/superpowers/specs/2026-04-19-platform-api-design.md` in the rntme monorepo
