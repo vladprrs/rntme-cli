@@ -138,7 +138,13 @@ export function createApp(deps: AppDeps): Hono {
 
   authed.get('/v1/auth/me', (c) => {
     const s = c.get('subject');
-    return c.json({ account: s.account, org: s.org, role: s.role, scopes: s.scopes });
+    return c.json({
+      account: s.account,
+      org: s.org,
+      role: s.role,
+      scopes: s.scopes,
+      tokenId: s.tokenId ?? null,
+    });
   });
   authed.route('/v1/orgs', orgRoutes({ ids: deps.ids }));
   authed.route('/v1/orgs/:orgSlug/projects', projectRoutes({ ids: deps.ids }));
