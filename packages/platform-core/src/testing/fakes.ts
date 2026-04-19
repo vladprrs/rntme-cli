@@ -51,6 +51,7 @@ export class FakeStore {
       workosOrganizationId: args.workosOrganizationId,
       slug: args.slug,
       displayName: args.displayName,
+      archivedAt: null,
       createdAt: this.now(),
       updatedAt: this.now(),
     };

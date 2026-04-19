@@ -12,6 +12,7 @@ function rowToOrg(r: typeof organization.$inferSelect): Organization {
     workosOrganizationId: r.workosOrganizationId,
     slug: r.slug,
     displayName: r.displayName,
+    archivedAt: r.archivedAt,
     createdAt: r.createdAt!,
     updatedAt: r.updatedAt!,
   };

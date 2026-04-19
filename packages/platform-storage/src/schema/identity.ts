@@ -15,6 +15,7 @@ export const organization = pgTable('organization', {
   workosOrganizationId: text('workos_organization_id').notNull().unique(),
   slug: text('slug').notNull().unique(),
   displayName: text('display_name').notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
