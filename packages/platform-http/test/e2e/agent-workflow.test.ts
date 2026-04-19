@@ -12,21 +12,21 @@ describe.skipIf(!e2eContainersAvailable())('agent workflow', () => {
   beforeAll(async () => {
     env = await bootE2e();
     // Seed: one org, one account, one membership, one admin token (bypassing WorkOS for e2e speed).
-    const o = await env.deps.repos.organizations.upsertFromWorkos({
+    const o = await env.deps.poolRepos.organizations.upsertFromWorkos({
       workosOrganizationId: 'org_e2e',
       slug: 'e2e',
       displayName: 'E2E',
     });
-    const a = await env.deps.repos.accounts.upsertFromWorkos({
+    const a = await env.deps.poolRepos.accounts.upsertFromWorkos({
       workosUserId: 'user_e2e',
       email: 'e2e@example.com',
       displayName: 'E2E User',
     });
     if (!o.ok || !a.ok) throw new Error('seed org/account failed');
-    await env.deps.repos.memberships.upsert({ orgId: o.value.id, accountId: a.value.id, role: 'admin' });
+    await env.deps.poolRepos.memberships.upsert({ orgId: o.value.id, accountId: a.value.id, role: 'admin' });
     const plain = 'rntme_pat_' + 'a'.repeat(22);
     const hash = new Uint8Array(createHash('sha256').update(plain).digest());
-    await env.deps.repos.tokens.create({
+    await env.deps.poolRepos.tokens.create({
       id: randomUUID(),
       orgId: o.value.id,
       accountId: a.value.id,

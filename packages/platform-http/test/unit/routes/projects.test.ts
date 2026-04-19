@@ -18,9 +18,23 @@ async function makeApp() {
     tokenId: undefined,
   };
   const fakeProvider = { name: 'api-token' as const, authenticate: async () => ok(subject as never) };
+  const resolveDeps = () =>
+    ({
+      organizations: store.organizations,
+      accounts: store.accountsRepo,
+      memberships: store.membershipMirror,
+      workosEventLog: store.workosEventLog,
+      projects: store.projects,
+      services: store.services,
+      artifacts: store.artifacts,
+      tags: store.tags,
+      tokens: store.tokensRepo,
+      audit: store.auditRepo,
+      outbox: store.outboxRepo,
+    }) as never;
   const app = new Hono()
     .use(requireAuth([fakeProvider]))
-    .route('/v1/orgs/:orgSlug/projects', projectRoutes({ organizations: store.organizations, projects: store.projects, ids }));
+    .route('/v1/orgs/:orgSlug/projects', projectRoutes({ ids, resolveDeps }));
   return { app, store };
 }
 

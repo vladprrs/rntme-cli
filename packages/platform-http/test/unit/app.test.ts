@@ -31,7 +31,7 @@ describe('createApp', () => {
       pool: { query: vi.fn().mockResolvedValue({}) } as unknown as Pool,
       blob: { presignedGet: async () => ({ ok: true as const, value: 'http://x' }) } as unknown as BlobStore,
       ids: new RandomIds(),
-      repos: {} as AppDeps['repos'],
+      poolRepos: {} as AppDeps['poolRepos'],
     });
     const r = await app.request('/health');
     expect(r.status).toBe(200);

@@ -7,21 +7,21 @@ describe.skipIf(!e2eContainersAvailable())('tenant isolation', () => {
   let env: E2eEnv;
 
   async function seedOrgWithToken(slug: string, workosId: string, workosUser: string) {
-    const org = await env.deps.repos.organizations.upsertFromWorkos({
+    const org = await env.deps.poolRepos.organizations.upsertFromWorkos({
       workosOrganizationId: workosId,
       slug,
       displayName: slug,
     });
-    const acc = await env.deps.repos.accounts.upsertFromWorkos({
+    const acc = await env.deps.poolRepos.accounts.upsertFromWorkos({
       workosUserId: workosUser,
       email: null,
       displayName: workosUser,
     });
     if (!org.ok || !acc.ok) throw new Error('seed');
-    await env.deps.repos.memberships.upsert({ orgId: org.value.id, accountId: acc.value.id, role: 'admin' });
+    await env.deps.poolRepos.memberships.upsert({ orgId: org.value.id, accountId: acc.value.id, role: 'admin' });
     const plain = 'rntme_pat_' + randomUUID().replace(/-/g, '').slice(0, 22);
     const hash = new Uint8Array(createHash('sha256').update(plain).digest());
-    await env.deps.repos.tokens.create({
+    await env.deps.poolRepos.tokens.create({
       id: randomUUID(),
       orgId: org.value.id,
       accountId: acc.value.id,

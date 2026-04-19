@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { setCookie, deleteCookie, getCookie } from 'hono/cookie';
 import type { WorkOSClient } from '../auth/workos-client.js';
 import type { Env } from '../config/env.js';
-import type { AuthSubject, OrganizationRepo, AccountRepo, MembershipMirrorRepo } from '@rntme-cli/platform-core';
+import type { OrganizationRepo, AccountRepo, MembershipMirrorRepo } from '@rntme-cli/platform-core';
 
 export function authRoutes(deps: {
   workos: WorkOSClient;
@@ -78,12 +78,6 @@ export function authRoutes(deps: {
     }
     deleteCookie(c, 'rntme_session', { domain: deps.env.PLATFORM_SESSION_COOKIE_DOMAIN, path: '/' });
     return c.json({ logoutUrl: url });
-  });
-
-  app.get('/me', (c) => {
-    const s = c.get('subject' as never) as AuthSubject | undefined;
-    if (!s) return c.json({ error: { code: 'PLATFORM_AUTH_MISSING', message: 'authenticate first' } }, 401);
-    return c.json({ account: s.account, org: s.org, role: s.role, scopes: s.scopes });
   });
 
   return app;
