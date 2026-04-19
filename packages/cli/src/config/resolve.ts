@@ -8,27 +8,27 @@ import type { RntmeProjectConfig } from './project.js';
 export const DEFAULT_BASE_URL = 'https://platform.rntme.com';
 
 export type ResolveFlags = {
-  baseUrl?: string;
-  token?: string;
-  profile?: string;
-  org?: string;
-  project?: string;
-  service?: string;
+  baseUrl?: string | undefined;
+  token?: string | undefined;
+  profile?: string | undefined;
+  org?: string | undefined;
+  project?: string | undefined;
+  service?: string | undefined;
 };
 
-export type ResolveEnv = Partial<{
-  RNTME_BASE_URL: string;
-  RNTME_TOKEN: string;
-  RNTME_PROFILE: string;
-}>;
+export type ResolveEnv = {
+  RNTME_BASE_URL?: string | undefined;
+  RNTME_TOKEN?: string | undefined;
+  RNTME_PROFILE?: string | undefined;
+};
 
 export type ResolveInput = {
   flags: ResolveFlags;
   env: ResolveEnv;
   projectConfig: RntmeProjectConfig | null;
   credentials: CredentialsFile | null;
-  requireToken?: boolean;
-  requireTenancy?: boolean;
+  requireToken?: boolean | undefined;
+  requireTenancy?: boolean | undefined;
 };
 
 export type ResolvedConfig = {
