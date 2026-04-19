@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { pgTable, uuid, text, timestamp, customType, index } from 'drizzle-orm/pg-core';
-import { organization, account } from './identity';
+import { organization, account } from './identity.js';
 
 const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
   dataType() {

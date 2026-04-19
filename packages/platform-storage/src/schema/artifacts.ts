@@ -10,8 +10,8 @@ import {
   primaryKey,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { organization, account } from './identity';
-import { service } from './projects';
+import { organization, account } from './identity.js';
+import { service } from './projects.js';
 
 export const artifactVersion = pgTable(
   'artifact_version',
