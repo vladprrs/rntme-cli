@@ -40,10 +40,29 @@ export function authRoutes(deps: {
         displayName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || user.id,
       });
       if (organizationId) {
+        let name = organizationId;
+        let slug = organizationId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40);
+        try {
+          const wosOrg = await deps.workos.organizations.getOrganization(organizationId);
+          if (wosOrg.name) name = wosOrg.name;
+          if (wosOrg.slug) {
+            slug = wosOrg.slug;
+          } else {
+            slug =
+              name
+                .toLowerCase()
+                .replace(/[^a-z0-9-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+                .slice(0, 40) || slug;
+          }
+        } catch {
+          /* fall back to organizationId-derived defaults */
+        }
         await deps.repos.organizations.upsertFromWorkos({
           workosOrganizationId: organizationId,
-          slug: organizationId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40),
-          displayName: organizationId,
+          slug,
+          displayName: name,
         });
       }
       if (sealedSession) {

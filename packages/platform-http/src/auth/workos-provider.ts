@@ -62,7 +62,8 @@ export class WorkOSAuthKitProvider implements IdentityProvider {
       }
 
       const mem = await this.deps.memberships.find(org.value.id, acct.value.id);
-      const role: Role = isOk(mem) && mem.value?.role === 'admin' ? 'admin' : 'member';
+      if (!isOk(mem)) return mem;
+      const role: Role = mem.value?.role === 'admin' ? 'admin' : 'member';
 
       const subject: AuthSubject = {
         account: {
