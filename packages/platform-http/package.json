@@ -4,11 +4,21 @@
   "type": "module",
   "private": true,
   "description": "Hono HTTP server for the rntme platform control-plane.",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": { "rntme-platform": "./dist/bin/server.js" },
-  "files": ["dist", "README.md"],
+  "bin": {
+    "rntme-platform": "./dist/bin/server.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/bin/server.js",
@@ -19,25 +29,28 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@rntme-cli/platform-core": "workspace:*",
-    "@rntme-cli/platform-storage": "workspace:*",
     "@hono/node-server": "^1.13.1",
     "@hono/zod-openapi": "^0.16.0",
+    "@rntme-cli/platform-core": "workspace:*",
+    "@rntme-cli/platform-storage": "workspace:*",
     "@workos-inc/node": "^7.32.0",
     "hono": "^4.6.3",
+    "pg": "^8.12.0",
     "pino": "^9.4.0",
+    "yaml": "^2.8.3",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.10.0",
     "@testcontainers/postgresql": "^10.13.0",
     "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.6",
+    "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.6.0",
     "@typescript-eslint/parser": "^8.6.0",
     "eslint": "^9.10.0",
     "prettier": "^3.3.3",
     "supertest": "^7.0.0",
-    "@types/supertest": "^6.0.2",
     "testcontainers": "^10.13.0",
     "typescript": "^5.5.4",
     "vitest": "^2.1.1"

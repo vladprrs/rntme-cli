@@ -6,7 +6,7 @@ import type { ProjectRepo } from '@rntme-cli/platform-core';
 import type { ServiceRepo } from '@rntme-cli/platform-core';
 import { errorEnvelope, statusForCode } from '../middleware/error-handler.js';
 
-export function respond<T>(c: Context, r: Result<T, PlatformError>, okStatus = 200): Response {
+export function respond<T>(c: Context, r: Result<T, PlatformError>, okStatus = 200) {
   if (isOk(r)) return c.json(r.value as never, okStatus as never);
   const first = r.errors[0] ?? { code: 'PLATFORM_INTERNAL' as const, message: 'unknown' };
   return c.json(errorEnvelope(r.errors), statusForCode(first.code) as never);
