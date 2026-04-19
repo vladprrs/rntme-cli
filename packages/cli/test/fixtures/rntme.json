@@ -1,0 +1,14 @@
+{
+  "org": "rntme-cli-e2e",
+  "project": "issue-tracker",
+  "service": "api",
+  "artifacts": {
+    "manifest": "bundle/manifest.json",
+    "pdm": "bundle/pdm.json",
+    "qsm": "bundle/qsm.json",
+    "graphIr": "bundle/graphIr.json",
+    "bindings": "bundle/bindings.json",
+    "ui": "bundle/ui.json",
+    "seed": "bundle/seed.json"
+  }
+}
