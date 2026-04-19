@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { discoverProjectConfig, parseProjectConfig } from '../../../src/config/project.js';
+import { discoverProjectConfig } from '../../../src/config/project.js';
 
 function setupTree(layout: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), 'rntme-cfg-'));

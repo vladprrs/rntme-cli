@@ -18,7 +18,7 @@ export type CliError = {
   readonly kind: 'cli';
   readonly code: CliErrorCode;
   readonly message: string;
-  readonly hint?: string;
+  readonly hint?: string | undefined;
   readonly cause?: unknown;
 };
 

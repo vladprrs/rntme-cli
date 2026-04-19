@@ -14,6 +14,12 @@ export default [
         console: 'readonly',
         process: 'readonly',
         URL: 'readonly',
+        fetch: 'readonly',
+        AbortController: 'readonly',
+        Response: 'readonly',
+        RequestInit: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
       },
     },
     plugins: {

@@ -1,19 +1,26 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-import { Result, ok, err } from '../result.js';
+import type { z } from 'zod';
+import type { Result } from '../result.js';
+import { ok, err } from '../result.js';
 
-export type NestedError = { code: string; message: string; path?: string; pkg?: string; stage?: string };
+export type NestedError = {
+  code: string;
+  message: string;
+  path?: string | undefined;
+  pkg?: string | undefined;
+  stage?: string | undefined;
+};
 
 export type ApiError = {
   kind: 'http';
   status: number;
   code: string;
   message: string;
-  stage?: string;
-  pkg?: string;
-  path?: string;
-  requestId?: string;
-  nested?: NestedError[];
+  stage?: string | undefined;
+  pkg?: string | undefined;
+  path?: string | undefined;
+  requestId?: string | undefined;
+  nested?: NestedError[] | undefined;
 };
 
 export type NetworkError = { kind: 'network'; message: string; cause: unknown };
@@ -50,7 +57,7 @@ export async function apiCall<T>(opts: ApiCallOptions<T>): Promise<Result<T, Cli
     res = await fetch(url, {
       method: opts.method,
       headers,
-      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      body: opts.body === undefined ? null : JSON.stringify(opts.body),
       signal: controller.signal,
     });
   } catch (cause) {
@@ -100,7 +107,7 @@ export async function apiCall<T>(opts: ApiCallOptions<T>): Promise<Result<T, Cli
 }
 
 function parseErrorEnvelope(body: unknown):
-  | { code: string; message: string; stage?: string; pkg?: string; path?: string; nested?: NestedError[] }
+  | { code: string; message: string; stage?: string | undefined; pkg?: string | undefined; path?: string | undefined; nested?: NestedError[] | undefined }
   | null {
   if (!body || typeof body !== 'object') return null;
   const errObj = (body as { error?: unknown }).error;

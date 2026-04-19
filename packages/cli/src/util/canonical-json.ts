@@ -22,7 +22,11 @@ const BUNDLE_ORDER: ReadonlyArray<keyof BundleFiles> = [
 ];
 
 export function canonicalJson(value: unknown): string {
-  return canonify(value);
+  const out = canonify(value);
+  if (out === undefined) {
+    throw new TypeError('canonify returned undefined — value is not JSON-serializable');
+  }
+  return out;
 }
 
 export function fileDigest(value: unknown): string {

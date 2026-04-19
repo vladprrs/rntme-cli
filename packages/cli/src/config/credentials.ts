@@ -2,8 +2,10 @@ import { readFile, writeFile, mkdir, stat, chmod } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { z } from 'zod';
-import { Result, ok, err } from '../result.js';
-import { CliError, cliError } from '../errors/codes.js';
+import type { Result } from '../result.js';
+import { ok, err } from '../result.js';
+import type { CliError } from '../errors/codes.js';
+import { cliError } from '../errors/codes.js';
 
 export const PROFILE_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
 

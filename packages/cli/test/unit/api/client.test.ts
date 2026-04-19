@@ -63,7 +63,9 @@ describe('apiCall', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     await apiCall({ method: 'GET', path: '/x', baseUrl: 'https://p', token: 'rntme_pat_aaaaaaaaaaaaaaaaaaaaaa', responseSchema: OkSchema });
-    const headers = fetchMock.mock.calls[0][1].headers as Record<string, string>;
+    const call = fetchMock.mock.calls[0];
+    if (!call) throw new Error('fetch was not called');
+    const headers = (call[1] as RequestInit).headers as Record<string, string>;
     expect(headers['Authorization']).toMatch(/^Bearer /);
     expect(headers['X-Request-ID']).toMatch(/^req_/);
   });
@@ -80,7 +82,7 @@ describe('apiCall', () => {
     expect(r.ok).toBe(false);
     if (!r.ok && r.error.kind === 'http') {
       expect(r.error.nested).toHaveLength(1);
-      expect(r.error.nested?.[0].code).toBe('QSM_STRUCT_DUP');
+      expect(r.error.nested?.[0]?.code).toBe('QSM_STRUCT_DUP');
     }
   });
 });

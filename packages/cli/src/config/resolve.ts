@@ -1,4 +1,5 @@
-import { Result, ok, err } from '../result.js';
+import type { Result } from '../result.js';
+import { ok, err } from '../result.js';
 import type { CliError } from '../errors/codes.js';
 import { cliError } from '../errors/codes.js';
 import type { CredentialsFile } from './credentials.js';
