@@ -1,8 +1,10 @@
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { z } from 'zod';
-import { Result, ok, err } from '../result.js';
-import { CliError, cliError } from '../errors/codes.js';
+import type { Result } from '../result.js';
+import { ok, err } from '../result.js';
+import type { CliError } from '../errors/codes.js';
+import { cliError } from '../errors/codes.js';
 
 const OrgSlug = z.string().regex(/^[a-z0-9-]{3,40}$/);
 const ProjSlug = z.string().regex(/^[a-z0-9-]{3,60}$/);
