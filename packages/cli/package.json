@@ -34,5 +34,9 @@
     "prettier": "^3.3.3",
     "typescript": "^5.5.4",
     "vitest": "^2.1.1"
+  },
+  "dependencies": {
+    "zod": "^3.23.8",
+    "@truestamp/canonify": "^1.0.0"
   }
 }
