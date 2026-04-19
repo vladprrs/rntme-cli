@@ -7,6 +7,15 @@ ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_outbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE membership_mirror ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS tenant_isolation_project ON project;
+DROP POLICY IF EXISTS tenant_isolation_service ON service;
+DROP POLICY IF EXISTS tenant_isolation_version ON artifact_version;
+DROP POLICY IF EXISTS tenant_isolation_tag ON artifact_tag;
+DROP POLICY IF EXISTS tenant_isolation_token ON api_token;
+DROP POLICY IF EXISTS tenant_isolation_audit ON audit_log;
+DROP POLICY IF EXISTS tenant_isolation_outbox ON event_outbox;
+DROP POLICY IF EXISTS tenant_isolation_membership ON membership_mirror;
+
 CREATE POLICY tenant_isolation_project    ON project           USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
 CREATE POLICY tenant_isolation_service    ON service           USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
 CREATE POLICY tenant_isolation_version    ON artifact_version  USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);

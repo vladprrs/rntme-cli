@@ -20,6 +20,7 @@ describe.skipIf(skipContainers)('migrations', () => {
     const pool = createPool(container!.getConnectionUri());
     const db = createDb(pool);
     await runMigrations(db, pool);
+    await runMigrations(db, pool);
     const r = await pool.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
     const names = r.rows.map((x) => x.tablename).sort();
     expect(names).toContain('project');
