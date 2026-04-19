@@ -132,11 +132,11 @@ export const AuthMeResponseSchema = z.object({
     id: z.string(),
     workosUserId: z.string(),
     displayName: z.string(),
-    email: z.string(),
+    email: z.string().nullable(),
   }),
   org: z.object({
     id: z.string(),
-    workosOrganizationId: z.string(),
+    workosOrgId: z.string(),
     slug: z.string(),
   }),
   role: z.enum(['admin', 'member']),

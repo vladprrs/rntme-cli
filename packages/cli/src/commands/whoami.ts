@@ -13,7 +13,7 @@ export async function runWhoami(flags: CommonFlags): Promise<number> {
       requireToken: true,
       humanRender: (d) => {
         const lines = [
-          `account:  ${d.account.email} (${d.account.displayName})`,
+          `account:  ${d.account.email ?? '(no email)'} (${d.account.displayName})`,
           `org:      ${d.org.slug} (${d.org.id})`,
           `role:     ${d.role}`,
           `scopes:   ${d.scopes.join(', ')}`,
