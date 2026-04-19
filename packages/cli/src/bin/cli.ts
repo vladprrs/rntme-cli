@@ -423,4 +423,8 @@ export async function main(argv: string[]): Promise<number> {
   }
 }
 
-process.exit(await main(process.argv.slice(2)));
+// Only run when executed directly as the CLI entry point.
+// In ESM, import.meta.url gives this file's URL; process.argv[1] is the entry file path.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  process.exit(await main(process.argv.slice(2)));
+}
