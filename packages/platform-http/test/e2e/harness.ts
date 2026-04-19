@@ -47,6 +47,7 @@ export async function bootE2e(): Promise<E2eEnv> {
     PLATFORM_BASE_URL: 'http://localhost',
     PLATFORM_SESSION_COOKIE_DOMAIN: 'localhost',
     PLATFORM_CORS_ORIGINS: '*',
+    PLATFORM_COOKIE_PASSWORD: 'x'.repeat(32),
   });
 
   // Run migrations as the owner, then grant the platform_app role rights and

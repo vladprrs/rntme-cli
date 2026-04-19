@@ -33,7 +33,7 @@ async function main() {
   await blob.ensureBucket();
   const workos = createWorkos(env);
   const ids = new RandomIds();
-  const cookiePassword = (env.PLATFORM_COOKIE_PASSWORD ?? '').padEnd(32, 'x').slice(0, 64);
+  const cookiePassword = env.PLATFORM_COOKIE_PASSWORD;
 
   const poolRepos = {
     organizations: new PgOrganizationRepo(pool),

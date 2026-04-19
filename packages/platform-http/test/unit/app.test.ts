@@ -19,6 +19,7 @@ const baseline = {
   PLATFORM_BASE_URL: 'https://platform.rntme.com',
   PLATFORM_SESSION_COOKIE_DOMAIN: '.rntme.com',
   PLATFORM_CORS_ORIGINS: 'https://*.rntme.com',
+  PLATFORM_COOKIE_PASSWORD: 'y'.repeat(32),
 };
 
 describe('createApp', () => {
