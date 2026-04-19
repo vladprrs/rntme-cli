@@ -5,10 +5,9 @@ import { PgOrganizationRepo } from '../../src/repos/pg-org-repo.js';
 import { PgProjectRepo } from '../../src/repos/pg-project-repo.js';
 import { PgServiceRepo } from '../../src/repos/pg-service-repo.js';
 import { withTransaction } from '../../src/pg/tx.js';
+import { integrationContainersAvailable } from './docker-available.js';
 
-const skipContainers = process.env['SKIP_TESTCONTAINERS'] === '1';
-
-describe.skipIf(skipContainers)('project + service repos with RLS', () => {
+describe.skipIf(!integrationContainersAvailable())('project + service repos with RLS', () => {
   let env: Awaited<ReturnType<typeof startPostgres>>;
 
   beforeAll(async () => {

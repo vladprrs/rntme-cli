@@ -3,11 +3,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { S3BlobStore } from '../../../src/blob/s3-blob-store.js';
 import { isOk } from '@rntme-cli/platform-core';
+import { integrationContainersAvailable } from '../docker-available.js';
 
-/** Set to `1` when no container runtime (Docker/Podman) is available; CI should run with unset. */
-const skipContainers = process.env['SKIP_TESTCONTAINERS'] === '1';
-
-describe.skipIf(skipContainers)('S3BlobStore', () => {
+describe.skipIf(!integrationContainersAvailable())('S3BlobStore', () => {
   let minio: StartedTestContainer | undefined;
   let store: S3BlobStore;
 

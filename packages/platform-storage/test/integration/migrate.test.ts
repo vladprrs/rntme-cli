@@ -2,11 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { createPool, createDb } from '../../src/pg/pool.js';
 import { runMigrations } from '../../src/migrate.js';
+import { integrationContainersAvailable } from './docker-available.js';
 
-/** Set to `1` when no container runtime (Docker/Podman) is available; CI should run with unset. */
-const skipContainers = process.env['SKIP_TESTCONTAINERS'] === '1';
-
-describe.skipIf(skipContainers)('migrations', () => {
+describe.skipIf(!integrationContainersAvailable())('migrations', () => {
   let container: StartedPostgreSqlContainer | undefined;
 
   beforeAll(async () => {

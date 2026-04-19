@@ -7,10 +7,9 @@ import { PgTokenRepo } from '../../src/repos/pg-token-repo.js';
 import { PgOutboxRepo } from '../../src/repos/pg-outbox-repo.js';
 import { withTransaction } from '../../src/pg/tx.js';
 import { randomUUID, createHash } from 'node:crypto';
+import { integrationContainersAvailable } from './docker-available.js';
 
-const skipContainers = process.env['SKIP_TESTCONTAINERS'] === '1';
-
-describe.skipIf(skipContainers)('misc repos', () => {
+describe.skipIf(!integrationContainersAvailable())('misc repos', () => {
   let env: Awaited<ReturnType<typeof startPostgres>>;
 
   beforeAll(async () => {

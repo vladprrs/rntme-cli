@@ -5,10 +5,9 @@ import { PgOrganizationRepo } from '../../src/repos/pg-org-repo.js';
 import { PgAccountRepo } from '../../src/repos/pg-account-repo.js';
 import { PgMembershipMirrorRepo } from '../../src/repos/pg-membership-mirror-repo.js';
 import { PgWorkosEventLogRepo } from '../../src/repos/pg-workos-event-log-repo.js';
+import { integrationContainersAvailable } from './docker-available.js';
 
-const skipContainers = process.env['SKIP_TESTCONTAINERS'] === '1';
-
-describe.skipIf(skipContainers)('identity repos', () => {
+describe.skipIf(!integrationContainersAvailable())('identity repos', () => {
   let env: Awaited<ReturnType<typeof startPostgres>>;
 
   beforeAll(async () => {

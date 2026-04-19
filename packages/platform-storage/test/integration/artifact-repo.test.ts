@@ -8,10 +8,9 @@ import { PgServiceRepo } from '../../src/repos/pg-service-repo.js';
 import { PgArtifactRepo } from '../../src/repos/pg-artifact-repo.js';
 import { withTransaction } from '../../src/pg/tx.js';
 import { randomUUID } from 'node:crypto';
+import { integrationContainersAvailable } from './docker-available.js';
 
-const skipContainers = process.env['SKIP_TESTCONTAINERS'] === '1';
-
-describe.skipIf(skipContainers)('PgArtifactRepo', () => {
+describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
   let env: Awaited<ReturnType<typeof startPostgres>>;
 
   beforeAll(async () => {
