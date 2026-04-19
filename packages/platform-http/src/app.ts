@@ -5,6 +5,7 @@ import { loggerMiddleware } from './middleware/logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { rateLimit, InMemoryRateLimiter } from './middleware/rate-limit.js';
+import { bodyLimit } from './middleware/body-limit.js';
 import { requireAuth } from './middleware/auth.js';
 import { openOrgScopedTx } from './middleware/tx.js';
 import { authRoutes } from './routes/auth.js';
@@ -59,6 +60,19 @@ export function createApp(deps: AppDeps): Hono {
   app.use('*', loggerMiddleware(deps.logger));
   app.use('*', errorHandler());
   app.use('*', corsMiddleware(deps.env.PLATFORM_CORS_ORIGINS));
+
+  // Pre-auth body-size guard (Errata §3.8): 10 MiB for publish-version POSTs,
+  // 1 MiB for all other POSTs. Must run before auth so DoS protection does not
+  // depend on authentication.
+  app.use('*', async (c, next) => {
+    if (c.req.method !== 'POST') return next();
+    const url = new URL(c.req.url);
+    const isPublish = /\/v1\/orgs\/[^/]+\/projects\/[^/]+\/services\/[^/]+\/versions\/?$/.test(
+      url.pathname,
+    );
+    const cap = isPublish ? 10 * 1024 * 1024 : 1 * 1024 * 1024;
+    return bodyLimit(cap)(c, next);
+  });
 
   const apiTokenProvider = new ApiTokenProvider({
     tokens: deps.poolRepos.tokens,
