@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, bigserial, jsonb, index } from 'drizzle-orm/pg-core';
-import { organization, account } from './identity.js';
+import { organization, account } from './identity';
 
 export const auditLog = pgTable(
   'audit_log',
