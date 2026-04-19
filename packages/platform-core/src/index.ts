@@ -34,5 +34,3 @@ export * from './repos/audit-repo.js';
 export * from './repos/outbox-repo.js';
 
 export * from './blob/store.js';
-
-export { FakeStore } from './testing/fakes.js';

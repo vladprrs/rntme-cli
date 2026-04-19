@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { FakeStore, isOk } from '@rntme-cli/platform-core';
+import { isOk } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { WorkOSAuthKitProvider } from '../../../src/auth/workos-provider.js';
 
 const mockWorkos = {

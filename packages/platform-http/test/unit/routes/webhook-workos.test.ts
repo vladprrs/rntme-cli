@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { FakeStore } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import type { Pool } from 'pg';
 import { webhookWorkosRoute } from '../../../src/routes/webhook-workos.js';
 

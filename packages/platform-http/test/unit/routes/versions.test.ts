@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { FakeStore, SeededIds, ok } from '@rntme-cli/platform-core';
+import { SeededIds, ok } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { versionRoutes } from '../../../src/routes/versions.js';
 import { requireAuth } from '../../../src/middleware/auth.js';
 import { minimalValidBundle } from '../../../../platform-core/test/fixtures/bundles/minimal-valid.js';

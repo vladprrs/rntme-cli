@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { FakeStore, SeededIds } from '@rntme-cli/platform-core';
+import { SeededIds } from '@rntme-cli/platform-core';
+import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { projectRoutes } from '../../../src/routes/projects.js';
 import { requireAuth } from '../../../src/middleware/auth.js';
 import { ok } from '@rntme-cli/platform-core';

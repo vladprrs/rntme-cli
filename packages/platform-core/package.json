@@ -4,7 +4,10 @@
   "type": "module",
   "private": true,
   "description": "rntme platform control-plane — domain, use-cases, seam interfaces.",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./testing": { "types": "./dist/testing/fakes.d.ts", "import": "./dist/testing/fakes.js" }
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist", "README.md"],

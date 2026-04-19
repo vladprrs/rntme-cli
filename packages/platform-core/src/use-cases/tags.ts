@@ -18,7 +18,7 @@ export async function moveTag(
 ): Promise<Result<ArtifactTag, PlatformError>> {
   const ver = await deps.repos.artifacts.getBySeq(input.serviceId, input.versionSeq);
   if (!isOk(ver)) return ver;
-  if (!ver.value) return err([{ code: 'PLATFORM_TENANCY_SERVICE_NOT_FOUND', message: `version seq ${input.versionSeq} missing` }]);
+  if (!ver.value) return err([{ code: 'PLATFORM_TENANCY_VERSION_NOT_FOUND', message: `version seq ${input.versionSeq} missing` }]);
   return deps.repos.tags.move({
     serviceId: input.serviceId,
     name: input.name,
