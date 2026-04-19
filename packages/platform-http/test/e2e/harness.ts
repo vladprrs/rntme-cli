@@ -27,6 +27,7 @@ export type E2eEnv = {
 };
 
 export async function bootE2e(): Promise<E2eEnv> {
+  process.env.PLATFORM_CREATE_ROLES = '1';
   const pg = await new PostgreSqlContainer('postgres:16-alpine').start();
   const minio = await new GenericContainer('minio/minio:latest')
     .withCommand(['server', '/data'])

@@ -39,6 +39,32 @@ describe('WorkOSAuthKitProvider', () => {
     if (!isOk(r)) expect(r.errors[0]!.code).toBe('PLATFORM_AUTH_MISSING');
   });
 
+  it('returns PLATFORM_AUTH_INVALID when the account is not a member of the org', async () => {
+    const provider = new WorkOSAuthKitProvider({
+      workos: stubSession(),
+      cookiePassword: 'x'.repeat(32),
+      organizations: {
+        findByWorkosId: async () => ({
+          ok: true,
+          value: { id: 'o1', workosOrganizationId: 'w', slug: 's', displayName: 'S' } as never,
+        }),
+      } as never,
+      accounts: {
+        findByWorkosUserId: async () => ({
+          ok: true,
+          value: { id: 'a1', workosUserId: 'u', displayName: 'U', email: null } as never,
+        }),
+      } as never,
+      memberships: { find: async () => ({ ok: true, value: null }) } as never,
+    });
+    const r = await provider.authenticate({
+      cookieHeader: 'rntme_session=sealed-ok',
+      authorizationHeader: undefined,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors[0]!.code).toBe('PLATFORM_AUTH_INVALID');
+  });
+
   it('returns err when memberships.find itself errors (no silent downgrade)', async () => {
     const provider = new WorkOSAuthKitProvider({
       workos: stubSession(),

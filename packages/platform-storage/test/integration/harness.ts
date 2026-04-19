@@ -13,6 +13,7 @@ export type PgHandles = {
 };
 
 export async function startPostgres(): Promise<PgHandles> {
+  process.env.PLATFORM_CREATE_ROLES = '1';
   const container = await new PostgreSqlContainer('postgres:16-alpine').start();
   const ownerUrl = container.getConnectionUri();
   const pool = createPool(ownerUrl);

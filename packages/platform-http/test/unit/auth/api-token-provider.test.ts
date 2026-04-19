@@ -64,4 +64,19 @@ describe('ApiTokenProvider', () => {
     expect(isOk(r)).toBe(false);
     if (!isOk(r)) expect(r.errors[0]!.code).toBe('PLATFORM_AUTH_MISSING');
   });
+  it('returns PLATFORM_AUTH_INVALID when the account is not a member of the org', async () => {
+    const { store, plain } = await setup();
+    const p = new ApiTokenProvider({
+      tokens: store.tokensRepo,
+      organizations: store.organizations,
+      accounts: store.accountsRepo,
+      memberships: { find: async () => ({ ok: true, value: null }) } as never,
+    });
+    const r = await p.authenticate({
+      authorizationHeader: `Bearer ${plain}`,
+      cookieHeader: undefined,
+    });
+    expect(isOk(r)).toBe(false);
+    if (!isOk(r)) expect(r.errors[0]!.code).toBe('PLATFORM_AUTH_INVALID');
+  });
 });
