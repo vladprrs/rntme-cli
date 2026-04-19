@@ -34,4 +34,36 @@ export default [
       'no-console': 'warn',
     },
   },
+  // Invariant: CLI may not import platform runtime libraries or database drivers (except validate/run.ts)
+  {
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['@rntme-cli/platform-storage', '@rntme-cli/platform-storage/*'], message: 'CLI must not import platform-storage (Drizzle/pg).' },
+          { group: ['@rntme-cli/platform-http', '@rntme-cli/platform-http/*'], message: 'CLI must not import platform-http (Hono).' },
+          { group: ['@workos-inc/*'], message: 'CLI must not import WorkOS SDK.' },
+          { group: ['drizzle-orm', 'drizzle-orm/*', 'pg', 'pg-pool'], message: 'CLI must not import a database driver.' },
+          { group: ['@aws-sdk/*'], message: 'CLI must not import AWS SDK.' },
+        ],
+      }],
+    },
+  },
+  // Invariant: only validate/run.ts may import @rntme-cli/platform-core
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['src/validate/run.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['@rntme-cli/platform-core', '@rntme-cli/platform-core/*'], message: 'Only src/validate/run.ts may import @rntme-cli/platform-core.' },
+          { group: ['@rntme-cli/platform-storage', '@rntme-cli/platform-storage/*'], message: 'CLI must not import platform-storage (Drizzle/pg).' },
+          { group: ['@rntme-cli/platform-http', '@rntme-cli/platform-http/*'], message: 'CLI must not import platform-http (Hono).' },
+          { group: ['@workos-inc/*'], message: 'CLI must not import WorkOS SDK.' },
+          { group: ['drizzle-orm', 'drizzle-orm/*', 'pg', 'pg-pool'], message: 'CLI must not import a database driver.' },
+          { group: ['@aws-sdk/*'], message: 'CLI must not import AWS SDK.' },
+        ],
+      }],
+    },
+  },
 ];
