@@ -31,7 +31,7 @@ d('RLS enforcement (errata §5 canonical invariants)', () => {
     const client = await h.appPool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.org_id = $1`, [orgA]);
+      await client.query(`SELECT set_config('app.org_id', $1, true)`, [orgA]);
       const r = await client.query(`SELECT org_id FROM project`);
       await client.query('COMMIT');
       expect(r.rows.every((x) => x.org_id === orgA)).toBe(true);

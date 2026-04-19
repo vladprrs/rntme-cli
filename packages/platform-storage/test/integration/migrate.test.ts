@@ -5,17 +5,24 @@ import { runMigrations } from '../../src/migrate.js';
 import { integrationContainersAvailable } from './docker-available.js';
 
 describe.skipIf(!integrationContainersAvailable())('migrations', () => {
-  let container: StartedPostgreSqlContainer | undefined;
+  let container: StartedPostgreSqlContainer | null = null;
+  let connectionUri: string;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer('postgres:16-alpine').start();
+    const externalUrl = process.env.PLATFORM_TEST_DATABASE_URL;
+    if (externalUrl) {
+      connectionUri = externalUrl;
+    } else {
+      container = await new PostgreSqlContainer('postgres:16-alpine').start();
+      connectionUri = container.getConnectionUri();
+    }
   }, 120_000);
   afterAll(async () => {
-    await container?.stop();
+    if (container) await container.stop();
   });
 
   it('apply cleanly and create tables', async () => {
-    const pool = createPool(container!.getConnectionUri());
+    const pool = createPool(connectionUri);
     const db = createDb(pool);
     await runMigrations(db, pool);
     await runMigrations(db, pool);

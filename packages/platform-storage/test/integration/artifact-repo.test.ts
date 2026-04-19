@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { isOk } from '@rntme-cli/platform-core';
-import { startPostgres, resetSchema } from './harness.js';
+import { startPostgres, stopPostgres, resetSchema } from './harness.js';
 import { PgOrganizationRepo } from '../../src/repos/pg-org-repo.js';
 import { PgAccountRepo } from '../../src/repos/pg-account-repo.js';
 import { PgProjectRepo } from '../../src/repos/pg-project-repo.js';
@@ -18,8 +18,7 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
   }, 120_000);
   afterAll(async () => {
     if (!env) return;
-    await env.pool.end();
-    await env.container.stop();
+    await stopPostgres(env);
   });
   beforeEach(async () => {
     await resetSchema(env.pool);
@@ -151,7 +150,7 @@ describe.skipIf(!integrationContainersAvailable())('PgArtifactRepo', () => {
     const client = await env.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.org_id = $1`, [orgId]);
+      await client.query(`SELECT set_config('app.org_id', $1, true)`, [orgId]);
       const repo = new PgArtifactRepo(client);
       const r = await repo.publish({
         serviceId,

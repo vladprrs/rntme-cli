@@ -4,7 +4,8 @@ import { runMigrations } from '../../src/migrate.js';
 import type { Pool } from 'pg';
 
 export type PgHandles = {
-  container: StartedPostgreSqlContainer;
+  /** Null when running against an external URL (PLATFORM_TEST_DATABASE_URL). */
+  container: StartedPostgreSqlContainer | null;
   ownerUrl: string;
   appUrl: string;
   pool: Pool;
@@ -14,8 +15,15 @@ export type PgHandles = {
 
 export async function startPostgres(): Promise<PgHandles> {
   process.env.PLATFORM_CREATE_ROLES = '1';
-  const container = await new PostgreSqlContainer('postgres:16-alpine').start();
-  const ownerUrl = container.getConnectionUri();
+  const externalUrl = process.env.PLATFORM_TEST_DATABASE_URL;
+  let container: StartedPostgreSqlContainer | null = null;
+  let ownerUrl: string;
+  if (externalUrl) {
+    ownerUrl = externalUrl;
+  } else {
+    container = await new PostgreSqlContainer('postgres:16-alpine').start();
+    ownerUrl = container.getConnectionUri();
+  }
   const pool = createPool(ownerUrl);
   const db = createDb(pool);
   await runMigrations(db, pool);
@@ -35,7 +43,7 @@ export async function startPostgres(): Promise<PgHandles> {
 export async function stopPostgres(h: PgHandles): Promise<void> {
   await h.appPool.end();
   await h.pool.end();
-  await h.container.stop();
+  if (h.container) await h.container.stop();
 }
 
 export async function resetSchema(pool: Pool): Promise<void> {

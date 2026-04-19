@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { isOk } from '@rntme-cli/platform-core';
-import { startPostgres, resetSchema } from './harness.js';
+import { startPostgres, stopPostgres, resetSchema } from './harness.js';
 import { PgOrganizationRepo } from '../../src/repos/pg-org-repo.js';
 import { PgProjectRepo } from '../../src/repos/pg-project-repo.js';
 import { PgServiceRepo } from '../../src/repos/pg-service-repo.js';
@@ -15,8 +15,7 @@ describe.skipIf(!integrationContainersAvailable())('project + service repos with
   }, 120_000);
   afterAll(async () => {
     if (!env) return;
-    await env.pool.end();
-    await env.container.stop();
+    await stopPostgres(env);
   });
   beforeEach(async () => {
     await resetSchema(env.pool);
