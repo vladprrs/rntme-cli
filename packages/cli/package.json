@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "zod": "^4.0.0",
-    "@truestamp/canonify": "^1.0.0"
+    "@truestamp/canonify": "^1.0.0",
+    "@rntme-cli/platform-core": "workspace:*"
   }
 }
