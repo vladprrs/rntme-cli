@@ -14,6 +14,7 @@ export default [
         console: 'readonly',
         process: 'readonly',
         URL: 'readonly',
+        setTimeout: 'readonly',
       },
     },
     plugins: {
