@@ -57,16 +57,20 @@ describe.skipIf(!integrationContainersAvailable())('misc repos', () => {
   });
 
   it('outbox pending returns only undelivered', async () => {
-    const repo = new PgOutboxRepo(env.pool);
     const orgs = new PgOrganizationRepo(env.pool);
     const o = await orgs.upsertFromWorkos({ workosOrganizationId: 'org_1', slug: 'o1', displayName: 'O' });
     if (!isOk(o)) throw new Error('seed');
-    await env.pool.query(`INSERT INTO event_outbox (org_id, event_type, payload) VALUES ($1,'x',$2)`, [o.value.id, {}]);
-    await env.pool.query(`INSERT INTO event_outbox (org_id, event_type, payload, delivered_at) VALUES ($1,'x',$2, now())`, [
-      o.value.id,
-      {},
-    ]);
-    const r = await repo.pending(10);
+    await withTransaction(env.pool, o.value.id, async (client) => {
+      await client.query(`INSERT INTO event_outbox (org_id, event_type, payload) VALUES ($1,'x',$2)`, [o.value.id, {}]);
+      await client.query(
+        `INSERT INTO event_outbox (org_id, event_type, payload, delivered_at) VALUES ($1,'x',$2, now())`,
+        [o.value.id, {}],
+      );
+    });
+    const r = await withTransaction(env.pool, o.value.id, async (client) => {
+      const repo = new PgOutboxRepo(client);
+      return repo.pending(10);
+    });
     expect(isOk(r) && r.value).toHaveLength(1);
   });
 });

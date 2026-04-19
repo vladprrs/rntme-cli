@@ -1,12 +1,12 @@
-import type { Pool } from 'pg';
 import { ok, err, type Result, type PlatformError, type ArtifactRepo, type ArtifactVersion } from '@rntme-cli/platform-core';
+import type { PgQueryable } from '../pg/pool.js';
 
 export class PgArtifactRepo implements ArtifactRepo {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly db: PgQueryable) {}
 
   async findByDigest(serviceId: string, bundleDigest: string): Promise<Result<ArtifactVersion | null, PlatformError>> {
     try {
-      const r = await this.pool.query(`SELECT * FROM artifact_version WHERE service_id=$1 AND bundle_digest=$2 LIMIT 1`, [
+      const r = await this.db.query(`SELECT * FROM artifact_version WHERE service_id=$1 AND bundle_digest=$2 LIMIT 1`, [
         serviceId,
         bundleDigest,
       ]);
@@ -18,7 +18,7 @@ export class PgArtifactRepo implements ArtifactRepo {
 
   async latestSeq(serviceId: string): Promise<Result<number, PlatformError>> {
     try {
-      const r = await this.pool.query(`SELECT COALESCE(MAX(seq),0)::int AS seq FROM artifact_version WHERE service_id=$1`, [
+      const r = await this.db.query(`SELECT COALESCE(MAX(seq),0)::int AS seq FROM artifact_version WHERE service_id=$1`, [
         serviceId,
       ]);
       return ok(r.rows[0].seq);
@@ -28,27 +28,20 @@ export class PgArtifactRepo implements ArtifactRepo {
   }
 
   async publish(args: Parameters<ArtifactRepo['publish']>[0]): Promise<Result<ArtifactVersion, PlatformError>> {
-    const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query(`SET LOCAL app.org_id = $1`, [args.row.orgId]);
-      const dup = await client.query(`SELECT * FROM artifact_version WHERE service_id=$1 AND bundle_digest=$2`, [
+      const dup = await this.db.query(`SELECT * FROM artifact_version WHERE service_id=$1 AND bundle_digest=$2`, [
         args.serviceId,
         args.row.bundleDigest,
       ]);
-      if (dup.rows[0]) {
-        await client.query('COMMIT');
-        return ok(rowToVersion(dup.rows[0] as Record<string, unknown>));
-      }
-      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [args.serviceId]);
-      const last = await client.query(
+      if (dup.rows[0]) return ok(rowToVersion(dup.rows[0] as Record<string, unknown>));
+      await this.db.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [args.serviceId]);
+      const last = await this.db.query(
         `SELECT COALESCE(MAX(seq),0)::int AS seq, (SELECT id FROM artifact_version WHERE service_id=$1 ORDER BY seq DESC LIMIT 1) AS id FROM artifact_version WHERE service_id=$1`,
         [args.serviceId],
       );
       const latestSeq = last.rows[0].seq as number;
       const latestId = last.rows[0].id as string | null;
       if (args.expectedPreviousSeq !== undefined && args.expectedPreviousSeq !== latestSeq) {
-        await client.query('ROLLBACK');
         return err([
           {
             code: 'PLATFORM_CONCURRENCY_VERSION_CONFLICT',
@@ -56,7 +49,7 @@ export class PgArtifactRepo implements ArtifactRepo {
           },
         ]);
       }
-      const ins = await client.query(
+      const ins = await this.db.query(
         `INSERT INTO artifact_version (
            id, org_id, service_id, seq, bundle_digest, previous_version_id,
            manifest_digest, pdm_digest, qsm_digest, graph_ir_digest, bindings_digest, ui_digest, seed_digest,
@@ -86,37 +79,29 @@ export class PgArtifactRepo implements ArtifactRepo {
       );
       const inserted = ins.rows[0] as Record<string, unknown>;
       for (const t of args.moveTags) {
-        await client.query(
+        await this.db.query(
           `INSERT INTO artifact_tag (service_id, name, version_id, updated_by_account_id) VALUES ($1,$2,$3,$4)
            ON CONFLICT (service_id, name) DO UPDATE SET version_id=EXCLUDED.version_id, updated_at=now(), updated_by_account_id=EXCLUDED.updated_by_account_id`,
           [args.serviceId, t.name, inserted['id'], t.updatedByAccountId],
         );
-        await client.query(
+        await this.db.query(
           `INSERT INTO audit_log (org_id, actor_account_id, actor_token_id, action, resource_kind, resource_id, payload)
            VALUES ($1,$2,$3,'tag.moved','tag',$4,$5)`,
           [args.row.orgId, args.auditActorAccountId, args.auditActorTokenId, t.name, { versionSeq: latestSeq + 1 }],
         );
       }
-      await client.query(
+      await this.db.query(
         `INSERT INTO audit_log (org_id, actor_account_id, actor_token_id, action, resource_kind, resource_id, payload)
          VALUES ($1,$2,$3,'version.published','version',$4,$5)`,
         [args.row.orgId, args.auditActorAccountId, args.auditActorTokenId, inserted['id'], { seq: latestSeq + 1 }],
       );
-      await client.query(`INSERT INTO event_outbox (org_id, event_type, payload) VALUES ($1,'artifact.version.published',$2)`, [
+      await this.db.query(`INSERT INTO event_outbox (org_id, event_type, payload) VALUES ($1,'artifact.version.published',$2)`, [
         args.row.orgId,
         args.outboxPayload,
       ]);
-      await client.query('COMMIT');
       return ok(rowToVersion(inserted));
     } catch (cause) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        /* ignore */
-      }
       return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
-    } finally {
-      client.release();
     }
   }
 
@@ -126,13 +111,13 @@ export class PgArtifactRepo implements ArtifactRepo {
   ): Promise<Result<readonly ArtifactVersion[], PlatformError>> {
     try {
       if (opts.cursor !== undefined) {
-        const r = await this.pool.query(
+        const r = await this.db.query(
           `SELECT * FROM artifact_version WHERE service_id=$1 AND seq<$2 ORDER BY seq DESC LIMIT $3`,
           [serviceId, opts.cursor, opts.limit],
         );
         return ok(r.rows.map((row) => rowToVersion(row as Record<string, unknown>)));
       }
-      const r = await this.pool.query(`SELECT * FROM artifact_version WHERE service_id=$1 ORDER BY seq DESC LIMIT $2`, [
+      const r = await this.db.query(`SELECT * FROM artifact_version WHERE service_id=$1 ORDER BY seq DESC LIMIT $2`, [
         serviceId,
         opts.limit,
       ]);
@@ -144,7 +129,7 @@ export class PgArtifactRepo implements ArtifactRepo {
 
   async getBySeq(serviceId: string, seq: number): Promise<Result<ArtifactVersion | null, PlatformError>> {
     try {
-      const r = await this.pool.query(`SELECT * FROM artifact_version WHERE service_id=$1 AND seq=$2`, [serviceId, seq]);
+      const r = await this.db.query(`SELECT * FROM artifact_version WHERE service_id=$1 AND seq=$2`, [serviceId, seq]);
       return ok(r.rows[0] ? rowToVersion(r.rows[0] as Record<string, unknown>) : null);
     } catch (cause) {
       return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
