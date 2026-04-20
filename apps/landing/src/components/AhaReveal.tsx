@@ -17,13 +17,13 @@ export const revealSteps: RevealStep[] = [
     id: "ui",
     title: "Declarative UI",
     body:
-      "List view, detail view, and command forms — all produced from the same artifact, none hand-coded.",
+      "List view, detail view, and command forms — all from the same blueprint, none hand-coded.",
   },
   {
     id: "state",
     title: "State machine",
     body:
-      "Open → Assigned → Resolved · Closed — invariants enforced by the runtime, not by the domain code.",
+      "Open → Assigned → Resolved · Closed — invariants enforced by the runtime, not by you.",
   },
 ];
 
