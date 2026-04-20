@@ -1,0 +1,31 @@
+---
+import { loadEnv } from "../env";
+const env = loadEnv();
+const year = new Date().getFullYear();
+---
+<footer class="ft">
+  <div class="ft-top">
+    <a class="ft-logo" href="/" aria-label="rntme home">rntme</a>
+    <nav class="ft-nav" aria-label="Footer">
+      <a href={env.GITHUB_URL}>GitHub</a>
+      <a href={env.DOCS_URL}>Docs</a>
+      <a href={env.PLATFORM_URL}>Platform login</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </div>
+  <div class="ft-bottom">
+    <p class="ft-copy">© {year} rntme</p>
+    <p class="ft-tagline">Make no mistakes.</p>
+  </div>
+</footer>
+
+<style>
+  .ft { padding: var(--space-6) var(--space-4); border-top: 1px solid var(--color-border); }
+  .ft-top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+  .ft-logo { font-family: var(--font-mono); font-weight: 600; font-size: var(--fs-h3); text-decoration: none; }
+  .ft-nav { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+  .ft-nav a { color: var(--color-text-muted); text-decoration: none; }
+  .ft-nav a:hover { color: var(--color-text); }
+  .ft-bottom { display: flex; justify-content: space-between; margin-top: var(--space-4); color: var(--color-text-muted); font-size: var(--fs-small); }
+</style>
