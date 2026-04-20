@@ -33,6 +33,10 @@ export function parseEnv(raw: Record<string, string | undefined>): LandingEnv {
   };
 }
 
+// Read from `process.env`, not `import.meta.env`. Astro's Vite runtime only
+// exposes `PUBLIC_*`-prefixed vars via `import.meta.env`; the landing's vars
+// are unprefixed on purpose (build-time only, never shipped to the client).
+// `.astro` frontmatter runs in Node during SSG, so `process.env` is available.
 export function loadEnv(): LandingEnv {
-  return parseEnv(import.meta.env as Record<string, string | undefined>);
+  return parseEnv(process.env as Record<string, string | undefined>);
 }
