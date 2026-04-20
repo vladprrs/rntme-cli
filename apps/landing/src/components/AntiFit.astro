@@ -32,12 +32,14 @@ import SectionMarker from "./SectionMarker.astro";
   }
   .af-body p {
     margin: 0;
-    color: var(--color-text-muted);
     font-size: var(--fs-body-lg);
     line-height: 1.55;
   }
+  .af-body p:not(.af-closer) {
+    color: var(--color-text-muted);
+  }
   .af-closer {
-    color: var(--color-text) !important;
+    color: var(--color-text);
   }
   .af-closer strong {
     font-family: var(--font-display);

@@ -126,7 +126,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
 }
 .section-marker > span {
   background: var(--color-bg);
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   position: relative;
 }
 .section-marker .mk-left { padding-left: 0; }
@@ -141,7 +141,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-family: var(--font-sans);
   font-weight: var(--fw-medium);
   font-size: var(--fs-small);
@@ -366,7 +366,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .aha-code {
@@ -434,7 +434,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   font-variant-numeric: tabular-nums;
   padding-top: 2px;
 }
-.aha-panel h3 { margin-bottom: 4px; }
+.aha-panel h3 { margin-bottom: var(--space-1); }
 .aha-panel p { color: var(--color-text-muted); margin-bottom: 0; }
 
 /* -------- Live demo card ---------------------------------------------- */
@@ -571,7 +571,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
-.step h3 { margin-bottom: 4px; }
+.step h3 { margin-bottom: var(--space-1); }
 .step p { color: var(--color-text-muted); margin: 0; }
 
 /* -------- Accordion (Objections) -------------------------------------- */
@@ -592,9 +592,11 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   color: var(--color-text);
 }
 .accordion summary::-webkit-details-marker { display: none; }
+.accordion summary:hover .chev { color: var(--color-text); }
 .accordion .chev {
   color: var(--color-text-muted);
-  transition: transform var(--motion-fast) var(--ease-out);
+  transition: transform var(--motion-fast) var(--ease-out),
+              color var(--motion-fast) var(--ease-out);
   flex-shrink: 0;
 }
 .accordion details[open] .chev { transform: rotate(90deg); }
@@ -609,7 +611,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   min-height: 0;
   color: var(--color-text-muted);
   font-size: var(--fs-small);
-  padding: 0 0 var(--space-3) 26px;
+  padding: 0 0 var(--space-3) calc(14px + var(--space-3));
 }
 
 /* -------- Pilot intake preview --------------------------------------- */
@@ -650,7 +652,7 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   content: "";
   width: 6px;
   height: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background: var(--color-accent);
 }
 .footer-nav {
