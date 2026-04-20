@@ -55,3 +55,25 @@ describe('rntme CLI', () => {
     expect(result.stderr).toContain('Usage: rntme');
   });
 });
+
+describe('cli dispatcher: init', () => {
+  it('rejects missing slug', async () => {
+    const { main } = await import('../../src/bin/cli.js');
+    const code = await main(['init']);
+    expect(code).toBe(1);
+  });
+});
+
+describe('cli dispatcher: skills', () => {
+  it('rejects unknown subcommand', async () => {
+    const { main } = await import('../../src/bin/cli.js');
+    const code = await main(['skills', 'foo']);
+    expect(code).toBe(2);
+  });
+
+  it('rejects install without --agent', async () => {
+    const { main } = await import('../../src/bin/cli.js');
+    const code = await main(['skills', 'install']);
+    expect(code).toBe(1);
+  });
+});

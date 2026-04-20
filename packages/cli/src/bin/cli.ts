@@ -22,6 +22,8 @@ import { runTagDelete } from '../commands/tag/delete.js';
 import { runTokenCreate } from '../commands/token/create.js';
 import { runTokenList } from '../commands/token/list.js';
 import { runTokenRevoke } from '../commands/token/revoke.js';
+import { runInit } from '../commands/init.js';
+import { runSkillsInstall } from '../commands/skills/install.js';
 import type { CommonFlags } from '../commands/harness.js';
 
 const USAGE = `Usage: rntme [options] <command> [subcommand] [args...]
@@ -32,6 +34,9 @@ Commands:
   whoami                  Print the authenticated user/org
   validate                Validate the local bundle (rntme.json)
   publish                 Publish the local bundle to the platform
+
+  init <slug>             Scaffold rntme.json + artifacts/ in cwd
+  skills install --agent  Install skill pack for the chosen agent
 
   project create <slug>   Create a new project
   project list            List projects in the org
@@ -128,6 +133,10 @@ export async function main(argv: string[]): Promise<number> {
         'display-name': { type: 'string' },
         scopes: { type: 'string', multiple: true },
         expires: { type: 'string' },
+        'artifacts-dir': { type: 'string' },
+        agent: { type: 'string' },
+        target: { type: 'string' },
+        force: { type: 'boolean' },
       },
       allowPositionals: true,
       strict: false,
@@ -407,6 +416,49 @@ export async function main(argv: string[]): Promise<number> {
         default: {
           process.stderr.write(`Unknown token subcommand: ${sub}\n`);
           process.stderr.write('Usage: rntme token <create|list|revoke> ...\n');
+          return 2;
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // init + skills
+    // -------------------------------------------------------------------------
+    case 'init': {
+      const slug = positionals[1];
+      if (!slug) {
+        process.stderr.write('Usage: rntme init <slug> [--org <s>] [--project <s>] [--artifacts-dir <p>]\n');
+        return 1;
+      }
+      const initArgs: Parameters<typeof runInit>[0] = { slug };
+      setIfDefined(initArgs, 'org', asString(values['org']));
+      setIfDefined(initArgs, 'project', asString(values['project']));
+      setIfDefined(initArgs, 'artifactsDir', asString(values['artifacts-dir']));
+      setIfDefined(initArgs, 'json', asBool(values['json']));
+      return runInit(initArgs);
+    }
+
+    case 'skills': {
+      const sub = positionals[1];
+      if (!sub) {
+        process.stderr.write('Usage: rntme skills <install> ...\n');
+        return 1;
+      }
+      switch (sub) {
+        case 'install': {
+          const agent = asString(values['agent']);
+          if (!agent) {
+            process.stderr.write('Usage: rntme skills install --agent <claude-code|cursor> [--target <p>] [--force]\n');
+            return 1;
+          }
+          const installArgs: Parameters<typeof runSkillsInstall>[0] = { agent };
+          setIfDefined(installArgs, 'target', asString(values['target']));
+          setIfDefined(installArgs, 'force', asBool(values['force']));
+          setIfDefined(installArgs, 'json', asBool(values['json']));
+          return runSkillsInstall(installArgs);
+        }
+        default: {
+          process.stderr.write(`Unknown skills subcommand: ${sub}\n`);
           return 2;
         }
       }
