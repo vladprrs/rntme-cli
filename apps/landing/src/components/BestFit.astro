@@ -1,0 +1,64 @@
+---
+import { bestFit } from "../content/best-fit.mdx";
+import SectionMarker from "./SectionMarker.astro";
+---
+<section class="section best-fit" data-section-num="06" id="s06" aria-labelledby="bf-headline">
+  <SectionMarker num="06" label="Best fit" right="Who this is for" />
+  <h2 id="bf-headline">Who rntme is for.</h2>
+  <ol class="bf-grid">
+    {bestFit.map((b) => (
+      <li class="bf-card">
+        <span class="bf-k" aria-hidden="true">0{b.n}</span>
+        <h3>{b.title}</h3>
+        <p>{b.body}</p>
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  .bf-grid {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-5) 0 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5) var(--space-4);
+  }
+  .bf-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-strong);
+  }
+  .bf-card:first-child {
+    border-top-color: var(--color-accent-text);
+  }
+  .bf-k {
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    color: var(--color-text-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+  .bf-card:first-child .bf-k {
+    color: var(--color-accent-text);
+  }
+  .bf-card h3 {
+    margin: 0;
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+  .bf-card p {
+    margin: 0;
+    color: var(--color-text-muted);
+    max-width: 36ch;
+  }
+
+  @media (max-width: 900px) {
+    .bf-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-4);
+    }
+  }
+</style>

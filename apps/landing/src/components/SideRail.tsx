@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 
 const rail: [string, string][] = [
   ["01", "Hero"],
-  ["02", "Jobs"],
-  ["03", "Compile"],
-  ["04", "Demo"],
-  ["05", "Shift"],
-  ["06", "Steps"],
-  ["07", "Q&A"],
-  ["08", "Compare"],
-  ["09", "Apply"],
+  ["02", "Problem"],
+  ["03", "Compare"],
+  ["04", "Blueprint"],
+  ["05", "Steps"],
+  ["06", "Best fit"],
+  ["07", "Anti fit"],
+  ["08", "Pilot"],
+  ["09", "FAQ"],
   ["10", "End"],
 ];
 

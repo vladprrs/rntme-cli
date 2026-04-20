@@ -1,0 +1,56 @@
+---
+import SectionMarker from "./SectionMarker.astro";
+---
+<section class="section problem" data-section-num="02" id="s02" aria-labelledby="pr-headline">
+  <SectionMarker num="02" label="The problem" right="Where vibe coding stops working" />
+  <h2 id="pr-headline">Vibe coding breaks when the app becomes a business system.</h2>
+  <div class="problem-body">
+    <p class="lede">
+      The first AI-built tool feels magical. The second one comes with a new schema,
+      new conventions, a strange auth flow, and a diff nobody wants to review.
+    </p>
+    <p>
+      The problem is not that your agent stopped being fast. The problem is that every
+      new service becomes a one-off backend your team now has to secure, debug, and
+      maintain.
+    </p>
+    <p class="problem-punchline">
+      <span aria-hidden="true">—</span>
+      The agent didn&rsquo;t slow down. Your architecture did.
+    </p>
+  </div>
+</section>
+
+<style>
+  .problem-body {
+    max-width: 62ch;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+  }
+  .problem-body p {
+    margin: 0;
+  }
+  .problem-body .lede {
+    color: var(--color-text);
+  }
+  .problem-body p:not(.lede):not(.problem-punchline) {
+    color: var(--color-text-muted);
+    max-width: 58ch;
+  }
+  .problem-punchline {
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    color: var(--color-accent-text);
+    letter-spacing: 0.01em;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: var(--space-2);
+  }
+  .problem-punchline span[aria-hidden="true"] {
+    font-family: var(--font-mono);
+    color: var(--color-text-subtle);
+  }
+</style>

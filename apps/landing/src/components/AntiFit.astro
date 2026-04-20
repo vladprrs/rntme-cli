@@ -1,0 +1,53 @@
+---
+import SectionMarker from "./SectionMarker.astro";
+---
+<section class="section anti-fit" data-section-num="07" id="s07" aria-labelledby="af-headline">
+  <SectionMarker num="07" label="Anti fit" right="What rntme is not" />
+  <h2 id="af-headline">What rntme is not.</h2>
+  <div class="af-body">
+    <p>
+      rntme is not a generic prompt-to-app builder. It is not a BaaS replacement for
+      every product. It is not the right tool for games, consumer social apps, or
+      highly custom greenfield backends.
+    </p>
+    <p class="af-closer">
+      It is for workflow-heavy business services that need structure, repeatability,
+      and safer change. <strong>That focus is the feature.</strong>
+    </p>
+  </div>
+</section>
+
+<style>
+  .anti-fit h2 {
+    max-width: 24ch;
+  }
+  .af-body {
+    max-width: 60ch;
+    margin-top: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--color-border);
+  }
+  .af-body p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--fs-body-lg);
+    line-height: 1.55;
+  }
+  .af-closer {
+    color: var(--color-text) !important;
+  }
+  .af-closer strong {
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text);
+  }
+
+  @media (max-width: 640px) {
+    .af-body {
+      padding-left: var(--space-3);
+    }
+  }
+</style>

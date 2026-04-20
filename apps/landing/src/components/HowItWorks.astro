@@ -2,31 +2,31 @@
 import SectionMarker from "./SectionMarker.astro";
 
 const steps = [
-  { k: "01", title: "Author a blueprint",   body: "One JSON file: domain, data, state transitions, HTTP/UI bindings, seed. Written by hand or by an agent." },
-  { k: "02", title: "Validate in layers",   body: "Parse → structural → references → consistency. An agent cannot silently produce a broken service. Errors come with stable codes." },
-  { k: "03", title: "Compile & migrate",    body: "The runtime produces the schema, the migration plan, and the event log your service needs. No manual DBA work." },
-  { k: "04", title: "Boot the runtime",     body: "Same event log, same projection consumer, same HTTP surface, same UI surface — for every service. Zero service-specific code." },
-  { k: "05", title: "Fork for service #2",  body: "Copy the blueprint. Change the domain. Ship. Service #5 reads like service #1." },
+  { k: "01", title: "Describe the service",  body: "One JSON file: domain, data, state transitions, HTTP/UI bindings, seed. Written by hand or by an agent." },
+  { k: "02", title: "Validate before boot",  body: "Parse → structural → references → consistency. An agent cannot silently produce a broken service. Errors come with stable codes." },
+  { k: "03", title: "Compile & migrate",     body: "The runtime produces the schema, the migration plan, and the event log your service needs. No manual DBA work." },
+  { k: "04", title: "Boot a working service", body: "Same event log, same projection consumer, same HTTP surface, same UI surface — for every service. Zero service-specific code." },
+  { k: "05", title: "Reuse for the next one", body: "Copy the blueprint. Change the domain. Ship. The next workflow app isn't a new snowflake backend." },
 ];
 
 const asciiFlow = `  ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐
-  │  author  │ ───→ │ validate │ ───→ │ compile  │ ───→ │   boot   │ ───→ │   fork   │
-  │blueprint │      │ in layers│      │& migrate │      │ runtime  │      │for svc#2 │
+  │ describe │ ───→ │ validate │ ───→ │ compile  │ ───→ │   boot   │ ───→ │  reuse   │
+  │blueprint │      │ in layers│      │& migrate │      │ service  │      │ for next │
   └──────────┘      └──────────┘      └──────────┘      └──────────┘      └──────────┘
       <b>01</b>                <b>02</b>                <b>03</b>                <b>04</b>                <b>05</b>
                                                         <i>↑ event log appends at every arrow</i>`;
 
 const flowNodes = [
-  { k: "01", label: "author blueprint" },
+  { k: "01", label: "describe blueprint" },
   { k: "02", label: "validate in layers" },
   { k: "03", label: "compile & migrate" },
-  { k: "04", label: "boot runtime" },
-  { k: "05", label: "fork for svc#2" },
+  { k: "04", label: "boot service" },
+  { k: "05", label: "reuse for next" },
 ];
 ---
-<section class="section howitworks" data-section-num="06" id="s06" aria-labelledby="hiw-headline">
-  <SectionMarker num="06" label="How it works" right="Fig. 02 — pipeline" />
-  <h2 id="hiw-headline">Make no mistakes.</h2>
+<section class="section howitworks" data-section-num="05" id="s05" aria-labelledby="hiw-headline">
+  <SectionMarker num="05" label="How it works" right="Fig. 02 — pipeline" />
+  <h2 id="hiw-headline">From blueprint to running service.</h2>
   <pre class="ascii-flow ascii-flow-wide" aria-hidden="true" set:html={asciiFlow}></pre>
   <ol class="ascii-flow-stack" aria-hidden="true">
     {flowNodes.map((n, i) => (

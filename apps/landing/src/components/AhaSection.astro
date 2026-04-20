@@ -2,14 +2,25 @@
 import { AhaReveal } from "./AhaReveal";
 import SectionMarker from "./SectionMarker.astro";
 ---
-<section class="section aha" data-section-num="03" id="s03" aria-labelledby="aha-headline">
-  <SectionMarker num="03" label="See it compile" right="Fig. 01 — blueprint schema" />
-  <h2 id="aha-headline">One blueprint, one runtime.</h2>
+<section class="section aha" data-section-num="04" id="s04" aria-labelledby="aha-headline">
+  <SectionMarker num="04" label="Blueprint" right="Fig. 01 — one input, three effects" />
+  <h2 id="aha-headline">rntme gives your agent a safer target than an arbitrary codebase.</h2>
   <p class="lede">
-    A scaffold gives you a starting point you have to keep alive. A blueprint describes a
-    service — the runtime keeps it alive. The difference shows up on service #5, when you
-    have to explain what any of these systems actually does.
+    A service is described as a validated blueprint. The blueprint defines the domain,
+    state transitions, API surface, UI, and seed data. rntme validates it in layers,
+    then boots a working service on a standard runtime.
+  </p>
+  <p class="aha-pitch">
+    You stop reviewing sprawling implementation diffs. You review intent.
   </p>
   <AhaReveal client:visible />
   <noscript set:html={'<style>.aha-panel{opacity:1 !important;transform:none !important;}</style>'} />
 </section>
+
+<style>
+  .aha-pitch {
+    max-width: 62ch;
+    color: var(--color-text-muted);
+    margin-top: var(--space-3);
+  }
+</style>
