@@ -1,0 +1,38 @@
+---
+const steps = [
+  { n: 1, title: "Author a blueprint",   body: "One JSON artifact: domain, data, state transitions, HTTP/UI bindings, seed. Written by hand or by an agent." },
+  { n: 2, title: "Validate in layers",    body: "Parse → structural → references → consistency. An agent cannot silently produce a broken service. Errors come with stable codes." },
+  { n: 3, title: "Compile & migrate",     body: "The runtime produces the schema, the migration plan, and the event log your service needs. No manual DBA work." },
+  { n: 4, title: "Boot the runtime",      body: "Same event log, same projection consumer, same HTTP surface, same UI surface — for every service. Zero service-specific code." },
+  { n: 5, title: "Fork for service #2",   body: "Copy the blueprint. Change the domain. Ship." },
+];
+---
+<section class="hiw" aria-labelledby="hiw-headline">
+  <p class="label">How it works</p>
+  <h2 id="hiw-headline">Make no mistakes.</h2>
+  <ol class="hiw-steps">
+    {steps.map((s) => (
+      <li>
+        <span class="hiw-n" aria-hidden="true">{s.n}</span>
+        <div>
+          <h3>{s.title}</h3>
+          <p>{s.body}</p>
+        </div>
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  .hiw { padding: var(--space-6) var(--space-4); }
+  .hiw-steps { list-style: none; padding: 0; margin: var(--space-5) 0 0; display: grid; gap: var(--space-4); }
+  .hiw-steps li { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); }
+  .hiw-n {
+    font-family: var(--font-mono);
+    font-size: var(--fs-h2);
+    color: var(--color-text-muted);
+    line-height: 1;
+  }
+  .hiw-steps h3 { margin: 0 0 var(--space-2); }
+  .hiw-steps p { margin: 0; }
+</style>
