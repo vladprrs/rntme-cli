@@ -544,24 +544,14 @@ hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-5
   color: var(--color-text-muted);
 }
 
-/* -------- Pilot iframe chrome ---------------------------------------- */
+/* -------- Pilot intake preview --------------------------------------- */
 
-.pilot-iframe {
-  margin-top: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-2);
-  overflow: hidden;
-}
-.pilot-iframe-chrome {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.pilot-iframe iframe {
-  display: block;
-  border: 0;
-  width: 100%;
-  min-height: 600px;
-  background: transparent;
+.pilot-questions { margin-top: var(--space-5); }
+.pilot .cta-row { align-items: center; }
+.cta-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
 }
 
 /* -------- Footer ------------------------------------------------------ */
