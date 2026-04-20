@@ -27,9 +27,6 @@ const tallyUrl = `https://tally.so/r/${env.TALLY_FORM_ID}`;
   .hero { padding: var(--space-6) var(--space-4); }
   .hero h1 { font-size: var(--fs-display); line-height: var(--lh-tight); margin: 0 0 var(--space-4); }
   .hero-lede, .hero-pitch { font-size: var(--fs-body); max-width: 62ch; margin: 0 0 var(--space-3); }
-  .hero-ctas { display: flex; gap: var(--space-3); margin: var(--space-5) 0 var(--space-4); }
-  .btn { display: inline-block; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); text-decoration: none; }
-  .btn-primary { background: var(--color-accent); color: var(--color-bg); }
-  .btn-secondary { border: 1px solid var(--color-border); color: var(--color-text); }
+  .hero-ctas { display: flex; gap: var(--space-3); margin: var(--space-5) 0 var(--space-4); flex-wrap: wrap; }
   .hero-proof { color: var(--color-text-muted); font-size: var(--fs-small); }
 </style>

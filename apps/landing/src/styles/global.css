@@ -14,6 +14,41 @@ body {
 }
 a { color: inherit; }
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* Section label — the small mono caption that sits above each section heading
+   ("Core job", "See it compile", "The shift", etc.). Global so every section
+   component can use it without redefining. */
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
+}
+
+/* Buttons — shared between Hero, LiveDemoCard, and any future CTAs. Global
+   so Astro's per-component style scoping does not hide them when a second
+   component uses the same class. */
+.btn {
+  display: inline-block;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-weight: var(--fw-medium);
+  transition: background-color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
+}
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-secondary {
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+.btn-secondary:hover { border-color: var(--color-border-strong); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
