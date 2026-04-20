@@ -1,28 +1,22 @@
 ---
 import { objections } from "../content/objections.mdx";
+import SectionMarker from "./SectionMarker.astro";
 ---
-<section class="obj" aria-labelledby="obj-headline">
+<section class="section objections" data-section-num="07" id="s07" aria-labelledby="obj-headline">
+  <SectionMarker num="07" label="Objections" right="The questions you're actually asking" />
   <p class="label">Objections we hear</p>
   <h2 id="obj-headline">Honest answers.</h2>
-  <div class="obj-list">
-    {objections.map((o) => (
-      <details class="obj-item">
-        <summary>{o.q}</summary>
-        <p>{o.a}</p>
+  <div class="accordion">
+    {objections.map((o, i) => (
+      <details open={i === 0}>
+        <summary>
+          <svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m5 3 4 4-4 4"/>
+          </svg>
+          <span>{o.q}</span>
+        </summary>
+        <div class="ans"><div>{o.a}</div></div>
       </details>
     ))}
   </div>
 </section>
-
-<style>
-  .obj { padding: var(--space-6) var(--space-4); }
-  .obj-list { display: grid; gap: var(--space-2); margin-top: var(--space-5); }
-  .obj-item {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-3);
-    background: var(--color-surface);
-  }
-  summary { cursor: pointer; font-weight: 600; }
-  details[open] p { margin-top: var(--space-3); }
-</style>

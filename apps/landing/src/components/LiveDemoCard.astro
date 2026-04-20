@@ -1,22 +1,41 @@
 ---
 import { loadEnv } from "../env";
 import { shouldRenderDemo } from "./shouldRenderDemo";
+import SectionMarker from "./SectionMarker.astro";
 
 const env = loadEnv();
 const render = shouldRenderDemo(env.DEMO_URL);
 ---
 {render && (
-  <section class="demo" aria-labelledby="demo-headline">
-    <p class="label">Try it</p>
+  <section class="section livedemo" data-section-num="04" id="s04" aria-labelledby="demo-headline">
+    <SectionMarker num="04" label="Live demo" right="issue-tracker · ops-console" />
+    <p class="label">Try it · live</p>
     <h2 id="demo-headline">See a real service running.</h2>
-    <p>
+    <p class="lede">
       The <code>issue-tracker</code> demo is a full rntme service — blueprint, API, UI, seed data.
       Every object you see was produced by the runtime from one JSON file.
     </p>
-    <a class="btn btn-primary" href={env.DEMO_URL}>Open live demo →</a>
+    <div class="livedemo-card">
+      <div class="label">rntme / playground</div>
+      <div class="livedemo-body">
+        <div class="livedemo-pane">
+          <div class="livedemo-pane-label">Input · blueprint.json</div>
+          <pre><code>{`{ "service": "issues",
+  "aggregates": { "Issue": { "states": ["Open", "Closed"] } },
+  "ui": { "screens": ["List", "Detail"] } }`}</code></pre>
+        </div>
+        <div class="livedemo-pane">
+          <div class="livedemo-pane-label">Output · running service</div>
+          <pre><code>{`boot issues.v1 → staging
+↳ schema      applied
+↳ API         mounted at /api
+↳ UI          mounted at /
+↳ event log   ready`}</code></pre>
+        </div>
+      </div>
+      <div class="livedemo-cta">
+        <a class="btn btn-primary" href={env.DEMO_URL}>Open live demo →</a>
+      </div>
+    </div>
   </section>
 )}
-
-<style>
-  .demo { padding: var(--space-6) var(--space-4); }
-</style>

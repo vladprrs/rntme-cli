@@ -1,0 +1,20 @@
+---
+import { loadEnv } from "../env";
+const env = loadEnv();
+---
+<div class="statusbar">
+  <div class="statusbar-inner">
+    <div class="statusbar-left">
+      <span class="statusbar-brand">rntme</span>
+      <span>/ pilot</span>
+      <span class="sb-hide-sm">·</span>
+      <span class="sb-hide-sm">v0.1 · cohort of 10</span>
+    </div>
+    <div class="statusbar-right">
+      <span class="statusbar-dot" aria-hidden="true" />
+      <span class="sb-hide-sm">onboarding</span>
+      <span class="sb-hide-sm">·</span>
+      <a href={env.GITHUB_URL} rel="noopener">github</a>
+    </div>
+  </div>
+</div>

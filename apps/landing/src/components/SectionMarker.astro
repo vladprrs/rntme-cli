@@ -1,0 +1,12 @@
+---
+interface Props {
+  num: string;
+  label: string;
+  right?: string;
+}
+const { num, label, right = "" } = Astro.props;
+---
+<div class="section-marker" aria-hidden="true">
+  <span class="mk-left">§{num} · {label}</span>
+  <span class="mk-right">{right}</span>
+</div>

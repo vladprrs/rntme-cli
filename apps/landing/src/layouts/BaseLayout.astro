@@ -1,6 +1,8 @@
 ---
 import "../styles/global.css";
 import { loadEnv } from "../env";
+import StatusBar from "../components/StatusBar.astro";
+import { SideRail } from "../components/SideRail";
 
 interface Props {
   title: string;
@@ -47,6 +49,8 @@ const env = loadEnv();
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
+    <StatusBar />
+    <SideRail client:idle />
     <slot />
   </body>
 </html>

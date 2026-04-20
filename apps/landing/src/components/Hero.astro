@@ -3,30 +3,39 @@ import { loadEnv } from "../env";
 const env = loadEnv();
 const tallyUrl = `https://tally.so/r/${env.TALLY_FORM_ID}`;
 ---
-<section class="hero" aria-labelledby="hero-headline">
-  <h1 id="hero-headline">Stop reinventing a backend every time your agent builds you one.</h1>
-  <p class="hero-lede">
-    Your first Cursor-built approval tool shipped in two days. The fourth one has a schema
-    you've never seen, events that half-work, and a review queue nobody reads.
-  </p>
-  <p class="hero-pitch">
-    rntme is a standard runtime for these services. One blueprint describes the domain,
-    the data, the state, the API, and the UI. The runtime enforces it.
-    Service&nbsp;#10 looks like service&nbsp;#1.
-  </p>
-  <div class="hero-ctas">
-    <a class="btn btn-primary" href={tallyUrl}>Apply as a pilot team →</a>
-    <a class="btn btn-secondary" href={env.GITHUB_URL}>GitHub</a>
+<section class="section hero" data-section-num="01" id="s01" aria-labelledby="hero-headline">
+  <div class="hero-grid" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">rntme · pilot program · 2026</div>
+    <h1 id="hero-headline">Stop reinventing a backend every time your agent builds you one.</h1>
+    <p class="lede hero-lede">
+      Your first Cursor-built approval tool shipped in two days. The fourth one has a schema
+      you've never seen, events that half-work, and a review queue nobody reads.
+    </p>
+    <p class="hero-pitch">
+      rntme is a standard runtime for these services. One blueprint describes the domain,
+      the data, the state, the API, and the UI. The runtime enforces it.
+      Service&nbsp;#10 looks like service&nbsp;#1.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href={tallyUrl}>Apply as a pilot team →</a>
+      <a class="btn btn-secondary" href={env.GITHUB_URL} rel="noopener">
+        See it on GitHub
+        <svg class="btn-ext" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5.5 3h-2A1.5 1.5 0 0 0 2 4.5v6A1.5 1.5 0 0 0 3.5 12h6a1.5 1.5 0 0 0 1.5-1.5v-2"/>
+          <path d="M8 2h4v4"/><path d="m6.5 7.5 5-5"/>
+        </svg>
+      </a>
+    </div>
+    <div class="hero-meta">
+      <div>Runtime<br/><b>event-sourced</b></div>
+      <div>Unit of work<br/><b>validated JSON</b></div>
+      <div>Output<br/><b>API + UI + events</b></div>
+      <div>Pilot cohort<br/><b>10 teams</b></div>
+    </div>
   </div>
-  <p class="hero-proof">
-    Safe by construction · Validated blueprints · Zero service-specific code · Works with your agents
-  </p>
 </section>
 
 <style>
-  .hero { padding: var(--space-6) var(--space-4); }
-  .hero h1 { font-size: var(--fs-display); line-height: var(--lh-tight); margin: 0 0 var(--space-4); }
-  .hero-lede, .hero-pitch { font-size: var(--fs-body); max-width: 62ch; margin: 0 0 var(--space-3); }
-  .hero-ctas { display: flex; gap: var(--space-3); margin: var(--space-5) 0 var(--space-4); flex-wrap: wrap; }
-  .hero-proof { color: var(--color-text-muted); font-size: var(--fs-small); }
+  .hero-pitch { max-width: 62ch; color: var(--color-text-muted); }
 </style>

@@ -1,43 +1,47 @@
-<section class="stor" aria-labelledby="stor-headline">
+---
+import SectionMarker from "./SectionMarker.astro";
+---
+<section class="section snowflake" data-section-num="05" id="s05" aria-labelledby="stor-headline">
+  <SectionMarker num="05" label="The shift" right="Before / after" />
   <p class="label">The shift</p>
   <h2 id="stor-headline">From snowflake chaos to a standard runtime.</h2>
-
-  <div class="stor-vignette point-a">
-    <p>Your first Cursor-built <strong>ticketing tool</strong> took a weekend.</p>
-    <p>
-      The fourth — a <strong>customer-ops console</strong> — has a migration your team lead refuses to run.
-      The <strong>back-office dashboard</strong> you built last month passes tests, but fires two events on every retry.
-      You spent more time reviewing AI diffs last month than writing anything new.
-    </p>
-    <p><em>The agent didn't slow down. Your architecture did.</em></p>
-  </div>
-
-  <div class="stor-vignette point-b">
-    <p class="stor-shift">Shift →</p>
-    <p>A week from now, service #5 is a blueprint you edited in 40 minutes.</p>
-    <p>
-      The runtime is the same one #1 runs. The diff is 12 lines of JSON.
-      Your team lead signs off in five minutes — the runtime didn't change, only the domain.
-      You tell the agent "build an escalation flow" and it writes a blueprint, not a repo.
-    </p>
+  <div class="two-col">
+    <div>
+      <h3>Before</h3>
+      <p>
+        Your first Cursor-built <strong>ticketing tool</strong> took a weekend. The fourth —
+        a <strong>customer-ops console</strong> — has a migration your team lead refuses to run.
+      </p>
+      <p>
+        The <strong>back-office dashboard</strong> you built last month passes tests, but fires two
+        events on every retry. You spent more time reviewing AI diffs than writing anything new.
+      </p>
+      <p class="stor-muted"><em>The agent didn't slow down. Your architecture did.</em></p>
+    </div>
+    <div>
+      <h3>After</h3>
+      <p>
+        A week from now, service #5 is a blueprint you edited in 40 minutes. The runtime is the
+        same one #1 runs. The diff is 12 lines of JSON.
+      </p>
+      <p>
+        Your team lead signs off in five minutes — the runtime didn't change, only the domain.
+        You tell the agent "build an escalation flow" and it writes a blueprint, not a repo.
+      </p>
+      <p class="stor-shift"><span>Shift →</span></p>
+    </div>
   </div>
 </section>
 
 <style>
-  .stor { padding: var(--space-6) var(--space-4); }
-  .stor-vignette { max-width: 62ch; margin: var(--space-5) 0; }
-  .stor-vignette.point-a { color: var(--color-text-muted); }
-  .stor-vignette.point-b {
-    background: var(--color-accent-wash);
-    padding: var(--space-4);
-    border-radius: var(--radius-md);
-  }
+  .snowflake .two-col > div > h3 { margin-bottom: var(--space-3); }
+  .stor-muted { color: var(--color-text-muted); }
   .stor-shift {
     font-family: var(--font-mono);
     font-size: var(--fs-small);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--tracking-label);
     color: var(--color-accent-text);
-    margin: 0 0 var(--space-3);
+    margin: 0;
   }
 </style>
