@@ -8,7 +8,7 @@ const rail: [string, string][] = [
   ["05", "Steps"],
   ["06", "Best fit"],
   ["07", "Anti fit"],
-  ["08", "Pilot"],
+  ["08", "Early access"],
   ["09", "FAQ"],
   ["10", "End"],
 ];
