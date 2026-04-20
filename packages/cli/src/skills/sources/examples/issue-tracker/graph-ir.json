@@ -1,0 +1,1041 @@
+{
+  "version": "1.0-rc7",
+  "pdmRef": "issue-tracker.domain.v1",
+  "qsmRef": "issue-tracker.read.v1",
+  "graphs": {
+    "assignIssue": {
+      "id": "assignIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "assigneeId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "assign",
+            "payload": {
+              "assigneeId": {
+                "$param": "assigneeId"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "assignIssueWithCapacityGuard": {
+      "id": "assignIssueWithCapacityGuard",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "assigneeId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "currentLoad",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "filteredLoad",
+          "type": "filter",
+          "config": {
+            "input": "currentLoad",
+            "expr": {
+              "and": [
+                {
+                  "eq": [
+                    "issue.assigneeId",
+                    {
+                      "$param": "assigneeId"
+                    }
+                  ]
+                },
+                {
+                  "eq": [
+                    "issue.status",
+                    {
+                      "$literal": "in_progress"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "loadCount",
+          "type": "reduce",
+          "config": {
+            "input": "filteredLoad",
+            "into": "LoadCount",
+            "group": {},
+            "measures": {
+              "count": {
+                "fn": "count"
+              }
+            }
+          }
+        },
+        {
+          "id": "guardCapacity",
+          "type": "filter",
+          "config": {
+            "input": "loadCount",
+            "expr": {
+              "lt": [
+                "count",
+                3
+              ]
+            }
+          }
+        },
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "assign",
+            "payload": {
+              "assigneeId": {
+                "$param": "assigneeId"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "closeIssue": {
+      "id": "closeIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "close",
+            "payload": {}
+          }
+        }
+      ]
+    },
+    "issueDetail": {
+      "id": "issueDetail",
+      "signature": {
+        "inputs": {
+          "id": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "rowset<IssueDetail>",
+          "from": "proj"
+        }
+      },
+      "nodes": [
+        {
+          "id": "items",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "filtered",
+          "type": "filter",
+          "config": {
+            "input": "items",
+            "expr": {
+              "eq": [
+                "issue.id",
+                {
+                  "$param": "id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "proj",
+          "type": "map",
+          "config": {
+            "input": "filtered",
+            "into": "IssueDetail",
+            "fields": {
+              "id": "issue.id",
+              "title": "issue.title",
+              "status": "issue.status",
+              "priority": "issue.priority",
+              "storyPoints": "issue.storyPoints",
+              "createdAt": "issue.createdAt",
+              "resolvedAt": "issue.resolvedAt",
+              "projectKey": "issue.project.key",
+              "projectName": "issue.project.name",
+              "reporterUsername": "issue.reporter.username",
+              "assigneeUsername": "issue.assignee.username"
+            }
+          }
+        }
+      ]
+    },
+    "issuesByProject": {
+      "id": "issuesByProject",
+      "signature": {
+        "inputs": {},
+        "output": {
+          "type": "rowset<ProjectStats>",
+          "from": "grouped"
+        }
+      },
+      "nodes": [
+        {
+          "id": "items",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "grouped",
+          "type": "reduce",
+          "config": {
+            "input": "items",
+            "into": "ProjectStats",
+            "group": {
+              "projectKey": "issue.project.key"
+            },
+            "measures": {
+              "issueCount": {
+                "fn": "count"
+              },
+              "totalStoryPoints": {
+                "fn": "sum",
+                "expr": "issue.storyPoints"
+              },
+              "avgStoryPoints": {
+                "fn": "avg",
+                "expr": "issue.storyPoints"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "listIssues": {
+      "id": "listIssues",
+      "signature": {
+        "inputs": {
+          "status": {
+            "type": "string",
+            "mode": "predicate_optional"
+          },
+          "limit": {
+            "type": "integer",
+            "mode": "defaulted",
+            "default": 20
+          }
+        },
+        "output": {
+          "type": "rowset<IssueListItem>",
+          "from": "enriched"
+        }
+      },
+      "nodes": [
+        {
+          "id": "items",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "filtered",
+          "type": "filter",
+          "config": {
+            "input": "items",
+            "expr": {
+              "eq": [
+                "issue.status",
+                {
+                  "$param": "status"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "sorted",
+          "type": "sort",
+          "config": {
+            "input": "filtered",
+            "by": [
+              {
+                "field": "issue.createdAt",
+                "dir": "desc",
+                "nulls": "last"
+              }
+            ]
+          }
+        },
+        {
+          "id": "paged",
+          "type": "limit",
+          "config": {
+            "input": "sorted",
+            "count": {
+              "$param": "limit"
+            }
+          }
+        },
+        {
+          "id": "enriched",
+          "type": "map",
+          "config": {
+            "input": "paged",
+            "into": "IssueListItem",
+            "fields": {
+              "id": "issue.id",
+              "title": "issue.title",
+              "status": "issue.status",
+              "priority": "issue.priority",
+              "storyPoints": "issue.storyPoints",
+              "createdAt": "issue.createdAt",
+              "resolvedAt": "issue.resolvedAt",
+              "projectKey": "issue.project.key",
+              "projectName": "issue.project.name",
+              "reporterUsername": "issue.reporter.username",
+              "assigneeUsername": "issue.assignee.username",
+              "sprintName": "issue.sprint.name"
+            }
+          }
+        }
+      ]
+    },
+    "listIssuesUi": {
+      "id": "listIssuesUi",
+      "signature": {
+        "inputs": {
+          "limit": {
+            "type": "integer",
+            "mode": "defaulted",
+            "default": 50
+          }
+        },
+        "output": {
+          "type": "rowset<IssueListItem>",
+          "from": "enriched"
+        }
+      },
+      "nodes": [
+        {
+          "id": "items",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "sorted",
+          "type": "sort",
+          "config": {
+            "input": "items",
+            "by": [
+              {
+                "field": "issue.createdAt",
+                "dir": "desc",
+                "nulls": "last"
+              }
+            ]
+          }
+        },
+        {
+          "id": "paged",
+          "type": "limit",
+          "config": {
+            "input": "sorted",
+            "count": {
+              "$param": "limit"
+            }
+          }
+        },
+        {
+          "id": "enriched",
+          "type": "map",
+          "config": {
+            "input": "paged",
+            "into": "IssueListItem",
+            "fields": {
+              "id": "issue.id",
+              "title": "issue.title",
+              "status": "issue.status",
+              "priority": "issue.priority",
+              "storyPoints": "issue.storyPoints",
+              "createdAt": "issue.createdAt",
+              "resolvedAt": "issue.resolvedAt",
+              "projectKey": "issue.project.key",
+              "projectName": "issue.project.name",
+              "reporterUsername": "issue.reporter.username",
+              "assigneeUsername": "issue.assignee.username",
+              "sprintName": "issue.sprint.name"
+            }
+          }
+        }
+      ]
+    },
+    "reassignIssue": {
+      "id": "reassignIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "assigneeId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "reassign",
+            "payload": {
+              "assigneeId": {
+                "$param": "assigneeId"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reopenIssue": {
+      "id": "reopenIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "reopen",
+            "payload": {}
+          }
+        }
+      ]
+    },
+    "reportIssue": {
+      "id": "reportIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "title": {
+            "type": "string",
+            "mode": "required"
+          },
+          "projectId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "reporterId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "priority": {
+            "type": "string",
+            "mode": "required"
+          },
+          "storyPoints": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "sprintId": {
+            "type": "integer",
+            "mode": "nullable"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "report",
+            "payload": {
+              "title": {
+                "$param": "title"
+              },
+              "projectId": {
+                "$param": "projectId"
+              },
+              "reporterId": {
+                "$param": "reporterId"
+              },
+              "priority": {
+                "$param": "priority"
+              },
+              "storyPoints": {
+                "$param": "storyPoints"
+              },
+              "sprintId": {
+                "$param": "sprintId"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reportedIssueCountByProject": {
+      "id": "reportedIssueCountByProject",
+      "signature": {
+        "inputs": {},
+        "output": {
+          "type": "rowset<ReportedCountRow>",
+          "from": "r"
+        }
+      },
+      "nodes": [
+        {
+          "id": "src",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "eventType": "IssueReport"
+            }
+          }
+        },
+        {
+          "id": "r",
+          "type": "reduce",
+          "config": {
+            "input": "src",
+            "into": "ReportedCountRow",
+            "group": {
+              "projectId": "issueReport.projectId"
+            },
+            "measures": {
+              "count": {
+                "fn": "count"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "resolveIssue": {
+      "id": "resolveIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          },
+          "resolvedAt": {
+            "type": "datetime",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "resolve",
+            "payload": {
+              "resolvedAt": {
+                "$param": "resolvedAt"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "searchIssues": {
+      "id": "searchIssues",
+      "signature": {
+        "inputs": {
+          "q": {
+            "type": "string",
+            "mode": "required"
+          },
+          "from": {
+            "type": "datetime",
+            "mode": "defaulted",
+            "default": "1970-01-01T00:00:00.000Z"
+          },
+          "to": {
+            "type": "datetime",
+            "mode": "defaulted",
+            "default": "9999-12-31T23:59:59.999Z"
+          },
+          "priority": {
+            "type": "string",
+            "mode": "predicate_optional"
+          },
+          "limit": {
+            "type": "integer",
+            "mode": "defaulted",
+            "default": 20
+          }
+        },
+        "output": {
+          "type": "rowset<IssueListItem>",
+          "from": "enriched"
+        }
+      },
+      "nodes": [
+        {
+          "id": "items",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "baseFiltered",
+          "type": "filter",
+          "config": {
+            "input": "items",
+            "expr": {
+              "and": [
+                {
+                  "like": [
+                    "issue.title",
+                    {
+                      "$param": "q"
+                    }
+                  ]
+                },
+                {
+                  "between": [
+                    "issue.createdAt",
+                    {
+                      "$param": "from"
+                    },
+                    {
+                      "$param": "to"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "priorityFiltered",
+          "type": "filter",
+          "config": {
+            "input": "baseFiltered",
+            "expr": {
+              "eq": [
+                "issue.priority",
+                {
+                  "$param": "priority"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "sorted",
+          "type": "sort",
+          "config": {
+            "input": "priorityFiltered",
+            "by": [
+              {
+                "field": "issue.createdAt",
+                "dir": "desc",
+                "nulls": "last"
+              }
+            ]
+          }
+        },
+        {
+          "id": "paged",
+          "type": "limit",
+          "config": {
+            "input": "sorted",
+            "count": {
+              "$param": "limit"
+            }
+          }
+        },
+        {
+          "id": "enriched",
+          "type": "map",
+          "config": {
+            "input": "paged",
+            "into": "IssueListItem",
+            "fields": {
+              "id": "issue.id",
+              "title": "issue.title",
+              "status": "issue.status",
+              "priority": "issue.priority",
+              "storyPoints": "issue.storyPoints",
+              "createdAt": "issue.createdAt",
+              "resolvedAt": "issue.resolvedAt",
+              "projectKey": "issue.project.key",
+              "projectName": "issue.project.name",
+              "reporterUsername": "issue.reporter.username",
+              "assigneeUsername": "issue.assignee.username",
+              "sprintName": "issue.sprint.name"
+            }
+          }
+        }
+      ]
+    },
+    "sprintBurndown": {
+      "id": "sprintBurndown",
+      "signature": {
+        "inputs": {
+          "sprintId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "rowset<BurndownBucket>",
+          "from": "grouped"
+        }
+      },
+      "nodes": [
+        {
+          "id": "items",
+          "type": "findMany",
+          "config": {
+            "source": {
+              "entity": "Issue"
+            }
+          }
+        },
+        {
+          "id": "filtered",
+          "type": "filter",
+          "config": {
+            "input": "items",
+            "expr": {
+              "eq": [
+                "issue.sprintId",
+                {
+                  "$param": "sprintId"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "grouped",
+          "type": "reduce",
+          "config": {
+            "input": "filtered",
+            "into": "BurndownBucket",
+            "group": {
+              "status": "issue.status"
+            },
+            "measures": {
+              "issueCount": {
+                "fn": "count"
+              },
+              "totalStoryPoints": {
+                "fn": "sum",
+                "expr": "issue.storyPoints"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "submitIssue": {
+      "id": "submitIssue",
+      "signature": {
+        "inputs": {
+          "issueId": {
+            "type": "integer",
+            "mode": "required"
+          }
+        },
+        "output": {
+          "type": "row<CommandResult>",
+          "from": "emit"
+        }
+      },
+      "nodes": [
+        {
+          "id": "emit",
+          "type": "emit",
+          "config": {
+            "aggregate": "Issue",
+            "aggregateId": {
+              "$param": "issueId"
+            },
+            "transition": "submit",
+            "payload": {}
+          }
+        }
+      ]
+    }
+  },
+  "shapes": {
+    "IssueDetail": {
+      "fields": {
+        "id": {
+          "type": "integer",
+          "nullable": false
+        },
+        "title": {
+          "type": "string",
+          "nullable": false
+        },
+        "status": {
+          "type": "string",
+          "nullable": false
+        },
+        "priority": {
+          "type": "string",
+          "nullable": false
+        },
+        "storyPoints": {
+          "type": "integer",
+          "nullable": false
+        },
+        "createdAt": {
+          "type": "datetime",
+          "nullable": false
+        },
+        "resolvedAt": {
+          "type": "datetime",
+          "nullable": true
+        },
+        "projectKey": {
+          "type": "string",
+          "nullable": true
+        },
+        "projectName": {
+          "type": "string",
+          "nullable": true
+        },
+        "reporterUsername": {
+          "type": "string",
+          "nullable": true
+        },
+        "assigneeUsername": {
+          "type": "string",
+          "nullable": true
+        }
+      }
+    },
+    "IssueListItem": {
+      "fields": {
+        "id": {
+          "type": "integer",
+          "nullable": false
+        },
+        "title": {
+          "type": "string",
+          "nullable": false
+        },
+        "status": {
+          "type": "string",
+          "nullable": false
+        },
+        "priority": {
+          "type": "string",
+          "nullable": false
+        },
+        "storyPoints": {
+          "type": "integer",
+          "nullable": false
+        },
+        "createdAt": {
+          "type": "datetime",
+          "nullable": false
+        },
+        "resolvedAt": {
+          "type": "datetime",
+          "nullable": true
+        },
+        "projectKey": {
+          "type": "string",
+          "nullable": true
+        },
+        "projectName": {
+          "type": "string",
+          "nullable": true
+        },
+        "reporterUsername": {
+          "type": "string",
+          "nullable": true
+        },
+        "assigneeUsername": {
+          "type": "string",
+          "nullable": true
+        },
+        "sprintName": {
+          "type": "string",
+          "nullable": true
+        }
+      }
+    },
+    "ProjectStats": {
+      "fields": {
+        "projectKey": {
+          "type": "string",
+          "nullable": false
+        },
+        "issueCount": {
+          "type": "integer",
+          "nullable": false
+        },
+        "totalStoryPoints": {
+          "type": "integer",
+          "nullable": false
+        },
+        "avgStoryPoints": {
+          "type": "decimal",
+          "nullable": false
+        }
+      }
+    },
+    "BurndownBucket": {
+      "fields": {
+        "status": {
+          "type": "string",
+          "nullable": false
+        },
+        "issueCount": {
+          "type": "integer",
+          "nullable": false
+        },
+        "totalStoryPoints": {
+          "type": "integer",
+          "nullable": false
+        }
+      }
+    },
+    "LoadCount": {
+      "fields": {
+        "count": {
+          "type": "integer",
+          "nullable": false
+        }
+      }
+    },
+    "ReportedCountRow": {
+      "fields": {
+        "projectId": {
+          "type": "integer",
+          "nullable": false
+        },
+        "count": {
+          "type": "integer",
+          "nullable": false
+        }
+      }
+    }
+  }
+}

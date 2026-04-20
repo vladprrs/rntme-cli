@@ -1,0 +1,1264 @@
+{
+  "manifest": {
+    "version": "2.0",
+    "pdmRef": "issue-tracker.domain.v1",
+    "qsmRef": "issue-tracker.read.v1",
+    "graphSpecRef": "issue-tracker.graphs.v1",
+    "bindingsRef": "issue-tracker.bindings.v1",
+    "metadata": {
+      "title": "Issue Tracker"
+    },
+    "layouts": {
+      "main": "layouts/main"
+    },
+    "routes": {
+      "/issues": {
+        "layout": "main",
+        "screen": "screens/issues-home"
+      },
+      "/issues/browse": {
+        "layout": "main",
+        "screen": "screens/issues-browse"
+      },
+      "/issues/new": {
+        "layout": "main",
+        "screen": "screens/issues-new"
+      },
+      "/issues/search": {
+        "layout": "main",
+        "screen": "screens/issues-search"
+      },
+      "/issues/:id": {
+        "layout": "main",
+        "screen": "screens/issue-detail"
+      },
+      "/sprints/:sprintId": {
+        "layout": "main",
+        "screen": "screens/sprint-burndown"
+      }
+    }
+  },
+  "baseDir": "./demo/issue-tracker-api/artifacts/ui",
+  "layouts": {
+    "main": {
+      "spec": {
+        "root": "shell",
+        "elements": {
+          "shell": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "header",
+              "nav"
+            ]
+          },
+          "header": {
+            "type": "Heading",
+            "props": {
+              "level": 1,
+              "text": "Issue Tracker"
+            }
+          },
+          "nav": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm"
+            },
+            "children": [
+              "nav-home",
+              "nav-browse",
+              "nav-new",
+              "nav-search"
+            ]
+          },
+          "nav-home": {
+            "type": "Button",
+            "props": {
+              "label": "Home",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": "/issues"
+                }
+              }
+            }
+          },
+          "nav-browse": {
+            "type": "Button",
+            "props": {
+              "label": "Browse",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": "/issues/browse"
+                }
+              }
+            }
+          },
+          "nav-new": {
+            "type": "Button",
+            "props": {
+              "label": "New Issue",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": "/issues/new"
+                }
+              }
+            }
+          },
+          "nav-search": {
+            "type": "Button",
+            "props": {
+              "label": "Search",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": "/issues/search"
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {}
+    }
+  },
+  "screens": {
+    "issues-home": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading",
+              "stats-list",
+              "burndown-link"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 2,
+              "text": "Issues by Project"
+            }
+          },
+          "stats-list": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "sm"
+            },
+            "children": [
+              "stat-card"
+            ],
+            "repeat": {
+              "statePath": "/data/stats"
+            }
+          },
+          "stat-card": {
+            "type": "Card",
+            "props": {
+              "title": {
+                "$item": "projectKey"
+              }
+            },
+            "children": [
+              "stat-badges"
+            ]
+          },
+          "stat-badges": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm"
+            },
+            "children": [
+              "badge-count",
+              "badge-points"
+            ]
+          },
+          "badge-count": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "${issueCount} issues"
+              }
+            }
+          },
+          "badge-points": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "${totalStoryPoints} pts"
+              },
+              "variant": "secondary"
+            }
+          },
+          "burndown-link": {
+            "type": "Button",
+            "props": {
+              "label": "Sprint Burndown (Sprint 1)",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": "/sprints/1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Home"
+        },
+        "data": {
+          "/data/stats": {
+            "binding": "issuesByProject",
+            "refetchOn": [
+              "mount"
+            ]
+          }
+        }
+      }
+    },
+    "issues-browse": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading",
+              "issues-list"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 2,
+              "text": "Recent Issues"
+            }
+          },
+          "issues-list": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "sm"
+            },
+            "children": [
+              "issue-card"
+            ],
+            "repeat": {
+              "statePath": "/data/issues"
+            }
+          },
+          "issue-card": {
+            "type": "Card",
+            "props": {
+              "title": {
+                "$item": "title"
+              }
+            },
+            "children": [
+              "card-content"
+            ]
+          },
+          "card-content": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm",
+              "align": "center"
+            },
+            "children": [
+              "badge-id",
+              "badge-status",
+              "badge-priority",
+              "link-detail"
+            ]
+          },
+          "badge-id": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "#${id}"
+              },
+              "variant": "outline"
+            }
+          },
+          "badge-status": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$item": "status"
+              }
+            }
+          },
+          "badge-priority": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$item": "priority"
+              },
+              "variant": "secondary"
+            }
+          },
+          "link-detail": {
+            "type": "Link",
+            "props": {
+              "label": "View →"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": {
+                    "$template": "/issues/${id}"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Browse"
+        },
+        "data": {
+          "/data/issues": {
+            "binding": "listIssuesUi",
+            "params": {
+              "limit": 50
+            },
+            "refetchOn": [
+              "mount"
+            ]
+          }
+        }
+      }
+    },
+    "issues-new": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading",
+              "form-fields",
+              "submit-btn"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 2,
+              "text": "Report a New Issue"
+            }
+          },
+          "form-fields": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "md"
+            },
+            "children": [
+              "field-issueId",
+              "field-title",
+              "field-projectId",
+              "field-reporterId",
+              "field-priority",
+              "field-storyPoints"
+            ]
+          },
+          "field-issueId": {
+            "type": "Input",
+            "props": {
+              "label": "Issue ID",
+              "name": "issueId",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/issueId"
+              }
+            }
+          },
+          "field-title": {
+            "type": "Input",
+            "props": {
+              "label": "Title",
+              "name": "title",
+              "value": {
+                "$bindState": "/form/title"
+              }
+            }
+          },
+          "field-projectId": {
+            "type": "Input",
+            "props": {
+              "label": "Project ID",
+              "name": "projectId",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/projectId"
+              }
+            }
+          },
+          "field-reporterId": {
+            "type": "Input",
+            "props": {
+              "label": "Reporter ID",
+              "name": "reporterId",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/reporterId"
+              }
+            }
+          },
+          "field-priority": {
+            "type": "Input",
+            "props": {
+              "label": "Priority",
+              "name": "priority",
+              "value": {
+                "$bindState": "/form/priority"
+              }
+            }
+          },
+          "field-storyPoints": {
+            "type": "Input",
+            "props": {
+              "label": "Story Points",
+              "name": "storyPoints",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/storyPoints"
+              }
+            }
+          },
+          "submit-btn": {
+            "type": "Button",
+            "props": {
+              "label": "Submit",
+              "variant": "primary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "submit"
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Report Issue"
+        },
+        "actions": {
+          "submit": {
+            "kind": "command",
+            "binding": "reportIssue",
+            "paramsFromState": {
+              "issueId": "/form/issueId",
+              "title": "/form/title",
+              "projectId": "/form/projectId",
+              "reporterId": "/form/reporterId",
+              "priority": "/form/priority",
+              "storyPoints": "/form/storyPoints"
+            },
+            "onSuccess": {
+              "navigateTo": "/issues/browse"
+            },
+            "onError": {
+              "showAlert": true
+            }
+          }
+        }
+      }
+    },
+    "issues-search": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading",
+              "search-form",
+              "search-btn",
+              "results-list"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 2,
+              "text": "Search Issues"
+            }
+          },
+          "search-form": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "md"
+            },
+            "children": [
+              "field-q",
+              "field-from",
+              "field-to",
+              "field-priority",
+              "field-limit"
+            ]
+          },
+          "field-q": {
+            "type": "Input",
+            "props": {
+              "label": "Query (title search)",
+              "name": "q",
+              "value": {
+                "$bindState": "/form/q"
+              }
+            }
+          },
+          "field-from": {
+            "type": "Input",
+            "props": {
+              "label": "From date (ISO-8601)",
+              "name": "from",
+              "placeholder": "2025-01-01T00:00:00.000Z",
+              "value": {
+                "$bindState": "/form/from"
+              }
+            }
+          },
+          "field-to": {
+            "type": "Input",
+            "props": {
+              "label": "To date (ISO-8601)",
+              "name": "to",
+              "placeholder": "2026-12-31T23:59:59.999Z",
+              "value": {
+                "$bindState": "/form/to"
+              }
+            }
+          },
+          "field-priority": {
+            "type": "Input",
+            "props": {
+              "label": "Priority (optional)",
+              "name": "priority",
+              "value": {
+                "$bindState": "/form/priority"
+              }
+            }
+          },
+          "field-limit": {
+            "type": "Input",
+            "props": {
+              "label": "Max results",
+              "name": "limit",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/limit"
+              }
+            }
+          },
+          "search-btn": {
+            "type": "Button",
+            "props": {
+              "label": "Search",
+              "variant": "primary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "search"
+                }
+              }
+            }
+          },
+          "results-list": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "sm"
+            },
+            "children": [
+              "result-card"
+            ],
+            "repeat": {
+              "statePath": "/data/results"
+            }
+          },
+          "result-card": {
+            "type": "Card",
+            "props": {
+              "title": {
+                "$item": "title"
+              }
+            },
+            "children": [
+              "result-meta"
+            ]
+          },
+          "result-meta": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm"
+            },
+            "children": [
+              "result-badge-id",
+              "result-badge-status",
+              "result-badge-priority",
+              "result-link"
+            ]
+          },
+          "result-badge-id": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "#${id}"
+              },
+              "variant": "outline"
+            }
+          },
+          "result-badge-status": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$item": "status"
+              }
+            }
+          },
+          "result-badge-priority": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$item": "priority"
+              },
+              "variant": "secondary"
+            }
+          },
+          "result-link": {
+            "type": "Link",
+            "props": {
+              "label": "View →"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": {
+                    "$template": "/issues/${id}"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Search"
+        },
+        "data": {
+          "/data/results": {
+            "binding": "searchIssues",
+            "params": {
+              "q": {
+                "$state": "/form/q"
+              },
+              "from": {
+                "$state": "/form/from"
+              },
+              "to": {
+                "$state": "/form/to"
+              },
+              "priority": {
+                "$state": "/form/priority"
+              },
+              "limit": {
+                "$state": "/form/limit"
+              }
+            }
+          }
+        },
+        "actions": {
+          "search": {
+            "kind": "refetch",
+            "targets": [
+              "/data/results"
+            ]
+          }
+        }
+      }
+    },
+    "issue-detail": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading",
+              "detail-list",
+              "lifecycle-hint",
+              "actions-section"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 2,
+              "text": "Issue Detail"
+            }
+          },
+          "detail-list": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "sm"
+            },
+            "children": [
+              "detail-card"
+            ],
+            "repeat": {
+              "statePath": "/data/detail"
+            }
+          },
+          "detail-card": {
+            "type": "Card",
+            "props": {
+              "title": {
+                "$item": "title"
+              }
+            },
+            "children": [
+              "detail-badges"
+            ]
+          },
+          "detail-badges": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm"
+            },
+            "children": [
+              "badge-id",
+              "badge-status",
+              "badge-priority",
+              "badge-project",
+              "badge-assignee",
+              "badge-reporter"
+            ]
+          },
+          "badge-id": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "#${id}"
+              },
+              "variant": "outline"
+            }
+          },
+          "badge-status": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$item": "status"
+              }
+            }
+          },
+          "badge-priority": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$item": "priority"
+              },
+              "variant": "secondary"
+            }
+          },
+          "badge-project": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "Project: ${projectKey}"
+              },
+              "variant": "outline"
+            }
+          },
+          "badge-assignee": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "Assignee: ${assigneeUsername}"
+              },
+              "variant": "outline"
+            }
+          },
+          "badge-reporter": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "Reporter: ${reporterUsername}"
+              },
+              "variant": "outline"
+            }
+          },
+          "lifecycle-hint": {
+            "type": "Text",
+            "props": {
+              "text": "Lifecycle: Submit (draft→open), Assign, Reassign, Resolve (in_progress→resolved), Reopen, Close (resolved→closed)."
+            }
+          },
+          "actions-section": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "md"
+            },
+            "children": [
+              "action-submit__btn",
+              "action-assign__row",
+              "action-reassign__row",
+              "action-resolve__row",
+              "action-reopen__btn",
+              "action-close__btn"
+            ]
+          },
+          "action-submit__btn": {
+            "type": "Button",
+            "props": {
+              "label": "Submit (draft → open)",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "cmdSubmit"
+                }
+              }
+            }
+          },
+          "action-assign__row": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm",
+              "align": "end"
+            },
+            "children": [
+              "action-assign__field",
+              "action-assign__btn"
+            ]
+          },
+          "action-assign__field": {
+            "type": "Input",
+            "props": {
+              "label": "Assignee user ID",
+              "name": "assigneeId",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/assigneeId"
+              }
+            }
+          },
+          "action-assign__btn": {
+            "type": "Button",
+            "props": {
+              "label": "Assign",
+              "variant": "primary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "cmdAssign"
+                }
+              }
+            }
+          },
+          "action-reassign__row": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm",
+              "align": "end"
+            },
+            "children": [
+              "action-reassign__field",
+              "action-reassign__btn"
+            ]
+          },
+          "action-reassign__field": {
+            "type": "Input",
+            "props": {
+              "label": "New assignee ID",
+              "name": "assigneeId",
+              "type": "number",
+              "value": {
+                "$bindState": "/form/assigneeId"
+              }
+            }
+          },
+          "action-reassign__btn": {
+            "type": "Button",
+            "props": {
+              "label": "Reassign",
+              "variant": "primary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "cmdReassign"
+                }
+              }
+            }
+          },
+          "action-resolve__row": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm",
+              "align": "end"
+            },
+            "children": [
+              "action-resolve__field",
+              "action-resolve__btn"
+            ]
+          },
+          "action-resolve__field": {
+            "type": "Input",
+            "props": {
+              "label": "Resolved at (ISO-8601)",
+              "name": "resolvedAt",
+              "type": "text",
+              "value": {
+                "$bindState": "/form/resolvedAt"
+              }
+            }
+          },
+          "action-resolve__btn": {
+            "type": "Button",
+            "props": {
+              "label": "Resolve",
+              "variant": "primary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "cmdResolve"
+                }
+              }
+            }
+          },
+          "action-reopen__btn": {
+            "type": "Button",
+            "props": {
+              "label": "Reopen (resolved → open)",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "cmdReopen"
+                }
+              }
+            }
+          },
+          "action-close__btn": {
+            "type": "Button",
+            "props": {
+              "label": "Close (resolved → closed)",
+              "variant": "danger"
+            },
+            "on": {
+              "press": {
+                "action": "dispatch",
+                "params": {
+                  "name": "cmdClose"
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Issue Detail"
+        },
+        "data": {
+          "/data/detail": {
+            "binding": "issueDetail",
+            "params": {
+              "id": {
+                "$state": "/route/params/id"
+              }
+            },
+            "refetchOn": [
+              "mount"
+            ]
+          }
+        },
+        "actions": {
+          "cmdSubmit": {
+            "kind": "command",
+            "binding": "submitIssue",
+            "paramsFromState": {
+              "issueId": "/route/params/id"
+            },
+            "onSuccess": {
+              "refetchData": [
+                "/data/detail"
+              ]
+            },
+            "onError": {
+              "showAlert": true
+            }
+          },
+          "cmdAssign": {
+            "kind": "command",
+            "binding": "assignIssue",
+            "paramsFromState": {
+              "issueId": "/route/params/id",
+              "assigneeId": "/form/assigneeId"
+            },
+            "onSuccess": {
+              "refetchData": [
+                "/data/detail"
+              ]
+            },
+            "onError": {
+              "showAlert": true
+            }
+          },
+          "cmdReassign": {
+            "kind": "command",
+            "binding": "reassignIssue",
+            "paramsFromState": {
+              "issueId": "/route/params/id",
+              "assigneeId": "/form/assigneeId"
+            },
+            "onSuccess": {
+              "refetchData": [
+                "/data/detail"
+              ]
+            },
+            "onError": {
+              "showAlert": true
+            }
+          },
+          "cmdResolve": {
+            "kind": "command",
+            "binding": "resolveIssue",
+            "paramsFromState": {
+              "issueId": "/route/params/id",
+              "resolvedAt": "/form/resolvedAt"
+            },
+            "onSuccess": {
+              "refetchData": [
+                "/data/detail"
+              ]
+            },
+            "onError": {
+              "showAlert": true
+            }
+          },
+          "cmdReopen": {
+            "kind": "command",
+            "binding": "reopenIssue",
+            "paramsFromState": {
+              "issueId": "/route/params/id"
+            },
+            "onSuccess": {
+              "refetchData": [
+                "/data/detail"
+              ]
+            },
+            "onError": {
+              "showAlert": true
+            }
+          },
+          "cmdClose": {
+            "kind": "command",
+            "binding": "closeIssue",
+            "paramsFromState": {
+              "issueId": "/route/params/id"
+            },
+            "onSuccess": {
+              "refetchData": [
+                "/data/detail"
+              ]
+            },
+            "onError": {
+              "showAlert": true
+            }
+          }
+        }
+      }
+    },
+    "sprint-burndown": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading",
+              "burndown-list",
+              "back-btn"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 2,
+              "text": "Sprint Burndown"
+            }
+          },
+          "burndown-list": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "sm"
+            },
+            "children": [
+              "status-card"
+            ],
+            "repeat": {
+              "statePath": "/data/burndown"
+            }
+          },
+          "status-card": {
+            "type": "Card",
+            "props": {
+              "title": {
+                "$item": "status"
+              }
+            },
+            "children": [
+              "status-badges"
+            ]
+          },
+          "status-badges": {
+            "type": "Stack",
+            "props": {
+              "direction": "horizontal",
+              "gap": "sm"
+            },
+            "children": [
+              "badge-issues",
+              "badge-points"
+            ]
+          },
+          "badge-issues": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "${issueCount} issues"
+              }
+            }
+          },
+          "badge-points": {
+            "type": "Badge",
+            "props": {
+              "text": {
+                "$template": "${totalStoryPoints} pts"
+              },
+              "variant": "secondary"
+            }
+          },
+          "back-btn": {
+            "type": "Button",
+            "props": {
+              "label": "← Back to Home",
+              "variant": "secondary"
+            },
+            "on": {
+              "press": {
+                "action": "navigate",
+                "params": {
+                  "to": "/issues"
+                }
+              }
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Sprint Burndown"
+        },
+        "data": {
+          "/data/burndown": {
+            "binding": "sprintBurndown",
+            "params": {
+              "sprintId": {
+                "$state": "/route/params/sprintId"
+              }
+            },
+            "refetchOn": [
+              "mount"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "fragments": {}
+}

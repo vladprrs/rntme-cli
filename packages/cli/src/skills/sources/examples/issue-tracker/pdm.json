@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "Issue": {
+      "table": "issues",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "projectId": { "type": "integer", "nullable": false, "column": "project_id" },
+        "reporterId": { "type": "integer", "nullable": false, "column": "reporter_id" },
+        "assigneeId": { "type": "integer", "nullable": true, "column": "assignee_id" },
+        "sprintId": { "type": "integer", "nullable": true, "column": "sprint_id" },
+        "title": { "type": "string", "nullable": false, "column": "title" },
+        "status": { "type": "string", "nullable": false, "column": "status" },
+        "priority": { "type": "string", "nullable": false, "column": "priority" },
+        "storyPoints": { "type": "integer", "nullable": false, "column": "story_points" },
+        "createdAt": { "type": "datetime", "nullable": false, "column": "created_at", "generated": "createdAt" },
+        "resolvedAt": { "type": "datetime", "nullable": true, "column": "resolved_at" }
+      },
+      "relations": {
+        "project": {
+          "to": "Project",
+          "cardinality": "one",
+          "localKey": "projectId",
+          "foreignKey": "id"
+        },
+        "reporter": {
+          "to": "User",
+          "cardinality": "one",
+          "localKey": "reporterId",
+          "foreignKey": "id"
+        },
+        "assignee": {
+          "to": "User",
+          "cardinality": "one",
+          "localKey": "assigneeId",
+          "foreignKey": "id"
+        },
+        "sprint": {
+          "to": "Sprint",
+          "cardinality": "one",
+          "localKey": "sprintId",
+          "foreignKey": "id"
+        }
+      },
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["draft", "open", "in_progress", "resolved", "closed"],
+        "transitions": {
+          "report":   { "from": null,            "to": "draft",        "affects": ["title", "projectId", "reporterId", "priority", "storyPoints", "sprintId"] },
+          "submit":   { "from": "draft",         "to": "open" },
+          "assign":   { "from": "open",          "to": "in_progress",  "affects": ["assigneeId"] },
+          "reassign": { "from": "in_progress",   "to": "in_progress",  "affects": ["assigneeId"] },
+          "resolve":  { "from": "in_progress",   "to": "resolved",     "affects": ["resolvedAt"] },
+          "reopen":   { "from": "resolved",      "to": "open" },
+          "close":    { "from": "resolved",      "to": "closed" }
+        }
+      }
+    },
+    "Project": {
+      "table": "projects",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "key": { "type": "string", "nullable": false, "column": "key" },
+        "name": { "type": "string", "nullable": false, "column": "name" },
+        "leadId": { "type": "integer", "nullable": false, "column": "lead_id" },
+        "status": { "type": "string", "nullable": false, "column": "status" },
+        "description": { "type": "string", "nullable": true, "column": "description" },
+        "createdAt": { "type": "datetime", "nullable": false, "column": "created_at", "generated": "createdAt" }
+      },
+      "relations": {
+        "lead": {
+          "to": "User",
+          "cardinality": "one",
+          "localKey": "leadId",
+          "foreignKey": "id"
+        }
+      },
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["active", "closed"],
+        "transitions": {
+          "create": {
+            "from": null,
+            "to": "active",
+            "affects": ["key", "name", "leadId", "description"]
+          },
+          "close": { "from": "active", "to": "closed" }
+        }
+      }
+    },
+    "Sprint": {
+      "table": "sprints",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "projectId": { "type": "integer", "nullable": false, "column": "project_id" },
+        "name": { "type": "string", "nullable": false, "column": "name" },
+        "goal": { "type": "string", "nullable": true, "column": "goal" },
+        "startsAt": { "type": "datetime", "nullable": false, "column": "starts_at" },
+        "endsAt": { "type": "datetime", "nullable": false, "column": "ends_at" },
+        "status": { "type": "string", "nullable": false, "column": "status" }
+      },
+      "relations": {
+        "project": {
+          "to": "Project",
+          "cardinality": "one",
+          "localKey": "projectId",
+          "foreignKey": "id"
+        }
+      },
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["planned", "started", "completed"],
+        "transitions": {
+          "plan": {
+            "from": null,
+            "to": "planned",
+            "affects": ["projectId", "name", "goal", "startsAt", "endsAt"]
+          },
+          "start": { "from": "planned", "to": "started" },
+          "complete": { "from": "started", "to": "completed" }
+        }
+      }
+    },
+    "User": {
+      "table": "users",
+      "fields": {
+        "id": { "type": "integer", "nullable": false, "column": "id" },
+        "username": { "type": "string", "nullable": false, "column": "username" },
+        "email": { "type": "string", "nullable": false, "column": "email" },
+        "role": { "type": "string", "nullable": false, "column": "role" },
+        "status": { "type": "string", "nullable": false, "column": "status" },
+        "joinedAt": { "type": "datetime", "nullable": false, "column": "joined_at" }
+      },
+      "relations": {},
+      "keys": ["id"],
+      "stateMachine": {
+        "stateField": "status",
+        "initial": null,
+        "states": ["active", "deactivated"],
+        "transitions": {
+          "create": {
+            "from": null,
+            "to": "active",
+            "affects": ["username", "email", "role", "joinedAt"]
+          },
+          "deactivate": { "from": "active", "to": "deactivated" }
+        }
+      }
+    }
+  }
+}

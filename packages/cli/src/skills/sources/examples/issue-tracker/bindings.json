@@ -1,0 +1,263 @@
+{
+  "version": "1.0",
+  "graphSpecRef": "issue-tracker.graphs.v1",
+  "pdmRef": "issue-tracker.domain.v1",
+  "qsmRef": "issue-tracker.read.v1",
+  "openapi": {
+    "info": {
+      "title": "Issue Tracker Demo API",
+      "version": "0.1.0",
+      "description": "Read-only REST API backed by Graph IR → SQLite. Demo for @rntme."
+    },
+    "servers": [
+      { "url": "http://localhost:3000", "description": "Local demo server" }
+    ]
+  },
+  "bindings": {
+    "listIssuesUi": {
+      "graph": "listIssuesUi",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/ui/issues",
+        "tags": ["issues", "ui"],
+        "summary": "Recent issues for the SPA (no predicate_optional params; UI-safe).",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "bindTo": "limit",
+            "required": false,
+            "description": "Max rows (default 50)."
+          }
+        ]
+      }
+    },
+    "listIssues": {
+      "graph": "listIssues",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/issues",
+        "tags": ["issues"],
+        "summary": "List recent issues, optionally filtered by status.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "bindTo": "status",
+            "required": false,
+            "description": "Optional status filter (open | in_progress | done | closed)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "bindTo": "limit",
+            "required": false,
+            "description": "Max rows to return (default 20)."
+          }
+        ]
+      }
+    },
+    "searchIssues": {
+      "graph": "searchIssues",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/issues/search",
+        "tags": ["issues"],
+        "summary": "Search issues by title (LIKE), date range, and optional priority.",
+        "parameters": [
+          { "name": "q", "in": "query", "bindTo": "q", "required": true },
+          {
+            "name": "from",
+            "in": "query",
+            "bindTo": "from",
+            "required": false,
+            "description": "Range start (ISO-8601). Defaults to 1970-01-01T00:00:00.000Z when omitted."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "bindTo": "to",
+            "required": false,
+            "description": "Range end (ISO-8601). Defaults to 9999-12-31T23:59:59.999Z when omitted."
+          },
+          { "name": "priority", "in": "query", "bindTo": "priority", "required": false },
+          { "name": "limit", "in": "query", "bindTo": "limit", "required": false }
+        ]
+      }
+    },
+    "issueDetail": {
+      "graph": "issueDetail",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/issues/{id}",
+        "tags": ["issues"],
+        "summary": "Fetch an issue with project/reporter/assignee join.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "bindTo": "id",
+            "required": true,
+            "description": "Issue id."
+          }
+        ]
+      }
+    },
+    "issuesByProject": {
+      "graph": "issuesByProject",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/stats/by-project",
+        "tags": ["stats"],
+        "summary": "Issue count + story points aggregated per project.",
+        "parameters": []
+      }
+    },
+    "sprintBurndown": {
+      "graph": "sprintBurndown",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "GET",
+        "path": "/v1/sprints/{sprintId}/burndown",
+        "tags": ["sprints"],
+        "summary": "Open work in a sprint, grouped by status.",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "in": "path",
+            "bindTo": "sprintId",
+            "required": true,
+            "description": "Sprint id."
+          }
+        ]
+      }
+    },
+    "reportIssue": {
+      "kind": "command",
+      "graph": "reportIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues",
+        "tags": ["issues"],
+        "summary": "Report a new issue (creation transition).",
+        "parameters": [
+          { "name": "issueId",     "in": "body", "bindTo": "issueId",     "required": true },
+          { "name": "title",       "in": "body", "bindTo": "title",       "required": true },
+          { "name": "projectId",   "in": "body", "bindTo": "projectId",   "required": true },
+          { "name": "reporterId",  "in": "body", "bindTo": "reporterId",  "required": true },
+          { "name": "priority",    "in": "body", "bindTo": "priority",    "required": true },
+          { "name": "storyPoints", "in": "body", "bindTo": "storyPoints", "required": true },
+          { "name": "sprintId",    "in": "body", "bindTo": "sprintId",    "required": false }
+        ]
+      }
+    },
+    "submitIssue": {
+      "kind": "command",
+      "graph": "submitIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/submit",
+        "tags": ["issues"],
+        "summary": "Submit a draft issue (draft → open).",
+        "parameters": [
+          { "name": "issueId", "in": "path", "bindTo": "issueId", "required": true }
+        ]
+      }
+    },
+    "assignIssue": {
+      "kind": "command",
+      "graph": "assignIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/assign",
+        "tags": ["issues"],
+        "summary": "Assign an open issue (open → in_progress).",
+        "parameters": [
+          { "name": "issueId",    "in": "path", "bindTo": "issueId",    "required": true },
+          { "name": "assigneeId", "in": "body", "bindTo": "assigneeId", "required": true }
+        ]
+      }
+    },
+    "assignIssueWithGuard": {
+      "kind": "command",
+      "graph": "assignIssueWithCapacityGuard",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/assign-with-guard",
+        "tags": ["issues"],
+        "summary": "Assign with capacity guard (rejects if assignee has ≥3 in_progress issues).",
+        "parameters": [
+          { "name": "issueId",    "in": "path", "bindTo": "issueId",    "required": true },
+          { "name": "assigneeId", "in": "body", "bindTo": "assigneeId", "required": true }
+        ]
+      }
+    },
+    "reassignIssue": {
+      "kind": "command",
+      "graph": "reassignIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/reassign",
+        "tags": ["issues"],
+        "summary": "Reassign an in-progress issue (self-loop on in_progress).",
+        "parameters": [
+          { "name": "issueId",    "in": "path", "bindTo": "issueId",    "required": true },
+          { "name": "assigneeId", "in": "body", "bindTo": "assigneeId", "required": true }
+        ]
+      }
+    },
+    "resolveIssue": {
+      "kind": "command",
+      "graph": "resolveIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/resolve",
+        "tags": ["issues"],
+        "summary": "Resolve an in-progress issue (in_progress → resolved).",
+        "parameters": [
+          { "name": "issueId",    "in": "path", "bindTo": "issueId",    "required": true },
+          { "name": "resolvedAt", "in": "body", "bindTo": "resolvedAt", "required": true }
+        ]
+      }
+    },
+    "reopenIssue": {
+      "kind": "command",
+      "graph": "reopenIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/reopen",
+        "tags": ["issues"],
+        "summary": "Reopen a resolved issue (resolved → open).",
+        "parameters": [
+          { "name": "issueId", "in": "path", "bindTo": "issueId", "required": true }
+        ]
+      }
+    },
+    "closeIssue": {
+      "kind": "command",
+      "graph": "closeIssue",
+      "target": { "engine": "sqlite", "dialect": "sqlite" },
+      "http": {
+        "method": "POST",
+        "path": "/v1/issues/{issueId}/actions/close",
+        "tags": ["issues"],
+        "summary": "Close a resolved issue (resolved → closed).",
+        "parameters": [
+          { "name": "issueId", "in": "path", "bindTo": "issueId", "required": true }
+        ]
+      }
+    }
+  }
+}
