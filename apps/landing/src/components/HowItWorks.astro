@@ -15,12 +15,32 @@ const asciiFlow = `  ┌──────────┐      ┌────�
   └──────────┘      └──────────┘      └──────────┘      └──────────┘      └──────────┘
       <b>01</b>                <b>02</b>                <b>03</b>                <b>04</b>                <b>05</b>
                                                         <i>↑ event log appends at every arrow</i>`;
+
+const flowNodes = [
+  { k: "01", label: "author blueprint" },
+  { k: "02", label: "validate in layers" },
+  { k: "03", label: "compile & migrate" },
+  { k: "04", label: "boot runtime" },
+  { k: "05", label: "fork for svc#2" },
+];
 ---
 <section class="section howitworks" data-section-num="06" id="s06" aria-labelledby="hiw-headline">
   <SectionMarker num="06" label="How it works" right="Fig. 02 — pipeline" />
   <p class="label">How it works</p>
   <h2 id="hiw-headline">Make no mistakes.</h2>
-  <pre class="ascii-flow" aria-hidden="true" set:html={asciiFlow}></pre>
+  <pre class="ascii-flow ascii-flow-wide" aria-hidden="true" set:html={asciiFlow}></pre>
+  <ol class="ascii-flow-stack" aria-hidden="true">
+    {flowNodes.map((n, i) => (
+      <>
+        <li class="afs-node">
+          <span class="afs-k">{n.k}</span>
+          <span class="afs-box">{n.label}</span>
+        </li>
+        {i < flowNodes.length - 1 && <li class="afs-arrow" aria-hidden="true">↓</li>}
+      </>
+    ))}
+    <li class="afs-note">↑ event log appends at every arrow</li>
+  </ol>
   <ol class="steps">
     {steps.map((s) => (
       <li class="step">
