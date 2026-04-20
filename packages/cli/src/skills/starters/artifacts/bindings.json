@@ -1,0 +1,7 @@
+{
+  "version": "1.0",
+  "graphSpecRef": "starter.graphs.v1",
+  "pdmRef": "starter.domain.v1",
+  "qsmRef": "starter.read.v1",
+  "bindings": {}
+}

@@ -1,0 +1,72 @@
+{
+  "manifest": {
+    "version": "2.0",
+    "pdmRef": "starter.domain.v1",
+    "qsmRef": "starter.read.v1",
+    "graphSpecRef": "starter.graphs.v1",
+    "bindingsRef": "starter.bindings.v1",
+    "metadata": {
+      "title": "Starter Service"
+    },
+    "layouts": {
+      "main": "layouts/main"
+    },
+    "routes": {
+      "/": {
+        "layout": "main",
+        "screen": "screens/home"
+      }
+    }
+  },
+  "baseDir": "./artifacts/ui",
+  "layouts": {
+    "main": {
+      "spec": {
+        "root": "shell",
+        "elements": {
+          "shell": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": []
+          }
+        }
+      },
+      "screen": {}
+    }
+  },
+  "screens": {
+    "home": {
+      "spec": {
+        "root": "page",
+        "elements": {
+          "page": {
+            "type": "Stack",
+            "props": {
+              "direction": "vertical",
+              "gap": "lg"
+            },
+            "children": [
+              "heading"
+            ]
+          },
+          "heading": {
+            "type": "Heading",
+            "props": {
+              "level": 1,
+              "text": "Welcome"
+            }
+          }
+        }
+      },
+      "screen": {
+        "metadata": {
+          "title": "Home"
+        }
+      }
+    }
+  },
+  "fragments": {}
+}

@@ -1,0 +1,7 @@
+{
+  "version": "1.0-rc7",
+  "pdmRef": "starter.domain.v1",
+  "qsmRef": "starter.read.v1",
+  "shapes": {},
+  "graphs": {}
+}

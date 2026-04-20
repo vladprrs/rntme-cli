@@ -37,3 +37,17 @@ describe('worked-example bundle (issue-tracker)', () => {
     expect(result.ok).toBe(true);
   });
 });
+
+const STARTERS_DIR = join(HERE, '../../../../src/skills/starters/artifacts');
+
+describe('starter bundle (rntme init defaults)', () => {
+  it('passes validateBundle', async () => {
+    const bundle = loadBundle(STARTERS_DIR) as Parameters<typeof validateBundle>[0];
+    const result = await validateBundle(bundle);
+    if (!result.ok) {
+      // eslint-disable-next-line no-console
+      console.error('starter validateBundle errors:', JSON.stringify(result.errors, null, 2));
+    }
+    expect(result.ok).toBe(true);
+  });
+});
