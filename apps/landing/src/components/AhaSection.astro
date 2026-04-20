@@ -1,0 +1,36 @@
+---
+import { AhaReveal } from "./AhaReveal";
+---
+<section class="aha-wrap" aria-labelledby="aha-headline">
+  <p class="label">See it compile</p>
+  <h2 id="aha-headline">One blueprint, one runtime.</h2>
+  <AhaReveal client:visible />
+</section>
+
+<style>
+  .aha-wrap { padding: var(--space-6) var(--space-4); }
+  :global(.aha) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+    margin-top: var(--space-5);
+  }
+  :global(.aha-json) {
+    background: var(--color-surface);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+  }
+  :global(.aha-panels) { display: flex; flex-direction: column; gap: var(--space-4); }
+  :global(.aha-panels > section) {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
+  }
+  :global(.aha-panels > section[data-visible="true"]) { opacity: 1; transform: translateY(0); }
+  @media (max-width: 800px) {
+    :global(.aha) { grid-template-columns: 1fr; }
+  }
+</style>
