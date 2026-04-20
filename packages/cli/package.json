@@ -18,7 +18,7 @@
   "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "postbuild": "node -e \"const f='dist/bin/cli.js';const fs=require('fs');if(!fs.existsSync(f))process.exit(0);const s=fs.readFileSync(f,'utf8');if(!s.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+s);fs.chmodSync(f,0o755);\"",
+    "postbuild": "node -e \"const f='dist/bin/cli.js';const fs=require('fs');if(!fs.existsSync(f))process.exit(0);const s=fs.readFileSync(f,'utf8');if(!s.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+s);fs.chmodSync(f,0o755);\" && node scripts/copy-skills-assets.cjs",
     "test": "vitest run test/unit test/integration",
     "test:e2e": "vitest run test/e2e",
     "test:watch": "vitest",
