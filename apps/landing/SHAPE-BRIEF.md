@@ -123,18 +123,20 @@ Rules:
 
 ### 4.2 Typography
 
-Fonts self-hosted. Licensing: Supreme/Switzer are free from Indian Type Foundry (fontshare.com); Commit Mono is open-source (OFL).
+Supreme (display) and Switzer (body) are loaded from Fontshare's CDN via a single `<link rel="stylesheet">` in `BaseLayout.astro`, preceded by `<link rel="preconnect">` to warm the TLS handshake. Both are free from Indian Type Foundry (fontshare.com).
+
+Mono is **system mono** (`ui-monospace` → SF Mono / Cascadia / Consolas). We do not ship a custom mono face: the distinctive typographic signature is carried by the Supreme + Switzer pairing, and system mono is already a well-designed monospace on every target platform. Saves bandwidth and one CDN dependency.
 
 Fallback stack rules:
-- Display fallback: `"Supreme", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", sans-serif`
-- Body fallback: `"Switzer", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", sans-serif`
-- Mono fallback: `"Commit Mono", ui-monospace, "SF Mono", Menlo, monospace`
+- Display: `"Supreme", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", sans-serif`
+- Body: `"Switzer", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", sans-serif`
+- Mono: `ui-monospace, "SF Mono", Menlo, Consolas, monospace`
 
 ```css
 :root {
   --font-sans:      "Switzer", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", sans-serif;
   --font-display:   "Supreme", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable", sans-serif;
-  --font-mono:      "Commit Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono:      ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* Fluid scale for marketing / content page (per impeccable: fluid clamp on headings) */
   --fs-display:     clamp(2.5rem, 1.8rem + 3.6vw, 4.25rem);  /* hero h1 */
