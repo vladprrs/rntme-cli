@@ -1,0 +1,30 @@
+---
+import { competitors } from "../content/competitors.mdx";
+---
+<section class="cmp" aria-labelledby="cmp-headline">
+  <p class="label">Why not just…</p>
+  <h2 id="cmp-headline">We know what you're already trying.</h2>
+  <dl class="cmp-list">
+    {competitors.map((c) => (
+      <div class="cmp-row">
+        <dt>{c.name}</dt>
+        <dd>{c.body}</dd>
+      </div>
+    ))}
+  </dl>
+</section>
+
+<style>
+  .cmp { padding: var(--space-6) var(--space-4); }
+  .cmp-list { margin: var(--space-5) 0 0; display: grid; gap: var(--space-4); }
+  .cmp-row {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) 2fr;
+    gap: var(--space-4);
+  }
+  dt { font-weight: 600; }
+  dd { margin: 0; color: var(--color-text-muted); }
+  @media (max-width: 720px) {
+    .cmp-row { grid-template-columns: 1fr; gap: var(--space-2); }
+  }
+</style>
