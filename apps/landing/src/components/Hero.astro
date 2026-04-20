@@ -156,18 +156,18 @@ const proofs = [
   :global(html.js) .proof-chip { opacity: 0.35; }
 
   :global(html.js .hero.is-ready .hero-grid) {
-    animation: hero-grid-fade 280ms var(--ease-out) forwards;
+    animation: hero-grid-fade 840ms var(--ease-out) forwards;
   }
   :global(html.js .hero.is-ready) .hero-h1-payoff {
-    animation: hero-wipe 420ms var(--ease-out) 150ms forwards;
+    animation: hero-wipe 1260ms var(--ease-out) 450ms forwards;
   }
   :global(html.js .hero.is-ready) .proof-chip {
-    animation: hero-chip-mark 420ms var(--ease-out) forwards;
-    animation-delay: calc(400ms + var(--i) * 180ms);
+    animation: hero-chip-mark 1260ms var(--ease-out) forwards;
+    animation-delay: calc(1200ms + var(--i) * 540ms);
   }
   :global(html.js .hero.is-ready) .proof-crosshair {
-    animation: hero-cross-blink 520ms var(--ease-out) forwards;
-    animation-delay: calc(400ms + var(--i) * 180ms);
+    animation: hero-cross-blink 1560ms var(--ease-out) forwards;
+    animation-delay: calc(1200ms + var(--i) * 540ms);
   }
 
   @keyframes hero-grid-fade {
@@ -230,7 +230,7 @@ const proofs = [
     // Kick the whole sequence next frame so CSS initial state is painted.
     requestAnimationFrame(() => {
       hero.classList.add("is-ready");
-      ks.forEach((el, i) => flipAt(el, 400 + i * 180 + 180));
+      ks.forEach((el, i) => flipAt(el, 1200 + i * 540 + 540));
     });
   })();
 </script>
