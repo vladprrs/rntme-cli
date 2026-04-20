@@ -146,3 +146,21 @@ Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.
 
 - **CLI design spec:** See `docs/superpowers/specs/2026-04-19-rntme-cli-platform-commands-design.md` in the rntme monorepo
 - **Platform API design:** See `docs/superpowers/specs/2026-04-19-platform-api-design.md` in the rntme monorepo
+
+## Bootstrapping a new service
+
+```bash
+rntme init my-svc --org acme --project tracker
+rntme skills install --agent claude-code   # or --agent cursor
+```
+
+In your agent, invoke `Skill: using-rntme`. The pack routes through:
+brainstorming-rntme-service → designing-ui + designing-pdm → designing-bindings → designing-qsm + designing-graph-ir → composing-manifest → publishing-via-rntme-cli.
+
+### `rntme init <slug>`
+
+Scaffolds `rntme.json` + 7 empty-but-valid artifact files. Flags: `--org`, `--project`, `--artifacts-dir`. Refuses to overwrite existing `rntme.json`.
+
+### `rntme skills install --agent <name>`
+
+Installs the 9-skill pack. Agents: `claude-code` (→ `.claude/skills/rntme/*.md`), `cursor` (→ `.cursor/rules/rntme/*.mdc`). Flags: `--target <path>`, `--force`.

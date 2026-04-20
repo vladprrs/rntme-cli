@@ -1,7 +1,5 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { validateBundle } from '@rntme-cli/platform-core';
+import { join } from 'node:path';
 
 const JSON_BLOCK_RE = /```json\s+artifact=(\S+)\r?\n([\s\S]*?)```/g;
 
@@ -52,7 +50,10 @@ export async function runExampleValid(args: ExampleValidArgs): Promise<ExampleVa
   if (!existsSync(bundleDir)) {
     return { ok: false, errors: [`canonical bundle dir missing: ${bundleDir}`] };
   }
-  const bundle = loadCanonicalBundle(bundleDir) as Parameters<typeof validateBundle>[0];
+  type ValidateBundleFn = (input: Record<string, Record<string, unknown>>) => Promise<{ ok: boolean; errors?: unknown[] }>;
+  const mod = (await import('@rntme-cli/platform-core')) as { validateBundle?: unknown };
+  const validateBundle = mod.validateBundle as ValidateBundleFn;
+  const bundle = loadCanonicalBundle(bundleDir) as Parameters<ValidateBundleFn>[0];
   const result = await validateBundle(bundle);
   if (!result.ok) {
     errors.push(`canonical bundle failed validateBundle: ${JSON.stringify(result.errors)}`);
