@@ -1,0 +1,41 @@
+---
+import "../styles/global.css";
+import { loadEnv } from "../env";
+
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+}
+
+const { title, description, canonical = Astro.url.href } = Astro.props;
+const env = loadEnv();
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    {env.PLAUSIBLE_DOMAIN && (
+      <script
+        is:inline
+        defer
+        data-domain={env.PLAUSIBLE_DOMAIN}
+        src="https://plausible.io/js/script.js"
+      />
+    )}
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
