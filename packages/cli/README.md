@@ -144,8 +144,8 @@ Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.
 
 ## See Also
 
-- **CLI design spec:** See `docs/superpowers/specs/2026-04-19-rntme-cli-platform-commands-design.md` in the rntme monorepo
-- **Platform API design:** See `docs/superpowers/specs/2026-04-19-platform-api-design.md` in the rntme monorepo
+- **CLI design spec:** See `docs/superpowers/specs/done/2026-04-19-rntme-cli-platform-commands-design.md` in the rntme monorepo
+- **Platform API design:** See `docs/superpowers/specs/done/2026-04-19-platform-api-design.md` in the rntme monorepo
 
 ## Bootstrapping a new service
 
