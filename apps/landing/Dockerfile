@@ -15,12 +15,10 @@ COPY packages/platform-http/package.json   ./packages/platform-http/package.json
 COPY packages/platform-storage/package.json ./packages/platform-storage/package.json
 COPY apps/landing/package.json             ./apps/landing/package.json
 
-# 2) Install only what @rntme-cli/landing needs (the app has no workspace
-#    dependencies today, so this is just astro + react + mdx + vitest deps).
+# 2) Install only what @rntme-cli/landing needs.
 RUN pnpm install --frozen-lockfile --filter @rntme-cli/landing...
 
-# 3) Now copy the landing source. This is the layer that invalidates most
-#    often; installing first keeps rebuilds fast.
+# 3) Copy landing source.
 COPY apps/landing ./apps/landing
 
 # 4) Build-time env. Required vars fail the build if absent (src/env.ts).
@@ -39,9 +37,17 @@ ENV TALLY_FORM_ID=$TALLY_FORM_ID \
 
 RUN pnpm -F @rntme-cli/landing build
 
+# Sanity check: dist/ must contain index.html. If not, fail the build here
+# rather than ship an empty nginx image.
+RUN test -f /repo/apps/landing/dist/index.html || (echo "dist/index.html missing after astro build" && exit 1)
+
 # ---------- runtime ----------
 FROM nginx:alpine AS runtime
 COPY --from=build /repo/apps/landing/dist /usr/share/nginx/html
 COPY apps/landing/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Validate the nginx config at build time so a bad conf fails the image
+# instead of the container silently not binding.
+RUN nginx -t
+
 EXPOSE 80
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost/ > /dev/null || exit 1
