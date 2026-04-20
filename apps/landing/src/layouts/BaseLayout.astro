@@ -20,6 +20,16 @@ const env = loadEnv();
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {/* Webfonts — Supreme (display) + Switzer (body) from Fontshare.
+        Preconnect first to warm the TLS handshake, then fetch with display=swap
+        so body text renders immediately in the fallback stack while the
+        custom faces download. */}
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f[]=supreme@500,600,700&f[]=switzer@400,500,600,700&display=swap"
+    />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content="/og-image.png" />
@@ -36,6 +46,7 @@ const env = loadEnv();
     )}
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <slot />
   </body>
 </html>

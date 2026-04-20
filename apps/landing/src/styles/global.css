@@ -15,6 +15,22 @@ body {
 a { color: inherit; }
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 
+/* Skip-to-main keyboard accessibility. Hidden off-screen until focused. */
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform var(--motion-fast) var(--ease-out);
+  z-index: 100;
+}
+.skip-link:focus-visible { transform: translateY(0); }
+
 /* Section label — the small mono caption that sits above each section heading
    ("Core job", "See it compile", "The shift", etc.). Global so every section
    component can use it without redefining. */

@@ -25,8 +25,9 @@
   --color-border-strong:    oklch(80.0% 0.008 265);
 
   /* Accent — 60-30-10 rule, accent ~10% of visual weight */
-  --color-accent:           oklch(55.0% 0.190 38);
+  --color-accent:           oklch(55.0% 0.190 38);  /* CTA fill — paired with light on-accent text */
   --color-accent-hover:     oklch(49.0% 0.195 38);
+  --color-accent-text:      oklch(42.0% 0.195 38);  /* accent-colored body TEXT on light bg — 4.5:1 AA */
   --color-accent-wash:      oklch(95.0% 0.030 38);
 
   /* Focus ring — indigo for contrast against rust accent */
@@ -34,7 +35,7 @@
 
   /* Link semantics */
   --color-link:             var(--color-text);
-  --color-link-hover:       var(--color-accent);
+  --color-link-hover:       var(--color-accent-text);
 
   /* -------- Typography (SHAPE-BRIEF §4.2) ----------------------------- */
 
