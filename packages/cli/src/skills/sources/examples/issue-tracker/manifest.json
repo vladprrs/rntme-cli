@@ -1,6 +1,6 @@
 {
   "rntmeVersion": "1.0",
-  "service": { "name": "rntme-skills-examples/issue-tracker/api", "version": "1.0.0" },
+  "service": { "name": "issue-tracker-api", "version": "1.0.0" },
   "surface": { "http": { "port": 3000 } },
   "studio": {
     "enabled": true,
