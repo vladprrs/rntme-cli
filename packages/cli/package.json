@@ -24,10 +24,16 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.check.json",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "gen:snapshots": "node scripts/gen-skill-snapshots.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.10.0",
+    "@rntme/bindings": "workspace:*",
+    "@rntme/graph-ir-compiler": "workspace:*",
+    "@rntme/pdm": "workspace:*",
+    "@rntme/qsm": "workspace:*",
+    "@rntme/seed": "workspace:*",
     "@types/node": "^20.14.0",
     "@typescript-eslint/eslint-plugin": "^8.6.0",
     "@typescript-eslint/parser": "^8.6.0",
