@@ -1,0 +1,22 @@
+---
+import { loadEnv } from "../env";
+import { shouldRenderDemo } from "./shouldRenderDemo";
+
+const env = loadEnv();
+const render = shouldRenderDemo(env.DEMO_URL);
+---
+{render && (
+  <section class="demo" aria-labelledby="demo-headline">
+    <p class="label">Try it</p>
+    <h2 id="demo-headline">See a real service running.</h2>
+    <p>
+      The <code>issue-tracker</code> demo is a full rntme service — blueprint, API, UI, seed data.
+      Every object you see was produced by the runtime from one JSON file.
+    </p>
+    <a class="btn btn-primary" href={env.DEMO_URL}>Open live demo →</a>
+  </section>
+)}
+
+<style>
+  .demo { padding: var(--space-6) var(--space-4); }
+</style>

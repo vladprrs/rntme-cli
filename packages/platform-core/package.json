@@ -20,12 +20,6 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@rntme/pdm": "workspace:*",
-    "@rntme/qsm": "workspace:*",
-    "@rntme/bindings": "workspace:*",
-    "@rntme/graph-ir-compiler": "workspace:*",
-    "@rntme/seed": "workspace:*",
-    "@rntme/ui": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {

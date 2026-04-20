@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Hero from "../components/Hero.astro";
+import MicroJobs from "../components/MicroJobs.astro";
+import AhaSection from "../components/AhaSection.astro";
+import LiveDemoCard from "../components/LiveDemoCard.astro";
+import SnowflakeToRuntime from "../components/SnowflakeToRuntime.astro";
+import HowItWorks from "../components/HowItWorks.astro";
+import Objections from "../components/Objections.astro";
+import Competitors from "../components/Competitors.astro";
+import PilotForm from "../components/PilotForm.astro";
+import Footer from "../components/Footer.astro";
+---
+<BaseLayout
+  title="rntme — the safe runtime for AI-generated workflow apps"
+  description="Stop reinventing a backend every time your agent builds you one. rntme turns a validated service blueprint into a working API and UI on a standard runtime."
+>
+  <main id="main">
+    <Hero />
+    <MicroJobs />
+    <AhaSection />
+    <LiveDemoCard />
+    <SnowflakeToRuntime />
+    <HowItWorks />
+    <Objections />
+    <Competitors />
+    <PilotForm />
+  </main>
+  <Footer />
+</BaseLayout>

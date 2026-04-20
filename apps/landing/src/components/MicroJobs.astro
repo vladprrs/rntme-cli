@@ -1,0 +1,40 @@
+---
+import { coreJob, microJobs } from "../content/micro-jobs.mdx";
+---
+<section class="mj" aria-labelledby="mj-headline">
+  <p class="label">Core job</p>
+  <h2 id="mj-headline">{coreJob}</h2>
+  <div class="mj-grid">
+    {microJobs.map((m) => (
+      <article class="mj-card">
+        <span class="mj-num">{m.n}</span>
+        <h3>{m.title}</h3>
+        <p class="mj-action">{m.action}</p>
+        <p class="mj-value"><strong>→</strong> {m.value}</p>
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .mj { padding: var(--space-6) var(--space-4); }
+  .mj-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+  }
+  .mj-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    background: var(--color-surface);
+  }
+  .mj-num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    color: var(--color-text-muted);
+  }
+  .mj-card h3 { font-size: var(--fs-h3); margin: var(--space-2) 0; }
+  .mj-value { color: var(--color-accent-text); margin-top: var(--space-3); }
+</style>
