@@ -31,9 +31,10 @@ const proofs = [
       <a class="btn btn-secondary" href="#s04">See the blueprint demo</a>
     </div>
     <ul class="proof-strip" aria-label="What rntme gives you">
-      {proofs.map((p) => (
-        <li class="proof-chip">
-          <span class="proof-k" aria-hidden="true">{p.k}</span>
+      {proofs.map((p, i) => (
+        <li class="proof-chip" style={`--i:${i}`}>
+          <span class="proof-crosshair" aria-hidden="true"></span>
+          <span class="proof-k" aria-hidden="true" data-target={p.k}>--</span>
           <span class="proof-label">{p.label}</span>
         </li>
       ))}
@@ -64,6 +65,7 @@ const proofs = [
     line-height: var(--lh-tight);
     text-wrap: balance;
     max-width: 22ch;
+    display: inline-block;
   }
   .hero-pitch {
     max-width: 62ch;
@@ -80,6 +82,7 @@ const proofs = [
     gap: var(--space-4);
   }
   .proof-chip {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -105,10 +108,129 @@ const proofs = [
     text-wrap: balance;
   }
 
+  /* -------- Registration-mark crosshair --------------------------------- */
+  .proof-crosshair {
+    position: absolute;
+    top: calc(var(--space-3) * -1 - 6px);
+    left: 0;
+    width: 9px;
+    height: 9px;
+    color: var(--color-accent);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .proof-crosshair::before,
+  .proof-crosshair::after {
+    content: "";
+    position: absolute;
+    background: currentColor;
+  }
+  .proof-crosshair::before {
+    left: 50%;
+    top: 0;
+    width: 1px;
+    height: 100%;
+    transform: translateX(-50%);
+  }
+  .proof-crosshair::after {
+    top: 50%;
+    left: 0;
+    height: 1px;
+    width: 100%;
+    transform: translateY(-50%);
+  }
+
   @media (max-width: 720px) {
     .proof-strip {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-3);
     }
   }
+
+  /* -------- Mount choreography (runs ONCE on .is-ready) -----------------
+     Progressive enhancement: only the .js branch hides initial state. A
+     no-JS render shows the final state immediately. */
+
+  :global(html.js .hero-grid) { opacity: 0; }
+  :global(html.js) .hero-h1-payoff { clip-path: inset(0 100% 0 0); }
+  :global(html.js) .proof-chip { opacity: 0.35; }
+
+  :global(html.js .hero.is-ready .hero-grid) {
+    animation: hero-grid-fade 280ms var(--ease-out) forwards;
+  }
+  :global(html.js .hero.is-ready) .hero-h1-payoff {
+    animation: hero-wipe 420ms var(--ease-out) 150ms forwards;
+  }
+  :global(html.js .hero.is-ready) .proof-chip {
+    animation: hero-chip-mark 420ms var(--ease-out) forwards;
+    animation-delay: calc(400ms + var(--i) * 180ms);
+  }
+  :global(html.js .hero.is-ready) .proof-crosshair {
+    animation: hero-cross-blink 520ms var(--ease-out) forwards;
+    animation-delay: calc(400ms + var(--i) * 180ms);
+  }
+
+  @keyframes hero-grid-fade {
+    from { opacity: 0; }
+    to   { opacity: 0.55; }
+  }
+  @keyframes hero-wipe {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+  }
+  @keyframes hero-chip-mark {
+    0%   { opacity: 0.35; transform: translateY(2px); }
+    60%  { opacity: 1;   transform: translateY(0); }
+    100% { opacity: 1;   transform: translateY(0); }
+  }
+  @keyframes hero-cross-blink {
+    0%   { opacity: 0; transform: scale(0.6); }
+    35%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.28; transform: scale(1); }
+  }
+
+  /* Reduced-motion: render all the final state instantly, skip animation. */
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js .hero-grid) { opacity: 0.55; }
+    :global(html.js) .hero-h1-payoff { clip-path: none; }
+    :global(html.js) .proof-chip { opacity: 1; }
+    :global(html.js) .proof-crosshair { opacity: 0.28; }
+    :global(html.js .hero.is-ready .hero-grid),
+    :global(html.js .hero.is-ready) .hero-h1-payoff,
+    :global(html.js .hero.is-ready) .proof-chip,
+    :global(html.js .hero.is-ready) .proof-crosshair { animation: none; }
+  }
 </style>
+
+<script is:inline>
+  (() => {
+    const hero = document.querySelector(".hero");
+    if (!hero) return;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ks = hero.querySelectorAll(".proof-k");
+
+    // Instant state for reduced motion — targets rendered straight away.
+    if (reduced) {
+      ks.forEach((el) => {
+        const t = el.getAttribute("data-target");
+        if (t) el.textContent = t;
+      });
+      hero.classList.add("is-ready");
+      return;
+    }
+
+    // Flip proof-k from "--" to its target, staggered with the crosshair
+    // mark-in so the number and the crosshair settle together.
+    const flipAt = (el, delay) => {
+      const target = el.getAttribute("data-target") || "--";
+      window.setTimeout(() => { el.textContent = target; }, delay);
+    };
+
+    // Kick the whole sequence next frame so CSS initial state is painted.
+    requestAnimationFrame(() => {
+      hero.classList.add("is-ready");
+      ks.forEach((el, i) => flipAt(el, 400 + i * 180 + 180));
+    });
+  })();
+</script>
