@@ -35,13 +35,21 @@ const BLUEPRINT_JSON = `{
   "service": "ticketing",
   "aggregates": {
     "Ticket": {
-      "fields": { "title": "string", "description": "string", "assignee": "UserId?" },
+      "fields": {
+        "title":       "string",
+        "description": "string",
+        "assignee":    "UserId?"
+      },
       "states": ["Open", "Assigned", "Resolved", "Closed"],
       "commands": {
-        "open":   { "from": "*",        "to": "Open" },
-        "assign": { "from": "Open",     "to": "Assigned", "params": { "assignee": "UserId" } },
+        "open":   { "from": "*",        "to": "Open"     },
+        "assign": {
+          "from":   "Open",
+          "to":     "Assigned",
+          "params": { "assignee": "UserId" }
+        },
         "resolve":{ "from": "Assigned", "to": "Resolved" },
-        "close":  { "from": "Resolved", "to": "Closed" }
+        "close":  { "from": "Resolved", "to": "Closed"   }
       }
     }
   },
