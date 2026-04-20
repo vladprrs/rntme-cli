@@ -1,0 +1,48 @@
+# Docker reads .dockerignore from the build-context root. Dokploy + local
+# smoke builds set context to rntme-cli/; the per-app .dockerignore files
+# inside packages/ and apps/ are ignored.
+
+# Workspace-level nix
+node_modules
+**/node_modules
+.pnpm-store
+
+# Build artifacts
+dist
+**/dist
+.astro
+**/.astro
+build
+**/build
+coverage
+**/coverage
+
+# Editor + OS
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+
+# Tests (not needed at runtime; landing Dockerfile's build stage only runs the
+# Astro build, not vitest)
+**/*.test.ts
+**/*.test.tsx
+**/test
+**/tests
+**/__tests__
+
+# Local envs
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+.github
+
+# Docs — not copied into the image
+docs
+README.md
+**/README.md
