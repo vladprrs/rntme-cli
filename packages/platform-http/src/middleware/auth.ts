@@ -8,7 +8,19 @@ declare module 'hono' {
   }
 }
 
-export function requireAuth(providers: readonly IdentityProvider[]): MiddlewareHandler {
+export type RequireAuthOptions = {
+  /** How to respond when every provider denies. Defaults to `'json'` for back-compat. */
+  onUnauth?: 'json' | 'redirect';
+  /** Target when `onUnauth` is `'redirect'`. Defaults to `/login`. */
+  redirectTo?: string;
+};
+
+export function requireAuth(
+  providers: readonly IdentityProvider[],
+  options: RequireAuthOptions = {},
+): MiddlewareHandler {
+  const onUnauth = options.onUnauth ?? 'json';
+  const redirectTo = options.redirectTo ?? '/login';
   return async (c, next) => {
     const ctx = {
       authorizationHeader: c.req.header('authorization'),
@@ -21,6 +33,7 @@ export function requireAuth(providers: readonly IdentityProvider[]): MiddlewareH
         return next();
       }
     }
+    if (onUnauth === 'redirect') return c.redirect(redirectTo, 302);
     return c.json({ error: { code: 'PLATFORM_AUTH_MISSING', message: 'authentication required' } }, 401);
   };
 }
