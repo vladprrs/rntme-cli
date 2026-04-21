@@ -112,4 +112,13 @@ describe.skipIf(!e2eContainersAvailable())('UI browse pages', () => {
     expect(r.status).toBe(404);
     expect(r.headers.get('content-type')).toMatch(/text\/html/);
   });
+
+  it('GET /{orgSlug}/audit → 200 HTML', async () => {
+    const r = await env.app.request(`/${orgSlug}/audit`, {
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(r.status).toBe(200);
+    const body = await r.text();
+    expect(body).toContain('Audit');
+  });
 });

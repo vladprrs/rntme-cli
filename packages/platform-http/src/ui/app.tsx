@@ -25,6 +25,7 @@ import { ErrorPage } from './pages/error.js';
 import { OrgPage } from './pages/org.js';
 import { ProjectPage } from './pages/project.js';
 import { ServicePage } from './pages/service.js';
+import { AuditPage } from './pages/audit.js';
 
 export type UiDeps = {
   env: Env;
@@ -128,6 +129,31 @@ export function createUiApp(deps: UiDeps): Hono {
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
     return renderHtml(c, <OrgPage subject={enrichedSubject} otherOrgs={otherOrgs} projects={projRes.value} flash={flash} />);
+  });
+
+  authed.get('/:orgSlug/audit', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    if (s.org.slug !== c.req.param('orgSlug')) {
+      return renderHtml(
+        c,
+        <ErrorPage status={403} title="Not authorized" backHref={`/${s.org.slug}`} />,
+        403,
+      );
+    }
+    const [auditRes, otherRes, orgRes] = await Promise.all([
+      repos.audit.list(s.org.id, { limit: 100 }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    if (!isOk(auditRes)) {
+      const detail = auditRes.errors[0]?.message ?? 'Unknown error';
+      return renderHtml(c, <ErrorPage status={500} title="Error" detail={detail} />, 500);
+    }
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(c, <AuditPage subject={enrichedSubject} otherOrgs={otherOrgs} events={auditRes.value} />);
   });
 
   authed.get('/:orgSlug/projects/:projSlug', async (c) => {
