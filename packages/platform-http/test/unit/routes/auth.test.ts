@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
 import { FakeStore } from '@rntme-cli/platform-core/testing';
 import { authRoutes } from '../../../src/routes/auth.js';
@@ -60,7 +60,9 @@ describe('auth routes', () => {
         },
       }),
     );
-    const r = await app.request('/v1/auth/callback?code=xyz');
+    const r = await app.request('/v1/auth/callback?code=xyz', {
+      headers: { Accept: 'application/json' },
+    });
     expect(r.status).toBe(200);
     expect(r.headers.get('set-cookie')).toMatch(/rntme_session=sealed/);
     expect(store.accounts.size).toBe(1);
@@ -106,9 +108,73 @@ describe('auth routes', () => {
         },
       }),
     );
-    const res = await app.request('/v1/auth/callback?code=abc');
+    const res = await app.request('/v1/auth/callback?code=abc', {
+      headers: { Accept: 'application/json' },
+    });
     expect(res.status).toBe(200);
     expect(orgUpserts[0]!.slug).toBe('acme');
     expect(orgUpserts[0]!.displayName).toBe('Acme Corp');
+  });
+});
+
+describe('/v1/auth/callback content-negotiation', () => {
+  function makeApp() {
+    const workos = {
+      userManagement: {
+        getAuthorizationUrl: () => 'https://workos.test/start',
+        authenticateWithCode: vi.fn(async () => ({
+          user: { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'X' },
+          organizationId: 'org_x',
+          sealedSession: 'sealed',
+        })),
+        loadSealedSession: () => ({
+          authenticate: async () => ({ authenticated: true, user: { id: 'u1' }, organizationId: 'org_x' }),
+          getLogoutUrl: async () => 'https://workos.test/logout',
+        }),
+      },
+      organizations: { getOrganization: async () => ({ name: 'Org X', slug: 'org-x' }) },
+    } as never;
+    const repos = {
+      organizations: { upsertFromWorkos: async () => ({ ok: true, value: {} }) },
+      accounts: { upsertFromWorkos: async () => ({ ok: true, value: {} }) },
+      memberships: {} as never,
+    } as never;
+    const envLocal = {
+      WORKOS_CLIENT_ID: 'cid',
+      WORKOS_REDIRECT_URI: 'http://localhost/callback',
+      PLATFORM_BASE_URL: 'http://localhost',
+      PLATFORM_SESSION_COOKIE_DOMAIN: 'localhost',
+    } as never;
+    const app = new Hono();
+    app.route('/v1/auth', authRoutes({ workos, env: envLocal, cookiePassword: 'x'.repeat(32), repos }));
+    return app;
+  }
+
+  it('returns JSON when Accept: application/json', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/callback?code=abc', {
+      headers: { Accept: 'application/json' },
+    });
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toMatch(/application\/json/);
+    const body = await r.json();
+    expect(body.account.workosUserId).toBe('u1');
+  });
+
+  it('redirects to / when Accept is text/html', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/callback?code=abc', {
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('/');
+  });
+
+  it('redirects to / when no Accept header (browser default)', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/callback?code=abc', { redirect: 'manual' });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('/');
   });
 });
