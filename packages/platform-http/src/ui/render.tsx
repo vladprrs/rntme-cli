@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { JSX } from 'hono/jsx/jsx-runtime';
 
 /**
  * Render a JSX tree as a full HTML response with doctype and text/html charset.

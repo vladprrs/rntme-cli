@@ -17,6 +17,7 @@ import { versionRoutes } from './routes/versions.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { auditRoutes } from './routes/audit.js';
 import { opsRoutes } from './routes/ops.js';
+import { createUiApp } from './ui/app.js';
 import { buildOpenApi } from './openapi.js';
 import { ApiTokenProvider } from './auth/api-token-provider.js';
 import { WorkOSAuthKitProvider } from './auth/workos-provider.js';
@@ -157,6 +158,23 @@ export function createApp(deps: AppDeps): Hono {
   authed.route('/v1/orgs/:orgSlug/audit', auditRoutes());
 
   app.route('/', authed);
+
+  app.route(
+    '/',
+    createUiApp({
+      env: deps.env,
+      logger: deps.logger,
+      workos: deps.workos,
+      cookiePassword: deps.cookiePassword,
+      pool: deps.pool,
+      poolRepos: {
+        organizations: deps.poolRepos.organizations,
+        accounts: deps.poolRepos.accounts,
+        memberships: deps.poolRepos.memberships,
+        tokens: deps.poolRepos.tokens,
+      },
+    }),
+  );
 
   return app;
 }
