@@ -53,6 +53,24 @@ describe('TokenRow', () => {
   });
 });
 
+import { TokenCreated } from '../../../src/ui/fragments/token-created.js';
+
+describe('TokenCreated', () => {
+  it('renders <tr> and out-of-band plaintext banner', () => {
+    const html = String(
+      <TokenCreated
+        orgSlug="acme"
+        token={{ ...tokens[0], id: 't2', name: 'new' } as never}
+        plaintext="rntme_pat_abc123"
+      />,
+    );
+    expect(html).toContain('hx-swap-oob="innerHTML:#token-created"');
+    expect(html).toContain('rntme_pat_abc123');
+    expect(html).toContain('<tr id="token-t2"');
+    expect(html).toMatch(/won(?:'|&#39;)t be shown again/i);
+  });
+});
+
 describe('TokensPage', () => {
   it('renders create form when subject has token:manage', () => {
     const html = String(<TokensPage subject={subject} otherOrgs={otherOrgs} tokens={tokens} />);
