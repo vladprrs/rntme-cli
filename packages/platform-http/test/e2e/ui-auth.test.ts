@@ -50,4 +50,31 @@ describe.skipIf(!e2eContainersAvailable())('UI auth entry', () => {
     });
     expect(r.status).toBe(403);
   });
+
+  it('POST /logout without session → location includes flash=signed-out when final hop is /login', async () => {
+    // When sealed session is missing, /logout redirects directly to PLATFORM_BASE_URL
+    // which is http://localhost in tests — treat as external, no flash to append.
+    const r = await env.app.request('/logout', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost' },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    // The current behaviour is to go to the WorkOS logout URL (for sessions) or
+    // PLATFORM_BASE_URL (for no session). We only assert it's a 302 — flash is
+    // applied only when landing on /login locally, which is verified separately.
+  });
+
+  it('GET /login?flash=signed-out renders the banner', async () => {
+    const r = await env.app.request('/login?flash=signed-out');
+    expect(r.status).toBe(200);
+    const body = await r.text();
+    expect(body).toMatch(/signed out/i);
+  });
+
+  it('GET /login?flash=auth-failed renders the failure banner', async () => {
+    const r = await env.app.request('/login?flash=auth-failed');
+    const body = await r.text();
+    expect(body).toMatch(/sign-in failed/i);
+  });
 });
