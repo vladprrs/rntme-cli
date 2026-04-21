@@ -27,6 +27,7 @@ export function Header(props: {
                 <ul class="absolute left-0 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white p-1 shadow-md">
                   {otherOrgs.map((o) => (
                     <li>
+                      {/* TODO: once /v1/auth/login accepts org_id, pass o.id here — currently re-auths into the same org */}
                       <a
                         href="/v1/auth/login"
                         class="block rounded px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"

@@ -16,6 +16,7 @@ export function NoOrgPage(props: {
             <ul class="mt-2 space-y-1">
               {props.orgs.map((o) => (
                 <li>
+                  {/* TODO: once /v1/auth/login accepts org_id, pass o.id here — currently re-auths into the same org */}
                   <a class="text-sm text-blue-700 hover:underline" href="/v1/auth/login">
                     {o.displayName}
                   </a>
