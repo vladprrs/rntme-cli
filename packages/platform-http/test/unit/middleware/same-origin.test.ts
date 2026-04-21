@@ -28,6 +28,15 @@ describe('sameOriginOnly', () => {
     expect(r.status).toBe(200);
   });
 
+  it('rejects a Referer that is the base URL without a trailing path', async () => {
+    const app = make('https://platform.rntme.com');
+    const r = await app.request('/x', {
+      method: 'POST',
+      headers: { Referer: 'https://platform.rntme.com' },
+    });
+    expect(r.status).toBe(403);
+  });
+
   it('rejects a request with a foreign Origin', async () => {
     const app = make('https://platform.rntme.com');
     const r = await app.request('/x', {
