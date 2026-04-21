@@ -66,28 +66,30 @@ export function TokensPage(props: {
 
       <div id="token-created" aria-live="polite"></div>
 
-      {tokens.length === 0 ? (
-        <EmptyState title="No tokens yet." />
-      ) : (
-        <div class="overflow-hidden rounded-md border border-gray-200 bg-white">
-          <table class="w-full text-sm">
-            <thead class="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-              <tr>
-                <th scope="col" class="px-3 py-2 font-medium">Name</th>
-                <th scope="col" class="px-3 py-2 font-medium">Scopes</th>
-                <th scope="col" class="px-3 py-2 font-medium">Last used</th>
-                <th scope="col" class="px-3 py-2 font-medium">Created</th>
-                <th scope="col" class="px-3 py-2 font-medium"></th>
+      <div class="overflow-hidden rounded-md border border-gray-200 bg-white">
+        <table class="w-full text-sm">
+          <thead class="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th scope="col" class="px-3 py-2 font-medium">Name</th>
+              <th scope="col" class="px-3 py-2 font-medium">Scopes</th>
+              <th scope="col" class="px-3 py-2 font-medium">Last used</th>
+              <th scope="col" class="px-3 py-2 font-medium">Created</th>
+              <th scope="col" class="px-3 py-2 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody id="tokens-tbody" class="divide-y divide-gray-100">
+            {tokens.length === 0 ? (
+              <tr id="tokens-empty-row">
+                <td colspan={5} class="px-3 py-6 text-center text-sm text-gray-500">
+                  No tokens yet.
+                </td>
               </tr>
-            </thead>
-            <tbody id="tokens-tbody" class="divide-y divide-gray-100">
-              {tokens.map((t) => (
-                <TokenRow orgSlug={orgSlug} token={t} canManage={canManage} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ) : (
+              tokens.map((t) => <TokenRow orgSlug={orgSlug} token={t} canManage={canManage} />)
+            )}
+          </tbody>
+        </table>
+      </div>
     </Layout>
   );
 }

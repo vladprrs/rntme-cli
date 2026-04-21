@@ -62,6 +62,6 @@ describe.skipIf(!e2eContainersAvailable())('tenant isolation', () => {
     r = await env.app.request(`/v1/orgs/${B.slug}/projects`, { headers: { authorization: `Bearer ${B.plain}` } });
     expect(r.status).toBe(200);
     const list = await r.json();
-    expect(Array.isArray(list) ? list.length : 0).toBe(0);
+    expect(Array.isArray(list.projects) ? list.projects.length : 0).toBe(0);
   });
 });

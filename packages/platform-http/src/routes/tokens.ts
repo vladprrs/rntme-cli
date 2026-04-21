@@ -36,13 +36,19 @@ export function tokenRoutes(deps: {
     const { token, plaintext } = r.value;
     return c.json(
       {
-        id: token.id,
+        token: {
+          id: token.id,
+          orgId: token.orgId,
+          accountId: token.accountId,
+          name: token.name,
+          prefix: token.prefix,
+          scopes: token.scopes,
+          lastUsedAt: token.lastUsedAt,
+          expiresAt: token.expiresAt,
+          revokedAt: token.revokedAt,
+          createdAt: token.createdAt,
+        },
         plaintext,
-        prefix: token.prefix,
-        scopes: token.scopes,
-        createdAt: token.createdAt,
-        expiresAt: token.expiresAt,
-        name: token.name,
       },
       201,
     );

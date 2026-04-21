@@ -60,8 +60,8 @@ describe('version routes', () => {
       body: JSON.stringify({ bundle: minimalValidBundle }),
     });
     expect(r.status).toBe(201);
-    const body = (await r.json()) as { seq: number };
-    expect(body.seq).toBe(1);
+    const body = (await r.json()) as { version: { seq: number } };
+    expect(body.version.seq).toBe(1);
   });
   it('PUT /tags/:name creates tag', async () => {
     const { app } = await makeApp();

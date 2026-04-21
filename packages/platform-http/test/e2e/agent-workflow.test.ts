@@ -71,7 +71,7 @@ describe.skipIf(!e2eContainersAvailable())('agent workflow', () => {
     });
     expect(r.status).toBe(201);
     const v1 = await r.json();
-    expect(v1.seq).toBe(1);
+    expect(v1.version.seq).toBe(1);
 
     // move tag stable to v1 (idempotent)
     r = await env.app.request(`/v1/orgs/${orgSlug}/projects/proj/services/svc/tags/stable`, {
@@ -89,12 +89,12 @@ describe.skipIf(!e2eContainersAvailable())('agent workflow', () => {
     });
     expect([200, 201]).toContain(r.status);
     const v2 = await r.json();
-    expect(v2.seq).toBe(1);
+    expect(v2.version.seq).toBe(1);
 
     // list versions
     r = await env.app.request(`/v1/orgs/${orgSlug}/projects/proj/services/svc/versions`, { headers: H });
     expect(r.status).toBe(200);
     const list = await r.json();
-    expect(Array.isArray(list)).toBe(true);
+    expect(Array.isArray(list.versions)).toBe(true);
   });
 });

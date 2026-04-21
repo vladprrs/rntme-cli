@@ -17,6 +17,7 @@ export function TokenCreated(props: {
   return (
     <>
       <TokenRow orgSlug={props.orgSlug} token={props.token} canManage={true} />
+      <tr id="tokens-empty-row" hx-swap-oob="delete" />
       <div hx-swap-oob="innerHTML:#token-created">
         <div
           role="alert"

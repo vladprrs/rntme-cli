@@ -34,7 +34,7 @@ export function projectRoutes(deps: {
       { repos: { projects: repos.projects }, ids: deps.ids },
       { orgId: s.org.id, ...parsed.data },
     );
-    return respond(c, r, 201);
+    return respond(c, r, 201, 'project');
   });
 
   app.get('/', requireScope('project:read'), async (c) => {
@@ -42,7 +42,7 @@ export function projectRoutes(deps: {
     const includeArchived = c.req.query('includeArchived') === 'true';
     const s = c.get('subject');
     const r = await listProjects({ repos: { projects: repos.projects } }, { orgId: s.org.id, includeArchived });
-    return respond(c, r);
+    return respond(c, r, 200, 'projects');
   });
 
   app.get('/:projSlug', requireScope('project:read'), async (c) => {
@@ -69,7 +69,7 @@ export function projectRoutes(deps: {
       { repos: { projects: repos.projects } },
       { orgId: s.org.id, id: p.value.id, displayName: parsed.data.displayName },
     );
-    return respond(c, r);
+    return respond(c, r, 200, 'project');
   });
 
   app.post('/:projSlug/archive', requireScope('project:write'), async (c) => {
@@ -79,7 +79,7 @@ export function projectRoutes(deps: {
     if (!isOk(p) || !p.value)
       return c.json({ error: { code: 'PLATFORM_TENANCY_PROJECT_NOT_FOUND', message: c.req.param('projSlug') } }, 404);
     const r = await archiveProject({ repos: { projects: repos.projects } }, { orgId: s.org.id, id: p.value.id });
-    return respond(c, r);
+    return respond(c, r, 200, 'project');
   });
 
   return app;

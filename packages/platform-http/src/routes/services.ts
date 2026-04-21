@@ -50,7 +50,7 @@ export function serviceRoutes(deps: {
         displayName: parsed.data.displayName,
       },
     );
-    return respond(c, r, 201);
+    return respond(c, r, 201, 'service');
   });
 
   app.get('/', requireScope('project:read'), async (c) => {
@@ -63,7 +63,7 @@ export function serviceRoutes(deps: {
       { repos: { services: repos.services } },
       { orgId: r0.value.org.id, projectId: r0.value.project.id },
     );
-    return respond(c, r);
+    return respond(c, r, 200, 'services');
   });
 
   app.get('/:svcSlug', requireScope('project:read'), async (c) => {
@@ -102,7 +102,7 @@ export function serviceRoutes(deps: {
       { repos: { services: repos.services } },
       { orgId: r0.value.org.id, id: s.value.id, displayName: parsed.data.displayName },
     );
-    return respond(c, r);
+    return respond(c, r, 200, 'service');
   });
 
   app.post('/:svcSlug/archive', requireScope('project:write'), async (c) => {
@@ -118,7 +118,7 @@ export function serviceRoutes(deps: {
     if (!isOk(s) || !s.value)
       return c.json({ error: { code: 'PLATFORM_TENANCY_SERVICE_NOT_FOUND', message: svcSlug } }, 404);
     const r = await archiveService({ repos: { services: repos.services } }, { orgId: r0.value.org.id, id: s.value.id });
-    return respond(c, r);
+    return respond(c, r, 200, 'service');
   });
 
   return app;

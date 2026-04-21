@@ -64,7 +64,7 @@ export function versionRoutes(deps: Deps): Hono {
         ...(parsed.data.moveTags !== undefined ? { moveTags: parsed.data.moveTags } : {}),
       },
     );
-    return respond(c, r, 201);
+    return respond(c, r, 201, 'version');
   });
 
   app.get('/versions', requireScope('project:read'), async (c) => {
@@ -79,7 +79,7 @@ export function versionRoutes(deps: Deps): Hono {
       { repos: { artifacts: repos.artifacts } },
       { serviceId: r0.value.service.id, limit: q.data.limit, cursor: q.data.cursor },
     );
-    return respond(c, r);
+    return respond(c, r, 200, 'versions');
   });
 
   app.get('/versions/:seq', requireScope('project:read'), async (c) => {
@@ -146,7 +146,7 @@ export function versionRoutes(deps: Deps): Hono {
     const r0 = await resolveService(repos, p.orgSlug, p.projSlug, p.svcSlug);
     if (!r0.ok) return respond(c, r0 as never);
     const r = await listTags({ repos: { tags: repos.tags } }, { serviceId: r0.value.service.id });
-    return respond(c, r);
+    return respond(c, r, 200, 'tags');
   });
 
   app.put('/tags/:tagName', requireScope('project:write'), async (c) => {
@@ -169,7 +169,7 @@ export function versionRoutes(deps: Deps): Hono {
         updatedByAccountId: s.account.id,
       },
     );
-    return respond(c, r);
+    return respond(c, r, 200, 'tag');
   });
 
   app.delete('/tags/:tagName', requireScope('project:write'), async (c) => {
