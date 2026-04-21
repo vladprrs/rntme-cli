@@ -167,6 +167,7 @@ export function createApp(deps: AppDeps): Hono {
       workos: deps.workos,
       cookiePassword: deps.cookiePassword,
       pool: deps.pool,
+      ids: deps.ids,
       poolRepos: {
         organizations: deps.poolRepos.organizations,
         accounts: deps.poolRepos.accounts,

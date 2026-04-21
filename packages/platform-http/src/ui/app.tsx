@@ -15,8 +15,11 @@ import type {
   AccountRepo,
   MembershipMirrorRepo,
   TokenRepo,
+  Ids,
 } from '@rntme-cli/platform-core';
-import { isOk, listProjects, listServices, listVersions, listTags, listTokens } from '@rntme-cli/platform-core';
+import { isOk, listProjects, listServices, listVersions, listTags, listTokens, createToken } from '@rntme-cli/platform-core';
+import { TokenCreated } from './fragments/token-created.js';
+import { hasScope } from './scopes.js';
 import { resolveDeps } from '../resolve-deps.js';
 import { renderHtml } from './render.js';
 import { LoginPage } from './pages/login.js';
@@ -34,6 +37,7 @@ export type UiDeps = {
   workos: WorkOSClient;
   cookiePassword: string;
   pool: Pool;
+  ids: Ids;
   poolRepos: {
     organizations: OrganizationRepo;
     accounts: AccountRepo;
@@ -195,6 +199,82 @@ export function createUiApp(deps: UiDeps): Hono {
       <TokensPage subject={enrichedSubject} otherOrgs={otherOrgs} tokens={tokens} flash={flash} />,
     );
   });
+
+  authed.post(
+    '/:orgSlug/tokens',
+    sameOriginOnly(deps.env.PLATFORM_BASE_URL),
+    async (c) => {
+      const s = c.get('subject');
+      if (s.org.slug !== c.req.param('orgSlug')) {
+        return renderHtml(
+          c,
+          <ErrorPage status={403} title="Not authorized" backHref={`/${s.org.slug}`} />,
+          403,
+        );
+      }
+      if (!hasScope(s, 'token:manage')) {
+        return renderHtml(
+          c,
+          <ErrorPage status={403} title="Missing scope token:manage" backHref={`/${s.org.slug}/tokens`} />,
+          403,
+        );
+      }
+      const form = await c.req.parseBody();
+      const name = typeof form.name === 'string' ? form.name.trim() : '';
+      const scopesStr = typeof form.scopes === 'string' ? form.scopes : '';
+      const scopes = scopesStr
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (!name || scopes.length === 0) {
+        return renderHtml(
+          c,
+          <ErrorPage status={400} title="Invalid token form" detail="name and scopes are required." backHref={`/${s.org.slug}/tokens`} />,
+          400,
+        );
+      }
+      const repos = resolveDeps(c.get('tx'));
+      const r = await createToken(
+        { repos: { tokens: repos.tokens }, ids: deps.ids },
+        {
+          orgId: s.org.id,
+          accountId: s.account.id,
+          name,
+          scopes: scopes as never,
+          expiresAt: null,
+          creatorScopes: s.scopes as never,
+        },
+      );
+      if (!r.ok) {
+        // PLATFORM_AUTH_FORBIDDEN (scope-exceeds-creator) is a 403, not 400.
+        const isAuthForbidden = r.errors.some((e) => e.code === 'PLATFORM_AUTH_FORBIDDEN');
+        const status = isAuthForbidden ? 403 : 400;
+        const detail = r.errors[0]?.message ?? 'Unknown error';
+        return renderHtml(
+          c,
+          <ErrorPage status={status} title="Cannot create token" detail={detail} backHref={`/${s.org.slug}/tokens`} />,
+          status,
+        );
+      }
+      return renderHtml(
+        c,
+        <TokenCreated
+          orgSlug={s.org.slug}
+          token={{
+            id: r.value.token.id,
+            name: r.value.token.name,
+            prefix: r.value.token.prefix,
+            scopes: r.value.token.scopes,
+            lastUsedAt: null,
+            expiresAt: r.value.token.expiresAt,
+            revokedAt: null,
+            createdAt: r.value.token.createdAt,
+          }}
+          plaintext={r.value.plaintext}
+        />,
+      );
+    },
+  );
 
   authed.get('/:orgSlug/projects/:projSlug', async (c) => {
     const repos = resolveDeps(c.get('tx'));

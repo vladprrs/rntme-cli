@@ -74,4 +74,53 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
     // list still visible
     expect(body).toContain('admin');
   });
+
+  it('POST /{orgSlug}/tokens with same-origin + token:manage → 200 fragment', async () => {
+    const body = new URLSearchParams({
+      name: 'ci-test',
+      scopes: 'project:read,project:write',
+    });
+    const r = await env.app.request(`/${orgSlug}/tokens`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        'content-type': 'application/x-www-form-urlencoded',
+        Origin: 'http://localhost',
+      },
+      body: body.toString(),
+    });
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    expect(html).toContain('ci-test');
+    expect(html).toContain('rntme_pat_');
+    expect(html).toContain('hx-swap-oob');
+  });
+
+  it('POST /{orgSlug}/tokens from foreign Origin → 403', async () => {
+    const body = new URLSearchParams({ name: 'evil', scopes: 'project:read' });
+    const r = await env.app.request(`/${orgSlug}/tokens`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        'content-type': 'application/x-www-form-urlencoded',
+        Origin: 'https://evil.example',
+      },
+      body: body.toString(),
+    });
+    expect(r.status).toBe(403);
+  });
+
+  it('POST /{orgSlug}/tokens without token:manage → 403', async () => {
+    const body = new URLSearchParams({ name: 'ro-attempt', scopes: 'project:read' });
+    const r = await env.app.request(`/${orgSlug}/tokens`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${readOnlyBearer}`,
+        'content-type': 'application/x-www-form-urlencoded',
+        Origin: 'http://localhost',
+      },
+      body: body.toString(),
+    });
+    expect(r.status).toBe(403);
+  });
 });
