@@ -123,4 +123,45 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
     });
     expect(r.status).toBe(403);
   });
+
+  it('DELETE /{orgSlug}/tokens/{id} with same-origin + token:manage → 200 fragment with revoked badge', async () => {
+    // Create a token to revoke.
+    const created = await env.app.request(`/${orgSlug}/tokens`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        'content-type': 'application/x-www-form-urlencoded',
+        Origin: 'http://localhost',
+      },
+      body: new URLSearchParams({ name: 'to-revoke', scopes: 'project:read' }).toString(),
+    });
+    expect(created.status).toBe(200);
+    const html = await created.text();
+    const idMatch = html.match(/id="token-([^"]+)"/);
+    expect(idMatch).toBeTruthy();
+    const id = idMatch![1];
+
+    const r = await env.app.request(`/${orgSlug}/tokens/${id}`, {
+      method: 'DELETE',
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        Origin: 'http://localhost',
+      },
+    });
+    expect(r.status).toBe(200);
+    const body = await r.text();
+    expect(body).toContain('revoked');
+    expect(body).toContain(`id="token-${id}"`);
+  });
+
+  it('DELETE /{orgSlug}/tokens/{id} from foreign Origin → 403', async () => {
+    const r = await env.app.request(`/${orgSlug}/tokens/does-not-matter`, {
+      method: 'DELETE',
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        Origin: 'https://evil.example',
+      },
+    });
+    expect(r.status).toBe(403);
+  });
 });

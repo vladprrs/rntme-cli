@@ -17,8 +17,9 @@ import type {
   TokenRepo,
   Ids,
 } from '@rntme-cli/platform-core';
-import { isOk, listProjects, listServices, listVersions, listTags, listTokens, createToken } from '@rntme-cli/platform-core';
+import { isOk, listProjects, listServices, listVersions, listTags, listTokens, createToken, revokeToken } from '@rntme-cli/platform-core';
 import { TokenCreated } from './fragments/token-created.js';
+import { TokenRow } from './fragments/token-row.js';
 import { hasScope } from './scopes.js';
 import { resolveDeps } from '../resolve-deps.js';
 import { renderHtml } from './render.js';
@@ -271,6 +272,65 @@ export function createUiApp(deps: UiDeps): Hono {
             createdAt: r.value.token.createdAt,
           }}
           plaintext={r.value.plaintext}
+        />,
+      );
+    },
+  );
+
+  authed.delete(
+    '/:orgSlug/tokens/:id',
+    sameOriginOnly(deps.env.PLATFORM_BASE_URL),
+    async (c) => {
+      const s = c.get('subject');
+      if (s.org.slug !== c.req.param('orgSlug')) {
+        return renderHtml(
+          c,
+          <ErrorPage status={403} title="Not authorized" backHref={`/${s.org.slug}`} />,
+          403,
+        );
+      }
+      if (!hasScope(s, 'token:manage')) {
+        return renderHtml(
+          c,
+          <ErrorPage status={403} title="Missing scope token:manage" backHref={`/${s.org.slug}/tokens`} />,
+          403,
+        );
+      }
+      const id = c.req.param('id')!;
+      const repos = resolveDeps(c.get('tx'));
+      const r = await revokeToken({ repos: { tokens: repos.tokens } }, { orgId: s.org.id, id });
+      if (!r.ok) {
+        return renderHtml(
+          c,
+          <ErrorPage status={400} title="Cannot revoke token" detail={r.errors[0]?.message ?? 'Unknown error'} backHref={`/${s.org.slug}/tokens`} />,
+          400,
+        );
+      }
+      // revokeToken returns Result<void>; re-fetch to get the updated token for rendering.
+      const listRes = await repos.tokens.list(s.org.id);
+      const t = isOk(listRes) ? listRes.value.find((x) => x.id === id) : undefined;
+      if (!t) {
+        return renderHtml(
+          c,
+          <ErrorPage status={500} title="Token not found after revoke" backHref={`/${s.org.slug}/tokens`} />,
+          500,
+        );
+      }
+      return renderHtml(
+        c,
+        <TokenRow
+          orgSlug={s.org.slug}
+          token={{
+            id: t.id,
+            name: t.name,
+            prefix: t.prefix,
+            scopes: t.scopes,
+            lastUsedAt: t.lastUsedAt,
+            expiresAt: t.expiresAt,
+            revokedAt: t.revokedAt,
+            createdAt: t.createdAt,
+          }}
+          canManage={true}
         />,
       );
     },
