@@ -178,6 +178,111 @@ describe('/v1/auth/callback content-negotiation', () => {
     expect(r.headers.get('location')).toBe('/');
   });
 
+  it('refreshes session and upserts membership when initial authenticateWithCode has no organizationId', async () => {
+    const orgUpserts: Array<{ workosOrganizationId: string; slug: string; displayName: string }> = [];
+    const memberUpserts: Array<{ orgId: string; accountId: string; role: string }> = [];
+    let refreshedWithOrgId: string | null = null;
+    const workos = {
+      userManagement: {
+        getAuthorizationUrl: () => 'u',
+        authenticateWithCode: async () => ({
+          user: { id: 'user_nw', email: 'vlad@example.com', firstName: 'Vlad', lastName: 'Pr' },
+          organizationId: undefined,
+          sealedSession: 'initial_sealed',
+        }),
+        listOrganizationMemberships: async (opts: { userId: string; organizationId?: string; statuses?: string[] }) => {
+          if (!opts.organizationId) {
+            return { data: [{ organizationId: 'org_late', role: { slug: 'member' }, status: 'active' }] } as never;
+          }
+          return { data: [{ organizationId: opts.organizationId, role: { slug: 'admin' }, status: 'active' }] } as never;
+        },
+        loadSealedSession: (_opts: { sessionData: string; cookiePassword: string }) => ({
+          refresh: async (o: { organizationId: string }) => {
+            refreshedWithOrgId = o.organizationId;
+            return { authenticated: true, sealedSession: 'refreshed_sealed' };
+          },
+        }),
+      },
+      organizations: {
+        getOrganization: async (id: string) => ({ id, name: 'Late Org', slug: 'late-org' }),
+      },
+    } as never;
+    const app = new Hono().route(
+      '/v1/auth',
+      authRoutes({
+        workos,
+        env,
+        cookiePassword: 'x'.repeat(32),
+        repos: {
+          organizations: {
+            upsertFromWorkos: async (a: { workosOrganizationId: string; slug: string; displayName: string }) => {
+              orgUpserts.push(a);
+              return { ok: true, value: { id: 'org-uuid', workosOrganizationId: a.workosOrganizationId } as never };
+            },
+            findByWorkosId: async (id: string) =>
+              ({ ok: true, value: { id: 'org-uuid', workosOrganizationId: id } as never }),
+          } as never,
+          accounts: {
+            upsertFromWorkos: async () => ({ ok: true, value: { id: 'acc-uuid' } as never }),
+            findByWorkosUserId: async () => ({ ok: true, value: { id: 'acc-uuid' } as never }),
+          } as never,
+          memberships: {
+            upsert: async (r: { orgId: string; accountId: string; role: string }) => {
+              memberUpserts.push(r);
+              return { ok: true, value: r as never };
+            },
+          } as never,
+        },
+      }),
+    );
+    const r = await app.request('/v1/auth/callback?code=abc', { headers: { Accept: 'application/json' } });
+    expect(r.status).toBe(200);
+    expect(refreshedWithOrgId).toBe('org_late');
+    expect(r.headers.get('set-cookie')).toMatch(/rntme_session=refreshed_sealed/);
+    expect(orgUpserts).toHaveLength(1);
+    expect(orgUpserts[0]!.workosOrganizationId).toBe('org_late');
+    expect(memberUpserts).toHaveLength(1);
+    expect(memberUpserts[0]).toEqual({ orgId: 'org-uuid', accountId: 'acc-uuid', role: 'admin' });
+  });
+
+  it('redirects to /login?flash=no-org when user has no active membership anywhere', async () => {
+    const workos = {
+      userManagement: {
+        getAuthorizationUrl: () => 'u',
+        authenticateWithCode: async () => ({
+          user: { id: 'user_orphan', email: 'o@e.c', firstName: 'O', lastName: 'R' },
+          organizationId: undefined,
+          sealedSession: 'sealed',
+        }),
+        listOrganizationMemberships: async () => ({ data: [] }) as never,
+        loadSealedSession: () => ({ refresh: async () => ({ authenticated: false }) }),
+      },
+      organizations: { getOrganization: async () => ({ name: 'x', slug: 'x' }) },
+    } as never;
+    const app = new Hono().route(
+      '/v1/auth',
+      authRoutes({
+        workos,
+        env,
+        cookiePassword: 'x'.repeat(32),
+        repos: {
+          organizations: { upsertFromWorkos: async () => ({ ok: true, value: {} as never }) } as never,
+          accounts: {
+            upsertFromWorkos: async () => ({ ok: true, value: { id: 'acc' } as never }),
+            findByWorkosUserId: async () => ({ ok: true, value: null }),
+          } as never,
+          memberships: { upsert: async () => ({ ok: true, value: {} as never }) } as never,
+        },
+      }),
+    );
+    const r = await app.request('/v1/auth/callback?code=abc', {
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('/login?flash=no-org');
+  });
+
   it('redirects to /login?flash=auth-failed when authenticateWithCode rejects', async () => {
     function makeFailingApp() {
       const workos = {

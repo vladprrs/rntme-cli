@@ -3,6 +3,7 @@ import { setCookie, deleteCookie, getCookie } from 'hono/cookie';
 import type { WorkOSClient } from '../auth/workos-client.js';
 import type { Env } from '../config/env.js';
 import type { OrganizationRepo, AccountRepo, MembershipMirrorRepo } from '@rntme-cli/platform-core';
+import { isOk } from '@rntme-cli/platform-core';
 
 export function authRoutes(deps: {
   workos: WorkOSClient;
@@ -29,16 +30,51 @@ export function authRoutes(deps: {
     const code = c.req.query('code');
     if (!code) return c.json({ error: { code: 'PLATFORM_PARSE_PATH_INVALID', message: 'missing code' } }, 400);
     try {
-      const { user, organizationId, sealedSession } = await deps.workos.userManagement.authenticateWithCode({
+      const authResult = await deps.workos.userManagement.authenticateWithCode({
         code,
         clientId: deps.env.WORKOS_CLIENT_ID,
         session: { sealSession: true, cookiePassword: deps.cookiePassword },
       });
+      const { user } = authResult;
+      let organizationId = authResult.organizationId;
+      let sealedSession = authResult.sealedSession;
+
       await deps.repos.accounts.upsertFromWorkos({
         workosUserId: user.id,
         email: user.email ?? null,
         displayName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || user.id,
       });
+
+      // WorkOS may seal the session before a freshly-created membership is
+      // attached to it (typical on the first sign-in). Fall back to the
+      // authoritative memberships API to pick a home org and re-seal the
+      // session so the user lands in an authenticated state.
+      if (!organizationId) {
+        try {
+          const list = await deps.workos.userManagement.listOrganizationMemberships({
+            userId: user.id,
+            statuses: ['active'],
+          });
+          const first = list.data[0];
+          if (first && sealedSession) {
+            const cs = deps.workos.userManagement.loadSealedSession({
+              sessionData: sealedSession,
+              cookiePassword: deps.cookiePassword,
+            });
+            const refreshed = await cs.refresh({
+              cookiePassword: deps.cookiePassword,
+              organizationId: first.organizationId,
+            });
+            if (refreshed.authenticated && refreshed.sealedSession) {
+              organizationId = first.organizationId;
+              sealedSession = refreshed.sealedSession;
+            }
+          }
+        } catch {
+          /* best-effort — missing org falls through to the /login redirect below */
+        }
+      }
+
       if (organizationId) {
         let name = organizationId;
         let slug = organizationId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40);
@@ -64,7 +100,34 @@ export function authRoutes(deps: {
           slug,
           displayName: name,
         });
+
+        // Do not wait for the organization_membership.created webhook — sync
+        // the membership row from the SDK right now so the sealed session
+        // can resolve to an authorized subject on the very next request.
+        try {
+          const memList = await deps.workos.userManagement.listOrganizationMemberships({
+            userId: user.id,
+            organizationId,
+          });
+          const m = memList.data.find((x) => x.status === 'active') ?? memList.data[0];
+          if (m) {
+            const [acc, org] = await Promise.all([
+              deps.repos.accounts.findByWorkosUserId(user.id),
+              deps.repos.organizations.findByWorkosId(organizationId),
+            ]);
+            if (isOk(acc) && isOk(org) && acc.value && org.value) {
+              await deps.repos.memberships.upsert({
+                orgId: org.value.id,
+                accountId: acc.value.id,
+                role: m.role.slug,
+              });
+            }
+          }
+        } catch {
+          /* best-effort — webhook will backfill */
+        }
       }
+
       if (sealedSession) {
         setCookie(c, 'rntme_session', sealedSession, {
           httpOnly: true,
@@ -78,6 +141,9 @@ export function authRoutes(deps: {
       const wantsJson = (c.req.header('accept') ?? '').toLowerCase().includes('application/json');
       if (wantsJson) {
         return c.json({ account: { workosUserId: user.id }, org: { workosOrganizationId: organizationId ?? null } });
+      }
+      if (!organizationId) {
+        return c.redirect('/login?flash=no-org', 302);
       }
       return c.redirect('/', 302);
     } catch (cause) {

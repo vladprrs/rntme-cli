@@ -61,6 +61,8 @@ function flashText(code: string): string | null {
       return 'You have been signed out.';
     case 'token-revoked':
       return 'Token revoked.';
+    case 'no-org':
+      return 'Your account is not a member of any organization yet. Ask an admin to invite you, then sign in again.';
     default:
       return null;
   }
