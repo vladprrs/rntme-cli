@@ -22,20 +22,38 @@ const baseline = {
   PLATFORM_COOKIE_PASSWORD: 'y'.repeat(32),
 };
 
+function buildDeps(): AppDeps {
+  return {
+    env: parseEnv(baseline),
+    logger: pino({ level: 'silent' }),
+    workos: {} as AppDeps['workos'],
+    cookiePassword: 'x'.repeat(32),
+    pool: { query: vi.fn().mockResolvedValue({}) } as unknown as Pool,
+    blob: { presignedGet: async () => ({ ok: true as const, value: 'http://x' }) } as unknown as BlobStore,
+    ids: new RandomIds(),
+    poolRepos: {} as AppDeps['poolRepos'],
+  };
+}
+
 describe('createApp', () => {
   it('GET /health returns 200 ok', async () => {
-    const app = createApp({
-      env: parseEnv(baseline),
-      logger: pino({ level: 'silent' }),
-      workos: {} as AppDeps['workos'],
-      cookiePassword: 'x'.repeat(32),
-      pool: { query: vi.fn().mockResolvedValue({}) } as unknown as Pool,
-      blob: { presignedGet: async () => ({ ok: true as const, value: 'http://x' }) } as unknown as BlobStore,
-      ids: new RandomIds(),
-      poolRepos: {} as AppDeps['poolRepos'],
-    });
+    const app = createApp(buildDeps());
     const r = await app.request('/health');
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ status: 'ok' });
+  });
+
+  it('GET /login renders the UI LoginPage instead of 401 JSON', async () => {
+    const app = createApp(buildDeps());
+    const r = await app.request('/login');
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type') ?? '').toMatch(/text\/html/);
+  });
+
+  it('GET /v1/auth/me still requires auth (401 JSON)', async () => {
+    const app = createApp(buildDeps());
+    const r = await app.request('/v1/auth/me');
+    expect(r.status).toBe(401);
+    expect(r.headers.get('content-type') ?? '').toMatch(/application\/json/);
   });
 });

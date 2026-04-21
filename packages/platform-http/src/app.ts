@@ -137,7 +137,7 @@ export function createApp(deps: AppDeps): Hono {
     .use('*', rateLimit(rateLimiter, (c) => c.get('subject').tokenId ?? c.get('subject').account.id))
     .use('*', openOrgScopedTx(deps.pool));
 
-  authed.get('/v1/auth/me', (c) => {
+  authed.get('/auth/me', (c) => {
     const s = c.get('subject');
     return c.json({
       account: s.account,
@@ -147,17 +147,20 @@ export function createApp(deps: AppDeps): Hono {
       tokenId: s.tokenId ?? null,
     });
   });
-  authed.route('/v1/orgs', orgRoutes({ ids: deps.ids }));
-  authed.route('/v1/orgs/:orgSlug/projects', projectRoutes({ ids: deps.ids }));
-  authed.route('/v1/orgs/:orgSlug/projects/:projSlug/services', serviceRoutes({ ids: deps.ids }));
+  authed.route('/orgs', orgRoutes({ ids: deps.ids }));
+  authed.route('/orgs/:orgSlug/projects', projectRoutes({ ids: deps.ids }));
+  authed.route('/orgs/:orgSlug/projects/:projSlug/services', serviceRoutes({ ids: deps.ids }));
   authed.route(
-    '/v1/orgs/:orgSlug/projects/:projSlug/services/:svcSlug',
+    '/orgs/:orgSlug/projects/:projSlug/services/:svcSlug',
     versionRoutes({ blob: deps.blob, ids: deps.ids }),
   );
-  authed.route('/v1/orgs/:orgSlug/tokens', tokenRoutes({ ids: deps.ids }));
-  authed.route('/v1/orgs/:orgSlug/audit', auditRoutes());
+  authed.route('/orgs/:orgSlug/tokens', tokenRoutes({ ids: deps.ids }));
+  authed.route('/orgs/:orgSlug/audit', auditRoutes());
 
-  app.route('/', authed);
+  // Scope `requireAuth` to /v1/*: mounting authed at `/` would also match the
+  // UI's public `/login` and `/logout` routes registered below, returning 401
+  // JSON before the UI sub-router gets a chance to render LoginPage.
+  app.route('/v1', authed);
 
   app.route(
     '/',
