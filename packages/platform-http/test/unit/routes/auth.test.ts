@@ -278,6 +278,17 @@ describe('/v1/auth/logout content-negotiation', () => {
     expect(r.headers.get('location')).toBe('https://workos.test/logout');
   });
 
+  it('redirects to logout URL when no Accept header (browser default)', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/logout', {
+      method: 'POST',
+      headers: { Cookie: 'rntme_session=sealed' },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('https://workos.test/logout');
+  });
+
   it('redirects to PLATFORM_BASE_URL when no session cookie and Accept is text/html', async () => {
     const app = makeApp();
     const r = await app.request('/v1/auth/logout', {
