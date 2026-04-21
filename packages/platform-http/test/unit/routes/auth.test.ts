@@ -177,4 +177,42 @@ describe('/v1/auth/callback content-negotiation', () => {
     expect(r.status).toBe(302);
     expect(r.headers.get('location')).toBe('/');
   });
+
+  it('redirects to /login?flash=auth-failed when authenticateWithCode rejects', async () => {
+    function makeFailingApp() {
+      const workos = {
+        userManagement: {
+          getAuthorizationUrl: () => 'https://workos.test/start',
+          authenticateWithCode: vi.fn(async () => { throw new Error('bad code'); }),
+          loadSealedSession: () => ({
+            authenticate: async () => ({ authenticated: false }),
+            getLogoutUrl: async () => 'https://workos.test/logout',
+          }),
+        },
+        organizations: { getOrganization: async () => ({ name: 'Org X', slug: 'org-x' }) },
+      } as never;
+      const repos = {
+        organizations: { upsertFromWorkos: async () => ({ ok: true, value: {} }) },
+        accounts: { upsertFromWorkos: async () => ({ ok: true, value: {} }) },
+        memberships: {} as never,
+      } as never;
+      const envLocal = {
+        WORKOS_CLIENT_ID: 'cid',
+        WORKOS_REDIRECT_URI: 'http://localhost/callback',
+        PLATFORM_BASE_URL: 'http://localhost',
+        PLATFORM_SESSION_COOKIE_DOMAIN: 'localhost',
+      } as never;
+      const app = new Hono();
+      app.route('/v1/auth', authRoutes({ workos, env: envLocal, cookiePassword: 'x'.repeat(32), repos }));
+      return app;
+    }
+
+    const app = makeFailingApp();
+    const r = await app.request('/v1/auth/callback?code=abc', {
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('/login?flash=auth-failed');
+  });
 });
