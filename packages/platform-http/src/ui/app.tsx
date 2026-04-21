@@ -93,7 +93,14 @@ export function createUiApp(deps: UiDeps): Hono {
   });
 
   const authed = new Hono()
-    .use('*', requireAuth([apiTokenProvider, workosProvider], { onUnauth: 'redirect', redirectTo: '/login' }))
+    .use(
+      '*',
+      requireAuth([apiTokenProvider, workosProvider], {
+        onUnauth: 'redirect',
+        redirectTo: '/login',
+        sessionCookieDomain: deps.env.PLATFORM_SESSION_COOKIE_DOMAIN,
+      }),
+    )
     .use('*', openOrgScopedTx(deps.pool));
 
   authed.get('/', async (c) => {

@@ -38,18 +38,33 @@ export class WorkOSAuthKitProvider implements IdentityProvider {
         cookiePassword: this.deps.cookiePassword,
       });
       const auth = await session.authenticate();
-      if (!auth.authenticated) {
-        return err([
-          {
-            code: 'PLATFORM_AUTH_INVALID' as const,
-            message: String(auth.reason ?? 'session invalid'),
-          },
-        ]);
+      let user: { id: string; email: string; firstName: string | null; lastName: string | null } | undefined;
+      let orgId: string | undefined;
+      let refreshedSealedSession: string | undefined;
+      if (auth.authenticated) {
+        user = auth.user as typeof user;
+        orgId = auth.organizationId;
+      } else {
+        try {
+          const refreshed = await session.refresh({ cookiePassword: this.deps.cookiePassword });
+          if (refreshed.authenticated && refreshed.sealedSession) {
+            refreshedSealedSession = refreshed.sealedSession;
+            user = refreshed.user as typeof user;
+            orgId = refreshed.organizationId;
+          }
+        } catch {
+          /* refresh failed — fall through to invalid */
+        }
+        if (!user) {
+          return err([
+            {
+              code: 'PLATFORM_AUTH_INVALID' as const,
+              message: String(auth.reason ?? 'session invalid'),
+            },
+          ]);
+        }
       }
-
-      const user = auth.user;
-      const orgId = auth.organizationId;
-      if (!orgId) {
+      if (!orgId || !user) {
         return err([{ code: 'PLATFORM_AUTH_INVALID' as const, message: 'no organization in session' }]);
       }
 
@@ -85,6 +100,7 @@ export class WorkOSAuthKitProvider implements IdentityProvider {
         role,
         scopes: scopesForRole(role),
         tokenId: undefined,
+        refreshedSealedSession,
       };
       return ok(subject);
     } catch (cause) {

@@ -133,7 +133,7 @@ export function createApp(deps: AppDeps): Hono {
 
   const rateLimiter = new InMemoryRateLimiter({ windowMs: 60_000, max: 1000 });
   const authed = new Hono()
-    .use('*', requireAuth([apiTokenProvider, workosProvider]))
+    .use('*', requireAuth([apiTokenProvider, workosProvider], { sessionCookieDomain: deps.env.PLATFORM_SESSION_COOKIE_DOMAIN }))
     .use('*', rateLimit(rateLimiter, (c) => c.get('subject').tokenId ?? c.get('subject').account.id))
     .use('*', openOrgScopedTx(deps.pool));
 

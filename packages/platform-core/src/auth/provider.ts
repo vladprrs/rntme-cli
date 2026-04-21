@@ -17,6 +17,13 @@ export type AuthSubject = {
   readonly role: Role;
   readonly scopes: readonly Scope[];
   readonly tokenId: string | undefined;
+  /**
+   * Transport-level hint: if the provider rotated the session during
+   * authentication (e.g. WorkOS refresh), this is the new sealed payload.
+   * The carrier middleware writes it back to the session cookie so the
+   * client stays signed in across access-token expirations.
+   */
+  readonly refreshedSealedSession?: string | undefined;
 };
 
 export interface IdentityProvider {
