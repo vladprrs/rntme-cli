@@ -75,9 +75,17 @@ export function authRoutes(deps: {
           maxAge: 60 * 60 * 24 * 30,
         });
       }
-      return c.json({ account: { workosUserId: user.id }, org: { workosOrganizationId: organizationId ?? null } });
+      const wantsJson = (c.req.header('accept') ?? '').toLowerCase().includes('application/json');
+      if (wantsJson) {
+        return c.json({ account: { workosUserId: user.id }, org: { workosOrganizationId: organizationId ?? null } });
+      }
+      return c.redirect('/', 302);
     } catch (cause) {
-      return c.json({ error: { code: 'PLATFORM_AUTH_INVALID', message: String(cause) } }, 401);
+      const wantsJson = (c.req.header('accept') ?? '').toLowerCase().includes('application/json');
+      if (wantsJson) {
+        return c.json({ error: { code: 'PLATFORM_AUTH_INVALID', message: String(cause) } }, 401);
+      }
+      return c.redirect('/login?flash=auth-failed', 302);
     }
   });
 
@@ -96,7 +104,9 @@ export function authRoutes(deps: {
       }
     }
     deleteCookie(c, 'rntme_session', { domain: deps.env.PLATFORM_SESSION_COOKIE_DOMAIN, path: '/' });
-    return c.json({ logoutUrl: url });
+    const wantsJson = (c.req.header('accept') ?? '').toLowerCase().includes('application/json');
+    if (wantsJson) return c.json({ logoutUrl: url });
+    return c.redirect(url, 302);
   });
 
   return app;

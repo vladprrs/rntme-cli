@@ -22,6 +22,7 @@ export default [
         Blob: 'readonly',
         BlobPart: 'readonly',
         ReadableStream: 'readonly',
+        URLSearchParams: 'readonly',
       },
     },
     plugins: {
