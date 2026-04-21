@@ -23,17 +23,10 @@ export function TokenCreated(props: {
           class="mb-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
         >
           <p class="font-medium">Save this token now — it won't be shown again.</p>
-          <div class="mt-2 flex items-center gap-2">
-            <code class="flex-1 overflow-x-auto rounded bg-white px-2 py-1 font-mono text-xs">
+          <div class="mt-2">
+            <code class="block overflow-x-auto rounded bg-white px-2 py-1 font-mono text-xs">
               {props.plaintext}
             </code>
-            <button
-              type="button"
-              class="rounded border border-amber-300 bg-white px-2 py-1 text-xs hover:bg-amber-100"
-              onclick={`navigator.clipboard?.writeText(this.previousElementSibling.textContent)`}
-            >
-              Copy
-            </button>
           </div>
         </div>
       </div>

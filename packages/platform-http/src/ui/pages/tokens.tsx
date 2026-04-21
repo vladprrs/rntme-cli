@@ -30,7 +30,6 @@ export function TokensPage(props: {
           hx-post={`/${orgSlug}/tokens`}
           hx-target="#tokens-tbody"
           hx-swap="afterbegin"
-          hx-on--after-request="this.reset()"
         >
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label class="flex flex-col text-sm">
