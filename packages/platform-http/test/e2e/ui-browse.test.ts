@@ -49,6 +49,12 @@ describe.skipIf(!e2eContainersAvailable())('UI browse pages', () => {
       headers: H,
       body: JSON.stringify({ slug: 'svc-x', displayName: 'Service X' }),
     });
+    const minimal = (await import('../../../platform-core/test/fixtures/bundles/minimal-valid.js')).minimalValidBundle;
+    await env.app.request(`/v1/orgs/${orgSlug}/projects/proj-a/services/svc-x/versions`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify({ bundle: minimal, moveTags: ['stable'] }),
+    });
   }, 300_000);
 
   afterAll(async () => env.teardown());
@@ -86,6 +92,17 @@ describe.skipIf(!e2eContainersAvailable())('UI browse pages', () => {
     expect(body).toContain('Project A');
     expect(body).toContain('svc-x');
     expect(body).toContain('Service X');
+  });
+
+  it('GET /{orgSlug}/projects/{projSlug}/services/{svcSlug} → 200 with version', async () => {
+    const r = await env.app.request(`/${orgSlug}/projects/proj-a/services/svc-x`, {
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(r.status).toBe(200);
+    const body = await r.text();
+    expect(body).toContain('Service X');
+    expect(body).toContain('#1');
+    expect(body).toContain('stable');
   });
 
   it('GET /{orgSlug}/projects/missing → 404 HTML', async () => {

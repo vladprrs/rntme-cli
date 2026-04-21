@@ -16,7 +16,7 @@ import type {
   MembershipMirrorRepo,
   TokenRepo,
 } from '@rntme-cli/platform-core';
-import { isOk, listProjects, listServices } from '@rntme-cli/platform-core';
+import { isOk, listProjects, listServices, listVersions, listTags } from '@rntme-cli/platform-core';
 import { resolveDeps } from '../resolve-deps.js';
 import { renderHtml } from './render.js';
 import { LoginPage } from './pages/login.js';
@@ -24,6 +24,7 @@ import { NoOrgPage } from './pages/no-org.js';
 import { ErrorPage } from './pages/error.js';
 import { OrgPage } from './pages/org.js';
 import { ProjectPage } from './pages/project.js';
+import { ServicePage } from './pages/service.js';
 
 export type UiDeps = {
   env: Env;
@@ -161,6 +162,60 @@ export function createUiApp(deps: UiDeps): Hono {
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
     return renderHtml(c, <ProjectPage subject={enrichedSubject} otherOrgs={otherOrgs} project={projLookup.value} services={svcRes.value} />);
+  });
+
+  authed.get('/:orgSlug/projects/:projSlug/services/:svcSlug', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    if (s.org.slug !== c.req.param('orgSlug')) {
+      return renderHtml(
+        c,
+        <ErrorPage status={403} title="Not authorized" backHref={`/${s.org.slug}`} />,
+        403,
+      );
+    }
+    const projSlug = c.req.param('projSlug')!;
+    const svcSlug = c.req.param('svcSlug')!;
+    const projLookup = await repos.projects.findBySlug(s.org.id, projSlug);
+    if (!isOk(projLookup) || !projLookup.value) {
+      return renderHtml(
+        c,
+        <ErrorPage status={404} title="Project not found" backHref={`/${s.org.slug}`} />,
+        404,
+      );
+    }
+    const svcLookup = await repos.services.findBySlug(projLookup.value.id, svcSlug);
+    if (!isOk(svcLookup) || !svcLookup.value) {
+      return renderHtml(
+        c,
+        <ErrorPage status={404} title="Service not found" backHref={`/${s.org.slug}/projects/${projSlug}`} />,
+        404,
+      );
+    }
+    const [versRes, tagsRes, otherRes, orgRes] = await Promise.all([
+      listVersions({ repos: { artifacts: repos.artifacts } }, { serviceId: svcLookup.value.id, limit: 50, cursor: undefined }),
+      listTags({ repos: { tags: repos.tags } }, { serviceId: svcLookup.value.id }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    if (!versRes.ok) {
+      const detail = versRes.errors[0]?.message ?? 'Unknown error';
+      return renderHtml(c, <ErrorPage status={500} title="Error" detail={detail} />, 500);
+    }
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(
+      c,
+      <ServicePage
+        subject={enrichedSubject}
+        otherOrgs={otherOrgs}
+        project={projLookup.value}
+        service={svcLookup.value}
+        versions={versRes.value}
+        tags={isOk(tagsRes) ? tagsRes.value : []}
+      />,
+    );
   });
 
   app.route('/', authed);
