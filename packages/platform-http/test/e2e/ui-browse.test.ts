@@ -44,6 +44,11 @@ describe.skipIf(!e2eContainersAvailable())('UI browse pages', () => {
       headers: H,
       body: JSON.stringify({ slug: 'proj-a', displayName: 'Project A' }),
     });
+    await env.app.request(`/v1/orgs/${orgSlug}/projects/proj-a/services`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify({ slug: 'svc-x', displayName: 'Service X' }),
+    });
   }, 300_000);
 
   afterAll(async () => env.teardown());
@@ -70,5 +75,24 @@ describe.skipIf(!e2eContainersAvailable())('UI browse pages', () => {
     const r = await env.app.request(`/${orgSlug}`);
     expect(r.status).toBe(302);
     expect(r.headers.get('location')).toBe('/login');
+  });
+
+  it('GET /{orgSlug}/projects/{projSlug} → 200 with services', async () => {
+    const r = await env.app.request(`/${orgSlug}/projects/proj-a`, {
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(r.status).toBe(200);
+    const body = await r.text();
+    expect(body).toContain('Project A');
+    expect(body).toContain('svc-x');
+    expect(body).toContain('Service X');
+  });
+
+  it('GET /{orgSlug}/projects/missing → 404 HTML', async () => {
+    const r = await env.app.request(`/${orgSlug}/projects/nope`, {
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(r.status).toBe(404);
+    expect(r.headers.get('content-type')).toMatch(/text\/html/);
   });
 });
