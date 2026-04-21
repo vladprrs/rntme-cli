@@ -31,11 +31,27 @@ describe('openOrgScopedTx', () => {
     expect(await res.text()).toBe('ok');
     expect(queries.map((q) => q.sql)).toEqual([
       'BEGIN',
-      expect.stringContaining('SET LOCAL app.org_id'),
+      expect.stringContaining("set_config('app.org_id', $1, true)"),
       'COMMIT',
     ]);
     expect(queries[1]!.params).toEqual(['org-1']);
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT use SET LOCAL with a bound parameter (Postgres 42601 regression)', async () => {
+    // Guard: `SET LOCAL key = $1` is a Postgres syntax error; the correct
+    // parameterised form is `SELECT set_config('key', $1, true)`.
+    const { pool, queries } = makePoolStub();
+    const app = new Hono();
+    app.use('*', (c, next) => {
+      c.set('subject', { org: { id: 'org-1', slug: 'a' } } as never);
+      return next();
+    });
+    app.use('*', openOrgScopedTx(pool));
+    app.get('/', (c) => c.text('ok'));
+    await app.request('/');
+    const rawSqls = queries.map((q) => q.sql).join('\n');
+    expect(rawSqls).not.toMatch(/SET\s+LOCAL\s+app\.org_id\s*=\s*\$\d/);
   });
 
   it('ROLLBACKs when the handler throws', async () => {
@@ -53,7 +69,7 @@ describe('openOrgScopedTx', () => {
     expect(res.status).toBe(500);
     expect(queries.map((q) => q.sql)).toEqual([
       'BEGIN',
-      expect.stringContaining('SET LOCAL app.org_id'),
+      expect.stringContaining("set_config('app.org_id', $1, true)"),
       'ROLLBACK',
     ]);
     expect(release).toHaveBeenCalledTimes(1);

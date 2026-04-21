@@ -14,7 +14,12 @@ export function openOrgScopedTx(pool: Pool): MiddlewareHandler {
     let finalized = false;
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.org_id = $1`, [subject.org.id]);
+      // Postgres SET LOCAL does not accept bound parameters — the parser
+      // rejects `$1` with a 42601 syntax error. `set_config(name, value,
+      // is_local=true)` is the equivalent that does accept parameters.
+      // See packages/platform-storage/src/pg/tx.ts for the matching fix
+      // applied 2026-04-19 (rntme-cli 5426e8a).
+      await client.query(`SELECT set_config('app.org_id', $1, true)`, [subject.org.id]);
       c.set('tx', client);
       await next();
       if (c.error) {
