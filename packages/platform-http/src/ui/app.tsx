@@ -16,7 +16,7 @@ import type {
   MembershipMirrorRepo,
   TokenRepo,
 } from '@rntme-cli/platform-core';
-import { isOk, listProjects, listServices, listVersions, listTags } from '@rntme-cli/platform-core';
+import { isOk, listProjects, listServices, listVersions, listTags, listTokens } from '@rntme-cli/platform-core';
 import { resolveDeps } from '../resolve-deps.js';
 import { renderHtml } from './render.js';
 import { LoginPage } from './pages/login.js';
@@ -26,6 +26,7 @@ import { OrgPage } from './pages/org.js';
 import { ProjectPage } from './pages/project.js';
 import { ServicePage } from './pages/service.js';
 import { AuditPage } from './pages/audit.js';
+import { TokensPage } from './pages/tokens.js';
 
 export type UiDeps = {
   env: Env;
@@ -154,6 +155,45 @@ export function createUiApp(deps: UiDeps): Hono {
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
     return renderHtml(c, <AuditPage subject={enrichedSubject} otherOrgs={otherOrgs} events={auditRes.value} />);
+  });
+
+  authed.get('/:orgSlug/tokens', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    if (s.org.slug !== c.req.param('orgSlug')) {
+      return renderHtml(
+        c,
+        <ErrorPage status={403} title="Not authorized" backHref={`/${s.org.slug}`} />,
+        403,
+      );
+    }
+    const [tokRes, otherRes, orgRes] = await Promise.all([
+      listTokens({ repos: { tokens: repos.tokens } }, { orgId: s.org.id }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    if (!tokRes.ok) {
+      const detail = tokRes.errors[0]?.message ?? 'Unknown error';
+      return renderHtml(c, <ErrorPage status={500} title="Error" detail={detail} />, 500);
+    }
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    const flash = c.req.query('flash') ?? undefined;
+    const tokens = tokRes.value.map((t) => ({
+      id: t.id,
+      name: t.name,
+      prefix: t.prefix,
+      scopes: t.scopes,
+      lastUsedAt: t.lastUsedAt,
+      expiresAt: t.expiresAt,
+      revokedAt: t.revokedAt,
+      createdAt: t.createdAt,
+    }));
+    return renderHtml(
+      c,
+      <TokensPage subject={enrichedSubject} otherOrgs={otherOrgs} tokens={tokens} flash={flash} />,
+    );
   });
 
   authed.get('/:orgSlug/projects/:projSlug', async (c) => {
