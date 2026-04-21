@@ -216,3 +216,76 @@ describe('/v1/auth/callback content-negotiation', () => {
     expect(r.headers.get('location')).toBe('/login?flash=auth-failed');
   });
 });
+
+describe('/v1/auth/logout content-negotiation', () => {
+  function makeApp() {
+    const workos = {
+      userManagement: {
+        getAuthorizationUrl: () => 'https://workos.test/start',
+        authenticateWithCode: vi.fn(async () => ({
+          user: { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'X' },
+          organizationId: 'org_x',
+          sealedSession: 'sealed',
+        })),
+        loadSealedSession: () => ({
+          authenticate: async () => ({ authenticated: true, user: { id: 'u1' }, organizationId: 'org_x' }),
+          getLogoutUrl: async () => 'https://workos.test/logout',
+        }),
+      },
+      organizations: { getOrganization: async () => ({ name: 'Org X', slug: 'org-x' }) },
+    } as never;
+    const repos = {
+      organizations: { upsertFromWorkos: async () => ({ ok: true, value: {} }) },
+      accounts: { upsertFromWorkos: async () => ({ ok: true, value: {} }) },
+      memberships: {} as never,
+    } as never;
+    const envLocal = {
+      WORKOS_CLIENT_ID: 'cid',
+      WORKOS_REDIRECT_URI: 'http://localhost/callback',
+      PLATFORM_BASE_URL: 'http://localhost',
+      PLATFORM_SESSION_COOKIE_DOMAIN: 'localhost',
+    } as never;
+    const app = new Hono();
+    app.route('/v1/auth', authRoutes({ workos, env: envLocal, cookiePassword: 'x'.repeat(32), repos }));
+    return app;
+  }
+
+  it('returns JSON with logoutUrl when Accept: application/json', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/logout', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        Cookie: 'rntme_session=sealed',
+      },
+    });
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.logoutUrl).toBe('https://workos.test/logout');
+  });
+
+  it('redirects to WorkOS logout URL when Accept is text/html', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/logout', {
+      method: 'POST',
+      headers: {
+        Accept: 'text/html',
+        Cookie: 'rntme_session=sealed',
+      },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('https://workos.test/logout');
+  });
+
+  it('redirects to PLATFORM_BASE_URL when no session cookie and Accept is text/html', async () => {
+    const app = makeApp();
+    const r = await app.request('/v1/auth/logout', {
+      method: 'POST',
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('http://localhost');
+  });
+});

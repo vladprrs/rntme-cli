@@ -104,7 +104,9 @@ export function authRoutes(deps: {
       }
     }
     deleteCookie(c, 'rntme_session', { domain: deps.env.PLATFORM_SESSION_COOKIE_DOMAIN, path: '/' });
-    return c.json({ logoutUrl: url });
+    const wantsJson = (c.req.header('accept') ?? '').toLowerCase().includes('application/json');
+    if (wantsJson) return c.json({ logoutUrl: url });
+    return c.redirect(url, 302);
   });
 
   return app;
