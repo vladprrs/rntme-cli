@@ -16,12 +16,13 @@ import type {
   MembershipMirrorRepo,
   TokenRepo,
 } from '@rntme-cli/platform-core';
-import { isOk } from '@rntme-cli/platform-core';
+import { isOk, listProjects } from '@rntme-cli/platform-core';
 import { resolveDeps } from '../resolve-deps.js';
 import { renderHtml } from './render.js';
 import { LoginPage } from './pages/login.js';
 import { NoOrgPage } from './pages/no-org.js';
 import { ErrorPage } from './pages/error.js';
+import { OrgPage } from './pages/org.js';
 
 export type UiDeps = {
   env: Env;
@@ -98,6 +99,33 @@ export function createUiApp(deps: UiDeps): Hono {
     const r = await repos.organizations.listForAccount(s.account.id);
     const orgs = isOk(r) ? r.value : [];
     return renderHtml(c, <NoOrgPage orgs={orgs} />);
+  });
+
+  authed.get('/:orgSlug', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    const urlSlug = c.req.param('orgSlug');
+    if (s.org.slug !== urlSlug) {
+      return renderHtml(
+        c,
+        <ErrorPage status={403} title="Not authorized" detail="You don't have access to this organization." backHref={`/${s.org.slug}`} />,
+        403,
+      );
+    }
+    const flash = c.req.query('flash') ?? undefined;
+    const [projRes, otherRes, orgRes] = await Promise.all([
+      listProjects({ repos: { projects: repos.projects } }, { orgId: s.org.id, includeArchived: false }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    if (!projRes.ok) {
+      const detail = projRes.errors[0]?.message ?? 'Unknown error';
+      return renderHtml(c, <ErrorPage status={500} title="Error" detail={detail} />, 500);
+    }
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(c, <OrgPage subject={enrichedSubject} otherOrgs={otherOrgs} projects={projRes.value} flash={flash} />);
   });
 
   app.route('/', authed);
