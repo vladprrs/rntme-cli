@@ -27,6 +27,53 @@ export function webhookWorkosRoute(deps: {
   };
 }): Hono {
   const app = new Hono();
+
+  // Self-heal helper: organization_membership.* events reference org and
+  // account mirrors. If the predecessor organization.created / user.created
+  // webhook was missed (e.g. the entity predates this service's deploy),
+  // pull the authoritative record from WorkOS and upsert the mirror before
+  // syncWorkosEvent runs — otherwise the membership sync returns 500, WorkOS
+  // retries, and we never converge.
+  async function ensureOrgMirror(workosOrgId: string): Promise<void> {
+    const existing = await deps.repos.organizations.findByWorkosId(workosOrgId);
+    if (isOk(existing) && existing.value) return;
+    try {
+      const wosOrg = await deps.workos.organizations.getOrganization(workosOrgId);
+      const name = wosOrg.name ?? workosOrgId;
+      const derivedSlug =
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 40) || workosOrgId.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40);
+      const slug = wosOrg.slug ?? derivedSlug;
+      await deps.repos.organizations.upsertFromWorkos({
+        workosOrganizationId: workosOrgId,
+        slug,
+        displayName: name,
+      });
+    } catch {
+      /* best-effort — the event will 500 and retry */
+    }
+  }
+
+  async function ensureAccountMirror(workosUserId: string): Promise<void> {
+    const existing = await deps.repos.accounts.findByWorkosUserId(workosUserId);
+    if (isOk(existing) && existing.value) return;
+    try {
+      const user = await deps.workos.userManagement.getUser(workosUserId);
+      await deps.repos.accounts.upsertFromWorkos({
+        workosUserId,
+        email: user.email ?? null,
+        displayName:
+          `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || workosUserId,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   app.post('/workos', async (c) => {
     const sig = c.req.header('workos-signature') ?? '';
     const rawBody = await c.req.text();
@@ -37,6 +84,16 @@ export function webhookWorkosRoute(deps: {
     } catch (cause) {
       return c.json({ error: { code: 'PLATFORM_WORKOS_WEBHOOK_INVALID', message: String(cause) } }, 400);
     }
+
+    const typed = event as { event?: string; data?: { organization_id?: string; user_id?: string } };
+    if (
+      typed.event === 'organization_membership.created' ||
+      typed.event === 'organization_membership.deleted'
+    ) {
+      if (typed.data?.organization_id) await ensureOrgMirror(typed.data.organization_id);
+      if (typed.data?.user_id) await ensureAccountMirror(typed.data.user_id);
+    }
+
     const r = await syncWorkosEvent(
       {
         repos: deps.repos,
