@@ -1,6 +1,8 @@
 {
   "entities": {
     "OrderItem": {
+      "ownerService": "commerce",
+      "kind": "owned",
       "table": "order_items",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -39,6 +41,8 @@
       }
     },
     "Order": {
+      "ownerService": "commerce",
+      "kind": "owned",
       "table": "orders",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -57,6 +61,8 @@
       }
     },
     "Product": {
+      "ownerService": "commerce",
+      "kind": "owned",
       "table": "products",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -83,6 +89,8 @@
       }
     },
     "Category": {
+      "ownerService": "commerce",
+      "kind": "owned",
       "table": "categories",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
