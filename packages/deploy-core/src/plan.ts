@@ -4,6 +4,7 @@ import type {
   ExternalEventBusConfig,
   ProjectDeploymentConfig,
 } from './config.js';
+import { planEdge, type EdgeMiddleware, type EdgeRoute } from './edge.js';
 import type { DeploymentPlanError } from './errors.js';
 import { err, ok, type Result } from './result.js';
 
@@ -48,8 +49,8 @@ export type DeploymentWorkload =
   | EdgeGatewayWorkload;
 
 export type EdgePlan = {
-  readonly routes: readonly [];
-  readonly middleware: readonly [];
+  readonly routes: readonly EdgeRoute[];
+  readonly middleware: readonly EdgeMiddleware[];
 };
 
 export type DeploymentWarning = {
@@ -107,6 +108,33 @@ export function buildProjectDeploymentPlan(
     });
   }
 
+  const workloads = buildWorkloads(project, config, errors);
+  const { edge, errors: edgeErrors } = planEdge(project, config, workloads);
+  errors.push(...edgeErrors);
+
+  if (errors.length > 0 || config.eventBus === undefined) return err(errors);
+
+  return ok({
+    project: {
+      orgSlug: config.orgSlug,
+      projectSlug: project.name,
+      environment: config.environment,
+      mode: config.mode,
+    },
+    infrastructure: {
+      eventBus: config.eventBus,
+    },
+    workloads,
+    edge,
+    diagnostics: { warnings: [] },
+  });
+}
+
+function buildWorkloads(
+  project: ComposedProjectInput,
+  config: ProjectDeploymentConfig,
+  errors: DeploymentPlanError[],
+): DeploymentWorkload[] {
   const workloads: DeploymentWorkload[] = [];
   const runtimeImage = config.runtimeImage ?? 'rntme-runtime';
 
@@ -154,22 +182,7 @@ export function buildProjectDeploymentPlan(
     image: 'nginx:1.27-alpine',
   });
 
-  if (errors.length > 0 || config.eventBus === undefined) return err(errors);
-
-  return ok({
-    project: {
-      orgSlug: config.orgSlug,
-      projectSlug: project.name,
-      environment: config.environment,
-      mode: config.mode,
-    },
-    infrastructure: {
-      eventBus: config.eventBus,
-    },
-    workloads,
-    edge: { routes: [], middleware: [] },
-    diagnostics: { warnings: [] },
-  });
+  return workloads;
 }
 
 function resourceName(orgSlug: string, projectSlug: string, workloadSlug: string): string {
