@@ -29,12 +29,7 @@ export {
   type PlannedProject,
   type ProjectDeploymentPlan,
 } from './plan.js';
-export {
-  planEdge,
-  type EdgeMiddleware,
-  type EdgeRoute,
-  type PlannedEdge,
-} from './edge.js';
+export { type EdgeMiddleware, type EdgeRoute } from './edge.js';
 export {
   DEPLOY_CORE_ERROR_CODES,
   type DeploymentPlanError,

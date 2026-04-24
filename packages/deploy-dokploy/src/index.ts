@@ -13,7 +13,7 @@ export {
   type DokployClient,
   type DokployProjectRef,
 } from './client.js';
-export { type DokploySecretInput, type DokployTargetConfig } from './config.js';
+export { type DokployTargetConfig } from './config.js';
 export { dokployLabels, dokployResourceName } from './names.js';
 export { renderNginxConfig } from './nginx.js';
 export {

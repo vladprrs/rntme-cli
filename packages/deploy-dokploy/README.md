@@ -29,5 +29,7 @@ load raw blueprints, store platform credentials, or run browser verification.
 
 ## Security
 
-Rendered plans and apply results must not contain secret values. Secret values
-are allowed only as in-memory input to the future real HTTP client.
+Rendered plans and apply results must not contain secret values. The package
+never accepts secret values as input: secrets are closed over inside the
+injected `DokployClient` implementation and never enter render or apply
+argument surfaces. Leak-prevention is structural, not detector-based.

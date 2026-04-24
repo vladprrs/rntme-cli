@@ -5,8 +5,3 @@ export type DokployTargetConfig = {
   readonly allowCreateProject?: boolean;
   readonly publicBaseUrl: string;
 };
-
-export type DokploySecretInput = {
-  readonly apiToken: string;
-  readonly secrets?: Readonly<Record<string, string>>;
-};
