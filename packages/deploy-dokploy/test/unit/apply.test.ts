@@ -168,6 +168,104 @@ describe('applyDokployPlan', () => {
     expect(client.updateCalls).toHaveLength(1);
   });
 
+  it('updates existing resources when rendered build, ports, or ingress metadata is missing from current state', async () => {
+    const resourceWithMetadata = resource({
+      build: {
+        kind: 'domain-service-artifact',
+        baseImage: 'rntme-runtime',
+        image: 'rntme-acme-commerce-catalog:artifact',
+        artifact: { source: 'composed-project', serviceSlug: 'catalog' },
+        context: {
+          kind: 'generated',
+          serviceSlug: 'catalog',
+          files: ['Dockerfile', 'artifacts/catalog/manifest.json'],
+        },
+      },
+      image: 'rntme-acme-commerce-catalog:artifact',
+      ports: [{ containerPort: 8080, protocol: 'http' }],
+      ingress: {
+        publicBaseUrl: 'https://commerce.example.com',
+        containerPort: 8080,
+        healthPath: '/health',
+        routes: [
+          {
+            routeId: 'http:/api/catalog',
+            path: '/api/catalog',
+            url: 'https://commerce.example.com/api/catalog',
+          },
+        ],
+      },
+    });
+    const client = new FakeDokployClient([
+      {
+        id: 'app_existing',
+        name: 'rntme-acme-commerce-catalog',
+        image: 'rntme-acme-commerce-catalog:artifact',
+        env: resourceWithMetadata.env,
+        labels: resourceWithMetadata.labels,
+      },
+    ]);
+    const r = await applyDokployPlan({ ...rendered, resources: [resourceWithMetadata] }, client);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.resources[0]).toMatchObject({
+      targetResourceId: 'app_existing',
+      action: 'updated',
+    });
+    expect(client.updateCalls).toHaveLength(1);
+  });
+
+  it('leaves existing resources unchanged when rendered build, ports, and ingress metadata matches', async () => {
+    const resourceWithMetadata = resource({
+      build: {
+        kind: 'domain-service-artifact',
+        baseImage: 'rntme-runtime',
+        image: 'rntme-acme-commerce-catalog:artifact',
+        artifact: { source: 'composed-project', serviceSlug: 'catalog' },
+        context: {
+          kind: 'generated',
+          serviceSlug: 'catalog',
+          files: ['Dockerfile', 'artifacts/catalog/manifest.json'],
+        },
+      },
+      image: 'rntme-acme-commerce-catalog:artifact',
+      ports: [{ containerPort: 8080, protocol: 'http' }],
+      ingress: {
+        publicBaseUrl: 'https://commerce.example.com',
+        containerPort: 8080,
+        healthPath: '/health',
+        routes: [
+          {
+            routeId: 'http:/api/catalog',
+            path: '/api/catalog',
+            url: 'https://commerce.example.com/api/catalog',
+          },
+        ],
+      },
+    });
+    const client = new FakeDokployClient([
+      {
+        id: 'app_existing',
+        name: 'rntme-acme-commerce-catalog',
+        image: 'rntme-acme-commerce-catalog:artifact',
+        env: resourceWithMetadata.env,
+        labels: resourceWithMetadata.labels,
+        build: resourceWithMetadata.build,
+        ports: resourceWithMetadata.ports,
+        ingress: resourceWithMetadata.ingress,
+      },
+    ]);
+    const r = await applyDokployPlan({ ...rendered, resources: [resourceWithMetadata] }, client);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.resources[0]?.action).toBe('unchanged');
+    expect(client.updateCalls).toEqual([]);
+  });
+
   it('returns partial failure metadata with applied resources and retry safety', async () => {
     const client = new FakeDokployClient(
       [{ id: 'app_existing', name: 'rntme-acme-commerce-billing' }],
@@ -291,6 +389,23 @@ describe('applyDokployPlan', () => {
       expect(JSON.stringify(r.errors)).not.toContain('dokploy-token-secret');
     }
   });
+
+  it('redacts arbitrary client error messages instead of returning bearer or API token text', async () => {
+    const client = new FakeDokployClient([], {
+      failProject: true,
+      failMessage: 'request failed with Bearer bearer-secret and apiToken=api-secret',
+    });
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(JSON.stringify(r.errors)).toContain('redacted client error');
+      expect(JSON.stringify(r.errors)).not.toContain('bearer-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('api-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('Bearer');
+      expect(JSON.stringify(r.errors)).not.toContain('apiToken');
+    }
+  });
 });
 
 class FakeDokployClient implements DokployClient {
@@ -313,13 +428,14 @@ class FakeDokployClient implements DokployClient {
       readonly failFindFor?: string;
       readonly failCreateFor?: string;
       readonly failUpdateFor?: string;
+      readonly failMessage?: string;
     } = {},
   ) {
     for (const app of existing) this.apps.set(app.name, app);
   }
 
   async ensureProject(ref: DokployProjectRef): Promise<{ projectId: string }> {
-    if (this.failures.failProject === true) throw secretError('project failed');
+    if (this.failures.failProject === true) throw secretError(this.failures.failMessage ?? 'project failed');
     if (ref.mode === 'existing') return { projectId: ref.projectId };
     return { projectId: 'project_created' };
   }

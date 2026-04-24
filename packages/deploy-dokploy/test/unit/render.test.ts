@@ -64,7 +64,25 @@ describe('renderDokployPlan', () => {
     expect(r.value.resources[0]).toMatchObject({
       kind: 'application',
       workloadKind: 'domain-service',
-      image: 'rntme-runtime',
+      image: 'rntme-acme-commerce-catalog:artifact',
+      build: {
+        kind: 'domain-service-artifact',
+        baseImage: 'rntme-runtime',
+        image: 'rntme-acme-commerce-catalog:artifact',
+        artifact: { source: 'composed-project', serviceSlug: 'catalog' },
+        context: {
+          kind: 'generated',
+          serviceSlug: 'catalog',
+          files: [
+            'Dockerfile',
+            'artifacts/catalog/manifest.json',
+            'artifacts/catalog/pdm.json',
+            'artifacts/catalog/qsm.json',
+            'artifacts/catalog/bindings.json',
+            'artifacts/catalog/ui.json',
+          ],
+        },
+      },
     });
     expect(r.value.resources[0].env).toContainEqual({
       name: 'RNTME_EVENT_BUS_BROKERS',
@@ -73,6 +91,35 @@ describe('renderDokployPlan', () => {
     });
     expect(r.value.digest).toMatch(/^sha256:/);
     expect(JSON.stringify(r.value)).not.toContain('apiToken');
+  });
+
+  it('renders edge gateway port and public ingress metadata', () => {
+    const r = renderDokployPlan(plan, {
+      endpoint: 'https://dokploy.example.com',
+      projectId: 'project_123',
+      publicBaseUrl: 'https://commerce.example.com',
+    });
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.resources[1]).toMatchObject({
+      kind: 'application',
+      workloadKind: 'edge-gateway',
+      ports: [{ containerPort: 8080, protocol: 'http' }],
+      ingress: {
+        publicBaseUrl: 'https://commerce.example.com',
+        containerPort: 8080,
+        healthPath: '/health',
+        routes: [
+          {
+            routeId: 'http:/api/catalog',
+            path: '/api/catalog',
+            url: 'https://commerce.example.com/api/catalog',
+          },
+        ],
+      },
+    });
   });
 
   it('rejects missing Dokploy project identity when creation is disabled', () => {
@@ -218,5 +265,54 @@ describe('renderDokployPlan', () => {
       mode: 'create',
       projectName: 'commerce-default',
     });
+  });
+
+  it('rejects target resource name collisions after normalization', () => {
+    const r = renderDokployPlan(
+      {
+        ...plan,
+        workloads: [
+          {
+            kind: 'domain-service',
+            slug: 'billing-api',
+            serviceSlug: 'billing-api',
+            resourceName: 'rntme-acme-commerce-billing-api',
+            runtime: { image: 'rntme-runtime' },
+            artifact: { source: 'composed-project', serviceSlug: 'billing-api' },
+            persistence: { mode: 'ephemeral' },
+          },
+          {
+            kind: 'domain-service',
+            slug: 'billing_api',
+            serviceSlug: 'billing_api',
+            resourceName: 'rntme-acme-commerce-billing_api',
+            runtime: { image: 'rntme-runtime' },
+            artifact: { source: 'composed-project', serviceSlug: 'billing_api' },
+            persistence: { mode: 'ephemeral' },
+          },
+          {
+            kind: 'edge-gateway',
+            slug: 'edge',
+            resourceName: 'rntme-acme-commerce-edge',
+            image: 'nginx:1.27-alpine',
+          },
+        ],
+      },
+      {
+        endpoint: 'https://dokploy.example.com',
+        projectId: 'project_123',
+        publicBaseUrl: 'https://commerce.example.com',
+      },
+    );
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_RENDER_DOKPLOY_NAME_COLLISION',
+          resource: 'rntme-acme-commerce-billing-api',
+        }),
+      );
+    }
   });
 });

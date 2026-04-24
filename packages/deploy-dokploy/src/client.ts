@@ -10,6 +10,9 @@ export type DokployApplication = {
   readonly id: string;
   readonly name: string;
   readonly image?: string;
+  readonly build?: RenderedDokployResource['build'];
+  readonly ports?: RenderedDokployResource['ports'];
+  readonly ingress?: RenderedDokployResource['ingress'];
   readonly env?: readonly RenderedEnvVar[];
   readonly labels?: Readonly<Record<string, string>>;
   readonly files?: Readonly<Record<string, string>>;

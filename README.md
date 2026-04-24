@@ -6,6 +6,11 @@ inside `vladprrs/rntme` until it is mature enough to live independently.
 ## Workspace members
 
 - `packages/cli/` — `@rntme-cli/cli`, the `rntme` binary.
+- `packages/platform-core/` — platform domain, use-cases, and repository seams.
+- `packages/platform-storage/` — Postgres/S3-backed platform adapters.
+- `packages/platform-http/` — Hono platform API and server-rendered UI.
+- `packages/deploy-core/` — target-neutral project deployment planning.
+- `packages/deploy-dokploy/` — Dokploy render/apply adapter.
 
 ## Standalone build
 

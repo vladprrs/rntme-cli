@@ -23,6 +23,37 @@ export type RenderedEnvVar = {
   readonly secret: boolean;
 };
 
+export type RenderedDomainArtifactBuild = {
+  readonly kind: 'domain-service-artifact';
+  readonly baseImage: string;
+  readonly image: string;
+  readonly artifact: {
+    readonly source: 'composed-project';
+    readonly serviceSlug: string;
+  };
+  readonly context: {
+    readonly kind: 'generated';
+    readonly serviceSlug: string;
+    readonly files: readonly string[];
+  };
+};
+
+export type RenderedDokployPort = {
+  readonly containerPort: number;
+  readonly protocol: 'http';
+};
+
+export type RenderedDokployIngress = {
+  readonly publicBaseUrl: string;
+  readonly containerPort: number;
+  readonly healthPath: '/health';
+  readonly routes: readonly {
+    readonly routeId: string;
+    readonly path: string;
+    readonly url: string;
+  }[];
+};
+
 export type RenderedDokployResource = {
   readonly logicalId: string;
   readonly kind: 'application';
@@ -30,6 +61,9 @@ export type RenderedDokployResource = {
   readonly workloadSlug: string;
   readonly name: string;
   readonly image: string;
+  readonly build?: RenderedDomainArtifactBuild;
+  readonly ports?: readonly RenderedDokployPort[];
+  readonly ingress?: RenderedDokployIngress;
   readonly env: readonly RenderedEnvVar[];
   readonly labels: Readonly<Record<string, string>>;
   readonly files?: Readonly<Record<string, string>>;
@@ -80,15 +114,16 @@ export function renderDokployPlan(
   const uiRoute = plan.edge.routes.find((route) => route.kind === 'ui');
   const publicRoutes = plan.edge.routes.map((route) => ({
     routeId: route.id,
+    path: route.path,
     url: joinPublicUrl(config.publicBaseUrl, route.path),
   }));
   const urls: RenderedDokployPlan['urls'] =
     uiRoute === undefined
-      ? { projectUrl: config.publicBaseUrl, publicRoutes }
+      ? { projectUrl: config.publicBaseUrl, publicRoutes: publicRoutes.map(stripRoutePath) }
       : {
           projectUrl: config.publicBaseUrl,
           uiUrl: joinPublicUrl(config.publicBaseUrl, uiRoute.path),
-          publicRoutes,
+          publicRoutes: publicRoutes.map(stripRoutePath),
         };
   const renderedWithoutDigest = {
     target: { kind: 'dokploy' as const, endpoint: config.endpoint },
@@ -99,10 +134,33 @@ export function renderDokployPlan(
       environment: plan.project.environment,
       mode: plan.project.mode,
     },
-    resources,
+    resources: resources.map((resource) =>
+      resource.workloadKind === 'edge-gateway'
+        ? {
+            ...resource,
+            ports: [{ containerPort: 8080, protocol: 'http' as const }],
+            ingress: {
+              publicBaseUrl: config.publicBaseUrl,
+              containerPort: 8080,
+              healthPath: '/health' as const,
+              routes: publicRoutes,
+            },
+          }
+        : resource,
+    ),
     urls,
     warnings: plan.diagnostics.warnings.map((warning) => warning.message),
   };
+  const collision = findNameCollision(renderedWithoutDigest.resources);
+  if (collision !== null) {
+    return err([
+      {
+        code: 'DEPLOY_RENDER_DOKPLOY_NAME_COLLISION',
+        message: `rendered Dokploy resource name "${collision}" is not unique`,
+        resource: collision,
+      },
+    ]);
+  }
 
   return ok({
     ...renderedWithoutDigest,
@@ -192,27 +250,63 @@ function renderResource(
     };
   }
 
-  return {
-    logicalId: workload.slug,
-    kind: 'application',
-    workloadKind: workload.kind,
-    workloadSlug: workload.slug,
-    name,
-    image: workload.runtime.image,
-    env: [
-      {
-        name: 'RNTME_EVENT_BUS_BROKERS',
-        value: plan.infrastructure.eventBus.brokers.join(','),
-        secret: false,
+  if (workload.kind === 'domain-service') {
+    const image = `${name}:artifact`;
+    return {
+      logicalId: workload.slug,
+      kind: 'application',
+      workloadKind: workload.kind,
+      workloadSlug: workload.slug,
+      name,
+      image,
+      build: {
+        kind: 'domain-service-artifact',
+        baseImage: workload.runtime.image,
+        image,
+        artifact: workload.artifact,
+        context: {
+          kind: 'generated',
+          serviceSlug: workload.artifact.serviceSlug,
+          files: generatedDomainArtifactFiles(workload.artifact.serviceSlug),
+        },
       },
-      {
-        name: 'RNTME_PERSISTENCE_MODE',
-        value: workload.persistence.mode,
-        secret: false,
-      },
-    ],
-    labels,
-  };
+      env: [
+        {
+          name: 'RNTME_EVENT_BUS_BROKERS',
+          value: plan.infrastructure.eventBus.brokers.join(','),
+          secret: false,
+        },
+        {
+          name: 'RNTME_PERSISTENCE_MODE',
+          value: workload.persistence.mode,
+          secret: false,
+        },
+      ],
+      labels,
+    };
+  }
+
+  return assertNever(workload);
+}
+
+function generatedDomainArtifactFiles(serviceSlug: string): readonly string[] {
+  return [
+    'Dockerfile',
+    `artifacts/${serviceSlug}/manifest.json`,
+    `artifacts/${serviceSlug}/pdm.json`,
+    `artifacts/${serviceSlug}/qsm.json`,
+    `artifacts/${serviceSlug}/bindings.json`,
+    `artifacts/${serviceSlug}/ui.json`,
+  ];
+}
+
+function findNameCollision(resources: readonly RenderedDokployResource[]): string | null {
+  const seen = new Set<string>();
+  for (const resource of resources) {
+    if (seen.has(resource.name)) return resource.name;
+    seen.add(resource.name);
+  }
+  return null;
 }
 
 function digest(value: unknown): string {
@@ -226,4 +320,16 @@ function joinPublicUrl(base: string, path: string): string {
 
 function sortedEntries(value: Readonly<Record<string, string>>): [string, string][] {
   return Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function stripRoutePath(route: {
+  readonly routeId: string;
+  readonly path: string;
+  readonly url: string;
+}): { readonly routeId: string; readonly url: string } {
+  return { routeId: route.routeId, url: route.url };
+}
+
+function assertNever(value: never): never {
+  throw new Error(`unhandled workload kind: ${JSON.stringify(value)}`);
 }

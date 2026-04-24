@@ -172,6 +172,9 @@ function buildPartialFailure(
 function resourceMatches(
   existing: {
     readonly image?: string;
+    readonly build?: RenderedDokployResource['build'];
+    readonly ports?: RenderedDokployResource['ports'];
+    readonly ingress?: RenderedDokployResource['ingress'];
     readonly env?: RenderedDokployResource['env'];
     readonly labels?: RenderedDokployResource['labels'];
     readonly files?: RenderedDokployResource['files'];
@@ -179,6 +182,9 @@ function resourceMatches(
   resource: RenderedDokployResource,
 ): boolean {
   if (existing.image === undefined || existing.image !== resource.image) return false;
+  if (!optionalComparableMatches(existing.build, resource.build)) return false;
+  if (!optionalComparableMatches(existing.ports, resource.ports)) return false;
+  if (!optionalComparableMatches(existing.ingress, resource.ingress)) return false;
   if (existing.env === undefined || !jsonEqual(existing.env, resource.env)) return false;
   if (existing.labels === undefined || !jsonEqual(sortRecord(existing.labels), sortRecord(resource.labels))) {
     return false;
@@ -191,6 +197,12 @@ function resourceMatches(
 
 function jsonEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function optionalComparableMatches(existing: unknown, rendered: unknown): boolean {
+  if (rendered === undefined) return existing === undefined;
+  if (existing === undefined) return false;
+  return jsonEqual(existing, rendered);
 }
 
 function sortRecord(value: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
@@ -218,14 +230,10 @@ function joinUrl(base: string, path: string): string {
 
 function sanitizeCause(cause: unknown): { readonly name?: string; readonly message: string } | string {
   if (cause instanceof Error) {
-    const message = redactSensitiveText(cause.message);
+    const message = 'redacted client error';
     if (cause.name === '' || cause.name === 'Error') return { message };
     return { name: cause.name, message };
   }
 
   return 'non-error thrown';
-}
-
-function redactSensitiveText(value: string): string {
-  return value.replace(/dokploy-token-[^\s"'`,;)]*/giu, '[redacted]');
 }
