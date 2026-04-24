@@ -91,6 +91,68 @@ importers:
         specifier: ^2.1.1
         version: 2.1.9(@types/node@20.19.39)(@vitest/ui@2.1.9)(jsdom@25.0.1)(msw@2.13.4(@types/node@20.19.39)(typescript@5.9.3))
 
+  packages/deploy-core:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.3.6
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.10.0
+        version: 9.39.4
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.39
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.6.0
+        version: 8.58.2(@typescript-eslint/parser@8.58.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.6.0
+        version: 8.58.2(eslint@9.39.4)(typescript@5.9.3)
+      eslint:
+        specifier: ^9.10.0
+        version: 9.39.4
+      prettier:
+        specifier: ^3.3.3
+        version: 3.8.3
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.1
+        version: 2.1.9(@types/node@20.19.39)(@vitest/ui@2.1.9)(jsdom@25.0.1)(msw@2.13.4(@types/node@20.19.39)(typescript@5.9.3))
+
+  packages/deploy-dokploy:
+    dependencies:
+      '@rntme-cli/deploy-core':
+        specifier: workspace:*
+        version: link:../deploy-core
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.10.0
+        version: 9.39.4
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.39
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.6.0
+        version: 8.58.2(@typescript-eslint/parser@8.58.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.6.0
+        version: 8.58.2(eslint@9.39.4)(typescript@5.9.3)
+      eslint:
+        specifier: ^9.10.0
+        version: 9.39.4
+      prettier:
+        specifier: ^3.3.3
+        version: 3.8.3
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.1
+        version: 2.1.9(@types/node@20.19.39)(@vitest/ui@2.1.9)(jsdom@25.0.1)(msw@2.13.4(@types/node@20.19.39)(typescript@5.9.3))
+
   packages/platform-core:
     dependencies:
       zod:

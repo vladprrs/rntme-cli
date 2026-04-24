@@ -90,6 +90,8 @@ const stateMachineSchema = z
 
 const entitySchema = z
   .object({
+    ownerService: nonEmptyString,
+    kind: z.enum(['root', 'owned']),
     table: nonEmptyString,
     fields: z.record(nonEmptyString, fieldSchema),
     relations: z.record(nonEmptyString, relationSchema).optional(),
@@ -128,6 +130,8 @@ Below is the canonical `artifacts/pdm.json` from the bundled issue-tracker examp
 {
   "entities": {
     "Issue": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "issues",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -185,6 +189,8 @@ Below is the canonical `artifacts/pdm.json` from the bundled issue-tracker examp
       }
     },
     "Project": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "projects",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -219,6 +225,8 @@ Below is the canonical `artifacts/pdm.json` from the bundled issue-tracker examp
       }
     },
     "Sprint": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "sprints",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -254,6 +262,8 @@ Below is the canonical `artifacts/pdm.json` from the bundled issue-tracker examp
       }
     },
     "User": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "users",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },

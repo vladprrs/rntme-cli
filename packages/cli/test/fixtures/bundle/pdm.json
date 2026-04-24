@@ -1,6 +1,8 @@
 {
   "entities": {
     "Issue": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "issues",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -58,6 +60,8 @@
       }
     },
     "Project": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "projects",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -92,6 +96,8 @@
       }
     },
     "Sprint": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "sprints",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },
@@ -127,6 +133,8 @@
       }
     },
     "User": {
+      "ownerService": "issue-tracker",
+      "kind": "owned",
       "table": "users",
       "fields": {
         "id": { "type": "integer", "nullable": false, "column": "id" },

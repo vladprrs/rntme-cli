@@ -1,0 +1,30 @@
+export type ServiceKind = 'domain' | 'integration';
+
+export type ComposedProjectService = {
+  readonly slug: string;
+  readonly kind: ServiceKind;
+};
+
+export type ProjectRouteMap = {
+  readonly ui?: Readonly<Record<string, string>>;
+  readonly http?: Readonly<Record<string, string>>;
+};
+
+export type ProjectMiddlewareDecl = {
+  readonly kind: string;
+  readonly provider?: string;
+  readonly policy?: string;
+};
+
+export type ProjectMountDecl = {
+  readonly target: string;
+  readonly use: readonly string[];
+};
+
+export type ComposedProjectInput = {
+  readonly name: string;
+  readonly services: Readonly<Record<string, ComposedProjectService>>;
+  readonly routes?: ProjectRouteMap;
+  readonly middleware?: Readonly<Record<string, ProjectMiddlewareDecl>>;
+  readonly mounts?: readonly ProjectMountDecl[];
+};
