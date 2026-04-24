@@ -1,0 +1,15 @@
+export const DEPLOY_DOKPLOY_ERROR_CODES = {
+  DEPLOY_RENDER_DOKPLOY_MISSING_PROJECT: 'DEPLOY_RENDER_DOKPLOY_MISSING_PROJECT',
+  DEPLOY_RENDER_DOKPLOY_SECRET_LEAK: 'DEPLOY_RENDER_DOKPLOY_SECRET_LEAK',
+  DEPLOY_APPLY_DOKPLOY_API_ERROR: 'DEPLOY_APPLY_DOKPLOY_API_ERROR',
+  DEPLOY_APPLY_DOKPLOY_PARTIAL_FAILURE: 'DEPLOY_APPLY_DOKPLOY_PARTIAL_FAILURE',
+} as const;
+
+export type DokployDeploymentErrorCode = keyof typeof DEPLOY_DOKPLOY_ERROR_CODES;
+
+export type DokployDeploymentError = {
+  readonly code: DokployDeploymentErrorCode;
+  readonly message: string;
+  readonly resource?: string;
+  readonly cause?: unknown;
+};
