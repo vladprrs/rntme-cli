@@ -1,4 +1,4 @@
-import type { DokployClient } from './client.js';
+import type { DokployApplication, DokployClient } from './client.js';
 import type {
   DokployDeploymentError,
   DokployPartialFailure,
@@ -13,7 +13,7 @@ export type DeploymentApplyResource = {
   readonly kind: 'domain-service' | 'integration-module' | 'edge-gateway';
   readonly targetResourceId: string;
   readonly targetResourceName: string;
-  readonly action: 'created' | 'updated';
+  readonly action: 'created' | 'updated' | 'unchanged';
 };
 
 export type DeploymentApplyResult = {
@@ -21,12 +21,7 @@ export type DeploymentApplyResult = {
     readonly kind: 'dokploy';
     readonly projectId: string;
   };
-  readonly deployment: {
-    readonly orgSlug?: string;
-    readonly projectSlug?: string;
-    readonly environment: 'default';
-    readonly mode: 'preview';
-  };
+  readonly deployment: RenderedDokployPlan['deployment'];
   readonly resources: readonly DeploymentApplyResource[];
   readonly urls: RenderedDokployPlan['urls'];
   readonly renderedPlanDigest: string;
@@ -56,6 +51,8 @@ export async function applyDokployPlan(
         const createResult = await createApplication(client, projectId, resource, applied);
         if (!createResult.ok) return createResult;
         applied.push(createResult.value);
+      } else if (resourceMatches(existing, resource)) {
+        applied.push(appliedResource(resource, existing, 'unchanged'));
       } else {
         const updateResult = await updateApplication(client, existing.id, resource, applied);
         if (!updateResult.ok) return updateResult;
@@ -65,10 +62,7 @@ export async function applyDokployPlan(
 
     return ok({
       target: { kind: 'dokploy', projectId },
-      deployment: {
-        environment: 'default',
-        mode: 'preview',
-      },
+      deployment: rendered.deployment,
       resources: applied,
       urls: rendered.urls,
       renderedPlanDigest: rendered.digest,
@@ -91,7 +85,7 @@ async function findExistingApplication(
   projectId: string,
   resource: RenderedDokployResource,
   applied: readonly DeploymentApplyResource[],
-): Promise<Result<{ readonly id: string; readonly name: string } | null, DokployDeploymentError>> {
+): Promise<Result<DokployApplication | null, DokployDeploymentError>> {
   try {
     return ok(await client.findApplicationByName(projectId, resource.name));
   } catch (cause) {
@@ -173,6 +167,34 @@ function buildPartialFailure(
     failedStep,
     retrySafe: true,
   };
+}
+
+function resourceMatches(
+  existing: {
+    readonly image?: string;
+    readonly env?: RenderedDokployResource['env'];
+    readonly labels?: RenderedDokployResource['labels'];
+    readonly files?: RenderedDokployResource['files'];
+  },
+  resource: RenderedDokployResource,
+): boolean {
+  if (existing.image === undefined || existing.image !== resource.image) return false;
+  if (existing.env === undefined || !jsonEqual(existing.env, resource.env)) return false;
+  if (existing.labels === undefined || !jsonEqual(sortRecord(existing.labels), sortRecord(resource.labels))) {
+    return false;
+  }
+
+  if (resource.files === undefined) return existing.files === undefined;
+  if (existing.files === undefined) return false;
+  return jsonEqual(sortRecord(existing.files), sortRecord(resource.files));
+}
+
+function jsonEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function sortRecord(value: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+  return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 function verificationHints(rendered: RenderedDokployPlan): DeploymentApplyResult['verificationHints'] {

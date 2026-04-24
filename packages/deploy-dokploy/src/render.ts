@@ -10,6 +10,13 @@ export type RenderedDokployProject =
   | { readonly mode: 'existing'; readonly projectId: string }
   | { readonly mode: 'create'; readonly projectName: string };
 
+export type RenderedDokployDeployment = {
+  readonly orgSlug: string;
+  readonly projectSlug: string;
+  readonly environment: ProjectDeploymentPlan['project']['environment'];
+  readonly mode: ProjectDeploymentPlan['project']['mode'];
+};
+
 export type RenderedEnvVar = {
   readonly name: string;
   readonly value: string;
@@ -31,6 +38,7 @@ export type RenderedDokployResource = {
 export type RenderedDokployPlan = {
   readonly target: { readonly kind: 'dokploy'; readonly endpoint: string };
   readonly targetProject: RenderedDokployProject;
+  readonly deployment: RenderedDokployDeployment;
   readonly resources: readonly RenderedDokployResource[];
   readonly urls: {
     readonly projectUrl: string;
@@ -85,6 +93,12 @@ export function renderDokployPlan(
   const renderedWithoutDigest = {
     target: { kind: 'dokploy' as const, endpoint: config.endpoint },
     targetProject,
+    deployment: {
+      orgSlug: plan.project.orgSlug,
+      projectSlug: plan.project.projectSlug,
+      environment: plan.project.environment,
+      mode: plan.project.mode,
+    },
     resources,
     urls,
     warnings: plan.diagnostics.warnings.map((warning) => warning.message),

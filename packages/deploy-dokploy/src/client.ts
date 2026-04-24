@@ -1,10 +1,18 @@
-import type { RenderedDokployProject, RenderedDokployResource } from './render.js';
+import type {
+  RenderedDokployProject,
+  RenderedDokployResource,
+  RenderedEnvVar,
+} from './render.js';
 
 export type DokployProjectRef = RenderedDokployProject;
 
 export type DokployApplication = {
   readonly id: string;
   readonly name: string;
+  readonly image?: string;
+  readonly env?: readonly RenderedEnvVar[];
+  readonly labels?: Readonly<Record<string, string>>;
+  readonly files?: Readonly<Record<string, string>>;
 };
 
 export type DokployClient = {

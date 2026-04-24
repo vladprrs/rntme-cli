@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { applyDokployPlan } from '../../src/apply.js';
-import type { DokployClient, DokployProjectRef } from '../../src/client.js';
+import type { DokployApplication, DokployClient, DokployProjectRef } from '../../src/client.js';
 import type { RenderedDokployPlan, RenderedDokployResource } from '../../src/render.js';
 
 const rendered: RenderedDokployPlan = {
   target: { kind: 'dokploy', endpoint: 'https://dokploy.example.com' },
   targetProject: { mode: 'existing', projectId: 'project_123' },
+  deployment: {
+    orgSlug: 'acme',
+    projectSlug: 'commerce',
+    environment: 'default',
+    mode: 'preview',
+  },
   resources: [
     {
       logicalId: 'catalog',
@@ -46,6 +52,12 @@ describe('applyDokployPlan', () => {
         action: 'created',
       },
     ]);
+    expect(r.value.deployment).toEqual({
+      orgSlug: 'acme',
+      projectSlug: 'commerce',
+      environment: 'default',
+      mode: 'preview',
+    });
     expect(r.value.urls.publicRoutes[0]?.url).toBe('https://commerce.example.com/api/catalog');
     expect(client.createCalls).toEqual([
       {
@@ -106,6 +118,54 @@ describe('applyDokployPlan', () => {
         }),
       },
     ]);
+  });
+
+  it('leaves existing resources unchanged when comparable current state matches', async () => {
+    const client = new FakeDokployClient([
+      {
+        id: 'app_existing',
+        name: 'rntme-acme-commerce-catalog',
+        image: 'rntme-runtime',
+        env: rendered.resources[0].env,
+        labels: { 'rntme.workload': 'catalog' },
+      },
+    ]);
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.resources[0]).toEqual({
+      logicalId: 'catalog',
+      workloadSlug: 'catalog',
+      kind: 'domain-service',
+      targetResourceId: 'app_existing',
+      targetResourceName: 'rntme-acme-commerce-catalog',
+      action: 'unchanged',
+    });
+    expect(client.updateCalls).toEqual([]);
+  });
+
+  it('updates existing resources when comparable current state differs', async () => {
+    const client = new FakeDokployClient([
+      {
+        id: 'app_existing',
+        name: 'rntme-acme-commerce-catalog',
+        image: 'outdated-image',
+        env: rendered.resources[0].env,
+        labels: { 'rntme.workload': 'catalog' },
+      },
+    ]);
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.resources[0]).toMatchObject({
+      targetResourceId: 'app_existing',
+      action: 'updated',
+    });
+    expect(client.updateCalls).toHaveLength(1);
   });
 
   it('returns partial failure metadata with applied resources and retry safety', async () => {
@@ -234,7 +294,7 @@ describe('applyDokployPlan', () => {
 });
 
 class FakeDokployClient implements DokployClient {
-  private readonly apps = new Map<string, { id: string; name: string }>();
+  private readonly apps = new Map<string, DokployApplication>();
   readonly createCalls: Array<{
     readonly projectId: string;
     readonly resource: RenderedDokployResource;
@@ -247,7 +307,7 @@ class FakeDokployClient implements DokployClient {
   private next = 1;
 
   constructor(
-    existing: Array<{ id: string; name: string }> = [],
+    existing: DokployApplication[] = [],
     private readonly failures: {
       readonly failProject?: boolean;
       readonly failFindFor?: string;
@@ -267,7 +327,7 @@ class FakeDokployClient implements DokployClient {
   async findApplicationByName(
     projectId: string,
     name: string,
-  ): Promise<{ id: string; name: string } | null> {
+  ): Promise<DokployApplication | null> {
     void projectId;
     if (this.failures.failFindFor === name) throw secretError('find failed');
     return this.apps.get(name) ?? null;

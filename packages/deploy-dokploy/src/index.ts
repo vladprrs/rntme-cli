@@ -18,6 +18,7 @@ export { dokployLabels, dokployResourceName } from './names.js';
 export { renderNginxConfig } from './nginx.js';
 export {
   renderDokployPlan,
+  type RenderedDokployDeployment,
   type RenderedDokployPlan,
   type RenderedDokployProject,
   type RenderedDokployResource,

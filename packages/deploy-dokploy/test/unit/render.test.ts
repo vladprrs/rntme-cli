@@ -50,6 +50,12 @@ describe('renderDokployPlan', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
 
+    expect(r.value.deployment).toEqual({
+      orgSlug: 'acme',
+      projectSlug: 'commerce',
+      environment: 'default',
+      mode: 'preview',
+    });
     expect(r.value.targetProject).toEqual({ mode: 'existing', projectId: 'project_123' });
     expect(r.value.resources.map((resource) => resource.name)).toEqual([
       'rntme-acme-commerce-catalog',

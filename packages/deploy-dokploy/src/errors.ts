@@ -14,7 +14,7 @@ export type DokployPartialFailureResource = {
   readonly kind: 'domain-service' | 'integration-module' | 'edge-gateway';
   readonly targetResourceId: string;
   readonly targetResourceName: string;
-  readonly action: 'created' | 'updated';
+  readonly action: 'created' | 'updated' | 'unchanged';
 };
 
 export type DokployPartialFailureStep = {
