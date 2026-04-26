@@ -11,6 +11,7 @@ import {
   PgProjectRepo,
   PgTokenRepo,
   S3BlobStore,
+  AesGcmSecretCipher,
 } from '@rntme-cli/platform-storage';
 import { RandomIds } from '@rntme-cli/platform-core';
 import { createApp, type AppDeps } from '../../src/app.js';
@@ -27,7 +28,11 @@ export type E2eEnv = {
   teardown(): Promise<void>;
 };
 
-export async function bootE2e(): Promise<E2eEnv> {
+export type BootE2eOptions = {
+  scheduleDeployment?: AppDeps['scheduleDeployment'];
+};
+
+export async function bootE2e(options: BootE2eOptions = {}): Promise<E2eEnv> {
   process.env.PLATFORM_CREATE_ROLES = '1';
   const externalDb = process.env['PLATFORM_TEST_DATABASE_URL'];
   const externalS3 = readExternalS3();
@@ -55,6 +60,7 @@ export async function bootE2e(): Promise<E2eEnv> {
     PLATFORM_SESSION_COOKIE_DOMAIN: 'localhost',
     PLATFORM_CORS_ORIGINS: '*',
     PLATFORM_COOKIE_PASSWORD: 'x'.repeat(32),
+    PLATFORM_SECRET_ENCRYPTION_KEY: 'a'.repeat(64),
   });
 
   // Run migrations as the owner, then grant the platform_app role rights and
@@ -78,6 +84,7 @@ export async function bootE2e(): Promise<E2eEnv> {
   await blob.ensureBucket();
   const workos = makeWorkosStub();
   const logger = createLogger(env);
+  const cipher = AesGcmSecretCipher.fromEnv(env);
   const ids = new RandomIds();
   const poolRepos = {
     organizations: new PgOrganizationRepo(pool),
@@ -95,6 +102,9 @@ export async function bootE2e(): Promise<E2eEnv> {
     pool,
     blob,
     ids,
+    cipher,
+    enableBackgroundLoops: false,
+    ...(options.scheduleDeployment ? { scheduleDeployment: options.scheduleDeployment } : {}),
     poolRepos,
   };
   const app = createApp(deps);

@@ -17,12 +17,25 @@ import type {
   TokenRepo,
   Ids,
 } from '@rntme-cli/platform-core';
-import { getProjectVersion, isOk, listProjects, listProjectVersions, listTokens, createToken, revokeToken } from '@rntme-cli/platform-core';
+import {
+  getDeployment,
+  getProjectVersion,
+  isOk,
+  listDeployments,
+  listDeployTargets,
+  listProjects,
+  listProjectVersions,
+  listTokens,
+  readDeploymentLogs,
+  startDeployment,
+  createToken,
+  revokeToken,
+} from '@rntme-cli/platform-core';
 import { TokenCreated } from './fragments/token-created.js';
 import { TokenRow } from './fragments/token-row.js';
 import { hasScope } from './scopes.js';
 import { resolveDeps } from '../resolve-deps.js';
-import { renderHtml } from './render.js';
+import { renderFragment, renderHtml } from './render.js';
 import { LoginPage } from './pages/login.js';
 import { NoOrgPage } from './pages/no-org.js';
 import { ErrorPage } from './pages/error.js';
@@ -31,6 +44,11 @@ import { ProjectPage } from './pages/project.js';
 import { ProjectVersionPage } from './pages/project-version.js';
 import { AuditPage } from './pages/audit.js';
 import { TokensPage } from './pages/tokens.js';
+import { DeployTargetDetailPage, DeployTargetsPage } from './pages/deploy-targets.js';
+import { DeploymentsListPage } from './pages/deployments-list.js';
+import { DeploymentPage } from './pages/deployment.js';
+import { DeploymentStatusFragment } from './fragments/deployment-status.js';
+import { DeploymentLogsFragment } from './fragments/deployment-logs.js';
 
 export type UiDeps = {
   env: Env;
@@ -45,6 +63,7 @@ export type UiDeps = {
     memberships: MembershipMirrorRepo;
     tokens: TokenRepo;
   };
+  scheduleDeployment?: (deploymentId: string, orgId: string) => void;
 };
 
 export function createUiApp(deps: UiDeps): Hono {
@@ -403,13 +422,14 @@ export function createUiApp(deps: UiDeps): Hono {
         404,
       );
     }
-    const [versionRes, otherRes, orgRes] = await Promise.all([
+    const [versionRes, otherRes, orgRes, targetsRes] = await Promise.all([
       getProjectVersion(
         { repos: { projectVersions: repos.projectVersions } },
         { projectId: projLookup.value.id, seq },
       ),
       repos.organizations.listForAccount(s.account.id),
       repos.organizations.findById(s.org.id),
+      listDeployTargets({ repos }, { orgId: s.org.id }),
     ]);
     if (!versionRes.ok) {
       const detail = versionRes.errors[0]?.message ?? 'Unknown error';
@@ -428,8 +448,111 @@ export function createUiApp(deps: UiDeps): Hono {
         otherOrgs={otherOrgs}
         project={projLookup.value}
         version={versionRes.value}
+        deployTargets={isOk(targetsRes) ? targetsRes.value : []}
       />,
     );
+  });
+
+  authed.get('/:orgSlug/deploy-targets', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    const [targetsRes, otherRes, orgRes] = await Promise.all([
+      listDeployTargets({ repos }, { orgId: s.org.id }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    if (!targetsRes.ok) return renderHtml(c, <ErrorPage status={500} title="Error" detail={targetsRes.errors[0]?.message ?? 'Unknown error'} />, 500);
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(c, <DeployTargetsPage subject={enrichedSubject} otherOrgs={otherOrgs} targets={targetsRes.value} />);
+  });
+
+  authed.get('/:orgSlug/deploy-targets/:targetSlug', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    const targetRes = await repos.deployTargets.getBySlug(s.org.id, c.req.param('targetSlug'));
+    if (!isOk(targetRes) || !targetRes.value) {
+      return renderHtml(c, <ErrorPage status={404} title="Deploy target not found" backHref={`/${s.org.slug}/deploy-targets`} />, 404);
+    }
+    const [otherRes, orgRes] = await Promise.all([
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(c, <DeployTargetDetailPage subject={enrichedSubject} otherOrgs={otherOrgs} target={targetRes.value} />);
+  });
+
+  authed.post('/:orgSlug/projects/:projSlug/deployments', sameOriginOnly(deps.env.PLATFORM_BASE_URL), async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    const projSlug = c.req.param('projSlug')!;
+    const project = await repos.projects.findBySlug(s.org.id, projSlug);
+    if (!isOk(project) || !project.value) return renderHtml(c, <ErrorPage status={404} title="Project not found" backHref={`/${s.org.slug}`} />, 404);
+    const form = await c.req.parseBody();
+    const projectVersionSeq = Number(form.projectVersionSeq);
+    const targetSlug = typeof form.targetSlug === 'string' && form.targetSlug.length > 0 ? form.targetSlug : undefined;
+    const result = await startDeployment({ repos, ids: deps.ids }, {
+      orgId: s.org.id,
+      projectId: project.value.id,
+      accountId: s.account.id,
+      tokenId: s.tokenId ?? null,
+      req: { projectVersionSeq, targetSlug, configOverrides: {} },
+    });
+    if (!isOk(result)) return renderHtml(c, <ErrorPage status={400} title="Cannot start deployment" detail={result.errors[0]?.message ?? 'Unknown error'} backHref={`/${s.org.slug}/projects/${projSlug}/versions/${projectVersionSeq}`} />, 400);
+    deps.scheduleDeployment?.(result.value.id, s.org.id);
+    return c.redirect(`/${s.org.slug}/projects/${projSlug}/deployments/${result.value.id}`, 303);
+  });
+
+  authed.get('/:orgSlug/projects/:projSlug/deployments', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    const project = await repos.projects.findBySlug(s.org.id, c.req.param('projSlug'));
+    if (!isOk(project) || !project.value) return renderHtml(c, <ErrorPage status={404} title="Project not found" backHref={`/${s.org.slug}`} />, 404);
+    const [deploymentsRes, otherRes, orgRes] = await Promise.all([
+      listDeployments({ repos }, { projectId: project.value.id, limit: 50 }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    if (!isOk(deploymentsRes)) return renderHtml(c, <ErrorPage status={500} title="Error" detail={deploymentsRes.errors[0]?.message ?? 'Unknown error'} />, 500);
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(c, <DeploymentsListPage subject={enrichedSubject} otherOrgs={otherOrgs} project={project.value} deployments={deploymentsRes.value} />);
+  });
+
+  authed.get('/:orgSlug/projects/:projSlug/deployments/:deploymentId', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const s = c.get('subject');
+    const project = await repos.projects.findBySlug(s.org.id, c.req.param('projSlug'));
+    if (!isOk(project) || !project.value) return renderHtml(c, <ErrorPage status={404} title="Project not found" backHref={`/${s.org.slug}`} />, 404);
+    const deploymentRes = await getDeployment({ repos }, { id: c.req.param('deploymentId') });
+    if (!isOk(deploymentRes) || !deploymentRes.value) return renderHtml(c, <ErrorPage status={404} title="Deployment not found" backHref={`/${s.org.slug}/projects/${project.value.slug}`} />, 404);
+    const [logsRes, otherRes, orgRes] = await Promise.all([
+      readDeploymentLogs({ repos }, { deploymentId: deploymentRes.value.id, sinceLineId: 0, limit: 200 }),
+      repos.organizations.listForAccount(s.account.id),
+      repos.organizations.findById(s.org.id),
+    ]);
+    const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
+    const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
+    const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
+    return renderHtml(c, <DeploymentPage subject={enrichedSubject} otherOrgs={otherOrgs} project={project.value} deployment={deploymentRes.value} logs={isOk(logsRes) ? logsRes.value.lines : []} />);
+  });
+
+  authed.get('/:orgSlug/projects/:projSlug/deployments/:deploymentId/status', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const deploymentRes = await getDeployment({ repos }, { id: c.req.param('deploymentId') });
+    if (!isOk(deploymentRes) || !deploymentRes.value) return c.text('not found', 404);
+    return renderFragment(c, <DeploymentStatusFragment deployment={deploymentRes.value} />);
+  });
+
+  authed.get('/:orgSlug/projects/:projSlug/deployments/:deploymentId/logs', async (c) => {
+    const repos = resolveDeps(c.get('tx'));
+    const logsRes = await readDeploymentLogs({ repos }, { deploymentId: c.req.param('deploymentId'), sinceLineId: Number(c.req.query('sinceLineId') ?? 0), limit: 200 });
+    if (!isOk(logsRes)) return c.text('error', 500);
+    return renderFragment(c, <DeploymentLogsFragment lines={logsRes.value.lines} lastLineId={logsRes.value.lastLineId} />);
   });
 
   app.route('/', authed);

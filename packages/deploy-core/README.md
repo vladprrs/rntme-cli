@@ -8,6 +8,11 @@ Target-neutral project deployment planning for rntme.
 `ProjectDeploymentPlan`. It does not read raw blueprint folders, collect
 secrets, call Dokploy, or run browser verification.
 
+On the platform path, `@rntme-cli/platform-http` fetches and revalidates an
+immutable project-version bundle, converts the saved deploy target into
+`ProjectDeploymentConfig`, and then calls this package before handing the plan
+to a target adapter.
+
 ## Public API
 
 - `buildProjectDeploymentPlan(project, config)` — creates a preview deployment

@@ -10,6 +10,7 @@ import {
   PgWorkosEventLogRepo,
   PgProjectRepo,
   PgTokenRepo,
+  AesGcmSecretCipher,
   S3BlobStore,
 } from '@rntme-cli/platform-storage';
 import { parseEnv } from '../config/env.js';
@@ -34,6 +35,7 @@ async function main() {
   const workos = createWorkos(env);
   const ids = new RandomIds();
   const cookiePassword = env.PLATFORM_COOKIE_PASSWORD;
+  const cipher = AesGcmSecretCipher.fromEnv(env);
 
   const poolRepos = {
     organizations: new PgOrganizationRepo(pool),
@@ -52,6 +54,7 @@ async function main() {
     pool,
     blob,
     ids,
+    cipher,
     poolRepos,
   });
 

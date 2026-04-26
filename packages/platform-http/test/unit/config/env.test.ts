@@ -14,6 +14,7 @@ const baseEnv = {
   PLATFORM_BASE_URL: 'https://platform.rntme.com',
   PLATFORM_SESSION_COOKIE_DOMAIN: '.rntme.com',
   PLATFORM_CORS_ORIGINS: 'https://*.rntme.com',
+  PLATFORM_SECRET_ENCRYPTION_KEY: 'a'.repeat(64),
   PLATFORM_COOKIE_PASSWORD: 'y'.repeat(32),
 };
 
@@ -29,6 +30,9 @@ describe('parseEnv', () => {
   });
   it('rejects missing PLATFORM_COOKIE_PASSWORD', () => {
     expect(() => parseEnv({ ...baseEnv, PLATFORM_COOKIE_PASSWORD: undefined })).toThrow(/PLATFORM_COOKIE_PASSWORD/);
+  });
+  it('rejects missing PLATFORM_SECRET_ENCRYPTION_KEY', () => {
+    expect(() => parseEnv({ ...baseEnv, PLATFORM_SECRET_ENCRYPTION_KEY: undefined })).toThrow(/PLATFORM_SECRET_ENCRYPTION_KEY/);
   });
   it('rejects a PLATFORM_COOKIE_PASSWORD shorter than 32 chars', () => {
     expect(() => parseEnv({ ...baseEnv, PLATFORM_COOKIE_PASSWORD: 'short' })).toThrow(/>=32/);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ProjectSchema, ApiTokenSchema } from '../../../src/schemas/entities.js';
+import { ProjectSchema, ApiTokenSchema, ScopeSchema } from '../../../src/schemas/entities.js';
 
 describe('entity schemas', () => {
   it('ProjectSchema parses a valid row', () => {
@@ -29,5 +29,9 @@ describe('entity schemas', () => {
       createdAt: new Date(),
     });
     expect(r.success).toBe(true);
+  });
+  it('ScopeSchema includes deploy target and deploy execution scopes', () => {
+    expect(ScopeSchema.options).toContain('deploy:target:manage');
+    expect(ScopeSchema.options).toContain('deploy:execute');
   });
 });
