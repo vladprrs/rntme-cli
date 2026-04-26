@@ -429,7 +429,7 @@ async function withSystemRlsDisabled<T>(
 }
 
 function isPool(db: PgQueryable): db is Pool {
-  return typeof (db as Pool).connect === 'function';
+  return typeof (db as Pool).totalCount === 'number';
 }
 
 function invalidTransition(id: string): Result<never, PlatformError> {

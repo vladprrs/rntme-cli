@@ -367,7 +367,7 @@ async function withOptionalTransaction<T>(
 }
 
 function isPool(db: PgQueryable): db is Pool {
-  return typeof (db as Pool).connect === 'function';
+  return typeof (db as Pool).totalCount === 'number';
 }
 
 function notFound(slug: string): Result<never, PlatformError> {
