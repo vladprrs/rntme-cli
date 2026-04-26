@@ -93,30 +93,40 @@ async function seedOrgWithToken(
   workosId: string,
   workosUser: string,
 ): Promise<{ plain: string }> {
-  const org = await env.deps.poolRepos.organizations.upsertFromWorkos({
-    workosOrganizationId: workosId,
-    slug,
-    displayName: slug,
-  });
-  const acc = await env.deps.poolRepos.accounts.upsertFromWorkos({
-    workosUserId: workosUser,
-    email: null,
-    displayName: workosUser,
-  });
-  if (!org.ok || !acc.ok) throw new Error('seed');
-  await env.deps.poolRepos.memberships.upsert({ orgId: org.value.id, accountId: acc.value.id, role: 'admin' });
+  const org = await env.ownerPool.query<{ id: string }>(
+    `INSERT INTO organization (id, workos_organization_id, slug, display_name)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (workos_organization_id) DO UPDATE SET slug=EXCLUDED.slug, display_name=EXCLUDED.display_name
+     RETURNING id`,
+    [randomUUID(), workosId, slug, slug],
+  );
+  const acc = await env.ownerPool.query<{ id: string }>(
+    `INSERT INTO account (id, workos_user_id, email, display_name)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (workos_user_id) DO UPDATE SET email=EXCLUDED.email, display_name=EXCLUDED.display_name
+     RETURNING id`,
+    [randomUUID(), workosUser, null, workosUser],
+  );
+  await env.ownerPool.query(
+    `INSERT INTO membership_mirror (org_id, account_id, role)
+     VALUES ($1,$2,'admin')
+     ON CONFLICT (org_id, account_id) DO UPDATE SET role=EXCLUDED.role, updated_at=now()`,
+    [org.rows[0]!.id, acc.rows[0]!.id],
+  );
   const plain = 'rntme_pat_' + randomUUID().replace(/-/g, '').slice(0, 22);
   const hash = new Uint8Array(createHash('sha256').update(plain).digest());
-  await env.deps.poolRepos.tokens.create({
-    id: randomUUID(),
-    orgId: org.value.id,
-    accountId: acc.value.id,
-    name: 'upload',
-    tokenHash: hash,
-    prefix: plain.slice(0, 12),
-    scopes: ['project:read', 'project:write', 'version:publish'],
-    expiresAt: null,
-  });
+  await env.ownerPool.query(
+    `INSERT INTO api_token (id, org_id, account_id, name, token_hash, prefix, scopes, expires_at)
+     VALUES ($1,$2,$3,'upload',$4,$5,$6,NULL)`,
+    [
+      randomUUID(),
+      org.rows[0]!.id,
+      acc.rows[0]!.id,
+      Buffer.from(hash),
+      plain.slice(0, 12),
+      ['project:read', 'project:write', 'version:publish'],
+    ],
+  );
   return { plain };
 }
 

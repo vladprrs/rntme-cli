@@ -21,6 +21,7 @@ import { makeWorkosStub } from './workos-stub.js';
 export type E2eEnv = {
   pg: StartedPostgreSqlContainer | null;
   minio: StartedTestContainer | null;
+  ownerPool: ReturnType<typeof createPool>;
   app: ReturnType<typeof createApp>;
   deps: AppDeps;
   teardown(): Promise<void>;
@@ -63,7 +64,6 @@ export async function bootE2e(): Promise<E2eEnv> {
   await runMigrations(ownerDb, ownerPool);
   await ownerPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO platform_app`);
   await ownerPool.query(`GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO platform_app`);
-  await ownerPool.end();
   const parsed = new URL(databaseUrl);
   parsed.username = 'platform_app';
   parsed.password = 'platform_app';
@@ -101,10 +101,12 @@ export async function bootE2e(): Promise<E2eEnv> {
   return {
     pg,
     minio,
+    ownerPool,
     app,
     deps,
     teardown: async () => {
       await pool.end();
+      await ownerPool.end();
       await minio?.stop();
       await pg?.stop();
     },
