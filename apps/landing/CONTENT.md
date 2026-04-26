@@ -9,7 +9,7 @@
 ## Meta (BaseLayout)
 
 - **Title:** rntme — the safe runtime for AI-generated workflow apps
-- **Description:** Stop reinventing a backend every time your agent builds you one. rntme turns a validated service blueprint into a working API and UI on a standard runtime.
+- **Description:** Stop reinventing a backend every time your agent builds you one. rntme turns a validated project blueprint into working APIs and a UI on a standard runtime.
 
 ## Chrome
 
@@ -45,13 +45,13 @@
 - **Eyebrow:** rntme · pilot program · 2026
 - **H1:** Stop reinventing a backend every time your agent builds you one.
 - **Lede:** Your first Cursor-built approval tool shipped in two days. The fourth one has a schema you've never seen, events that half-work, and a review queue nobody reads.
-- **Pitch:** rntme is a standard runtime for these services. One blueprint describes the domain, the data, the state, the API, and the UI. The runtime enforces it. Service #10 looks like service #1.
+- **Pitch:** rntme is a standard runtime for these apps. One project blueprint describes the domain, the data, the services, the APIs, the modules, and the UI. The runtime enforces it. App #10 looks like app #1.
 - **CTAs:**
   - `Apply as a pilot team →` → Tally form
   - `See it on GitHub` → `GITHUB_URL`
 - **Meta row (4 cells):**
   - Runtime → **event-sourced**
-  - Unit of work → **validated JSON**
+  - Unit of work → **validated project blueprint**
   - Output → **API + UI + events**
   - Pilot cohort → **10 teams**
 
@@ -65,9 +65,9 @@
 
 ### Card 01
 
-- **Title:** Describe a service once, in a single validated JSON blueprint.
-- **Action:** Domain, data, state transitions, HTTP bindings, UI — one file, validated in layers.
-- **Value:** → No more per-service scaffolding. No "how is this one laid out" confusion on service #5.
+- **Title:** Describe an app once, in a validated project blueprint folder.
+- **Action:** Project metadata, domain, services, state transitions, HTTP bindings, modules, UI — one folder, validated in layers.
+- **Value:** → No more per-service scaffolding. No "how is this one laid out" confusion on app #5.
 
 ### Card 02
 
