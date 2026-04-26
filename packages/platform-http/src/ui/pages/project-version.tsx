@@ -1,7 +1,7 @@
 import { Layout } from '../layout.js';
 import { DataTable } from '../components/table.js';
 import { RelativeTime } from '../components/relative-time.js';
-import type { AuthSubject, Organization, Project, ProjectVersion } from '@rntme-cli/platform-core';
+import type { AuthSubject, DeployTarget, Organization, Project, ProjectVersion } from '@rntme-cli/platform-core';
 import type { EnrichedSubject } from './org.js';
 
 export function ProjectVersionPage(props: {
@@ -9,6 +9,7 @@ export function ProjectVersionPage(props: {
   otherOrgs: readonly Pick<Organization, 'id' | 'slug' | 'displayName'>[];
   project: Project;
   version: ProjectVersion;
+  deployTargets?: readonly DeployTarget[];
 }) {
   const { subject, project, version } = props;
   const back = `/${subject.org.slug}/projects/${project.slug}`;
@@ -37,6 +38,22 @@ export function ProjectVersionPage(props: {
           {Math.round(version.bundleSizeBytes / 1024)} KB uploaded <RelativeTime value={version.createdAt} />
         </p>
       </header>
+
+      <section class="mb-6 border-y border-gray-200 py-4">
+        <form method="post" action={`/${subject.org.slug}/projects/${project.slug}/deployments`} class="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="projectVersionSeq" value={String(version.seq)} />
+          <label class="text-sm">
+            <span class="mb-1 block font-medium text-gray-900">Target</span>
+            <select name="targetSlug" class="rounded border border-gray-300 px-2 py-1">
+              <option value="">Default target</option>
+              {(props.deployTargets ?? []).map((target) => (
+                <option value={target.slug}>{target.displayName}</option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" class="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">Deploy</button>
+        </form>
+      </section>
 
       <section class="mb-6">
         <h2 class="mb-2 text-sm font-medium text-gray-900">Services</h2>

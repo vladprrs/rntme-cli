@@ -7,7 +7,7 @@ Hono HTTP server that wires `@rntme-cli/platform-core` use-cases to the REST sur
 This service exposes two surfaces on the same origin:
 
 - **`/v1/*` — JSON REST API.** Documented via `/openapi.json` (OpenAPI 3.1). Used by the CLI and external integrations. Authentication via WorkOS AuthKit cookie (humans) or `Authorization: Bearer rntme_pat_…` (machines).
-- **`/` — Browser UI.** Server-rendered dashboard (Hono JSX + htmx + Tailwind CDN) mounted beside the `/v1` sub-app. Lets an authenticated user browse orgs / projects / project versions / audit log and manage API tokens. Read-only except token create/revoke.
+- **`/` — Browser UI.** Server-rendered dashboard (Hono JSX + htmx + Tailwind CDN) mounted beside the `/v1` sub-app. Lets an authenticated user browse orgs / projects / project versions / deploy targets / deployments / audit log and manage API tokens.
 
 ## UI routes
 
@@ -19,6 +19,11 @@ This service exposes two surfaces on the same origin:
 | `GET /{orgSlug}` | Projects list |
 | `GET /{orgSlug}/projects/{projSlug}` | Project detail + project versions list |
 | `GET /{orgSlug}/projects/{projSlug}/versions/{seq}` | Project version detail |
+| `GET /{orgSlug}/deploy-targets` | Deploy target list |
+| `GET /{orgSlug}/deploy-targets/{targetSlug}` | Deploy target detail |
+| `POST /{orgSlug}/projects/{projSlug}/deployments` | Start deployment from the selected project version |
+| `GET /{orgSlug}/projects/{projSlug}/deployments` | Deployment history |
+| `GET /{orgSlug}/projects/{projSlug}/deployments/{deploymentId}` | Deployment detail with polling status/logs |
 | `GET /{orgSlug}/tokens` | API tokens list (+ create form if `token:manage` scope) |
 | `POST /{orgSlug}/tokens` | Create token (htmx) — returns new `<tr>` + one-time plaintext banner |
 | `DELETE /{orgSlug}/tokens/{id}` | Revoke token (htmx) — returns updated row with "revoked" badge |
@@ -44,7 +49,16 @@ This service exposes two surfaces on the same origin:
 
 ## CSRF
 
-UI mutations (`POST /:orgSlug/tokens`, `DELETE /:orgSlug/tokens/:id`, `POST /logout`) verify `Origin` or `Referer` against `PLATFORM_BASE_URL` via `sameOriginOnly`. The `/v1/*` JSON API does not use this guard — bearer tokens provide the CSRF defence.
+UI mutations (`POST /:orgSlug/tokens`, `DELETE /:orgSlug/tokens/:id`, `POST /:orgSlug/projects/:projSlug/deployments`, `POST /logout`) verify `Origin` or `Referer` against `PLATFORM_BASE_URL` via `sameOriginOnly`. The `/v1/*` JSON API does not use this guard — bearer tokens provide the CSRF defence.
+
+## Deploy runtime
+
+Deploy-target REST routes require `deploy:target:manage`; start deployment
+requires `deploy:execute`; deployment reads require `project:read`. The
+background executor fetches the immutable project-version bundle, revalidates
+it, plans with `@rntme-cli/deploy-core`, applies with
+`@rntme-cli/deploy-dokploy`, writes sanitized logs, records apply/smoke
+evidence, and finalizes stale running jobs through the orphan detector.
 
 ## Security headers (UI only)
 
@@ -66,12 +80,13 @@ pnpm -F @rntme-cli/platform-http start      # runs dist/bin/server.js
 
 ## Env vars
 
-See `src/config/env.ts`. Required: `DATABASE_URL`, `RUSTFS_*`, `WORKOS_*`, `PLATFORM_BASE_URL`, `PLATFORM_SESSION_COOKIE_DOMAIN`, `PLATFORM_COOKIE_PASSWORD` (≥32 chars).
+See `src/config/env.ts`. Required: `DATABASE_URL`, `RUSTFS_*`, `WORKOS_*`, `PLATFORM_BASE_URL`, `PLATFORM_SESSION_COOKIE_DOMAIN`, `PLATFORM_COOKIE_PASSWORD` (≥32 chars), `PLATFORM_SECRET_ENCRYPTION_KEY` (64 hex chars).
 
 ## Not in the UI (MVP)
 
 - Creating / renaming / archiving projects — CLI only.
 - Publishing project versions — CLI only.
+- Creating or editing deploy targets — REST only in the current MVP.
 - Creating organizations — use the WorkOS Admin Portal.
 - Toggling archived visibility.
 - Client-side SPA state or infinite scroll.

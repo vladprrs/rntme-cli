@@ -13,6 +13,7 @@ export const EnvSchema = z.object({
   PLATFORM_BASE_URL: z.string().url(),
   PLATFORM_SESSION_COOKIE_DOMAIN: z.string().min(1),
   PLATFORM_CORS_ORIGINS: z.string().default('https://*.rntme.com'),
+  PLATFORM_SECRET_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/),
   /** Session sealing for WorkOS AuthKit; use a random value ≥32 bytes in production. */
   PLATFORM_COOKIE_PASSWORD: z.string().min(32),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),

@@ -19,6 +19,7 @@ const baseline = {
   PLATFORM_BASE_URL: 'https://platform.rntme.com',
   PLATFORM_SESSION_COOKIE_DOMAIN: '.rntme.com',
   PLATFORM_CORS_ORIGINS: 'https://*.rntme.com',
+  PLATFORM_SECRET_ENCRYPTION_KEY: 'a'.repeat(64),
   PLATFORM_COOKIE_PASSWORD: 'y'.repeat(32),
 };
 
@@ -31,6 +32,7 @@ function buildDeps(): AppDeps {
     pool: { query: vi.fn().mockResolvedValue({}) } as unknown as Pool,
     blob: { presignedGet: async () => ({ ok: true as const, value: 'http://x' }) } as unknown as BlobStore,
     ids: new RandomIds(),
+    enableBackgroundLoops: false,
     poolRepos: {} as AppDeps['poolRepos'],
   };
 }

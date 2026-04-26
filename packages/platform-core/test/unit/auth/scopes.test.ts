@@ -9,10 +9,17 @@ describe('scopes', () => {
       'version:publish',
       'member:read',
       'token:manage',
+      'deploy:target:manage',
+      'deploy:execute',
     ]);
   });
   it('member has project + publish only', () => {
-    expect(scopesForRole('member')).toEqual(['project:read', 'project:write', 'version:publish']);
+    expect(scopesForRole('member')).toEqual([
+      'project:read',
+      'project:write',
+      'version:publish',
+      'deploy:execute',
+    ]);
   });
   it('tokenScopesSubsetOf rejects elevation', () => {
     expect(tokenScopesSubsetOf(['token:manage'], scopesForRole('member'))).toBe(false);

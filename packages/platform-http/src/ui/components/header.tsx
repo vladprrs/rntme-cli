@@ -42,6 +42,7 @@ export function Header(props: {
           </div>
           <div class="flex items-center gap-4 text-sm text-gray-600">
             <a href={`/${subject.org.slug}`} class="hover:text-gray-900">Projects</a>
+            <a href={`/${subject.org.slug}/deploy-targets`} class="hover:text-gray-900">Deploy targets</a>
             <a href={`/${subject.org.slug}/tokens`} class="hover:text-gray-900">Tokens</a>
             <a href={`/${subject.org.slug}/audit`} class="hover:text-gray-900">Audit</a>
           </div>

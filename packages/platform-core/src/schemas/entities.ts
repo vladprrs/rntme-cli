@@ -8,6 +8,8 @@ export const ScopeSchema = z.enum([
   'version:publish',
   'member:read',
   'token:manage',
+  'deploy:target:manage',
+  'deploy:execute',
 ]);
 
 export const OrganizationSchema = z.object({

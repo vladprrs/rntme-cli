@@ -6,6 +6,8 @@ import {
   PgWorkosEventLogRepo,
   PgProjectRepo,
   PgProjectVersionRepo,
+  PgDeployTargetRepo,
+  PgDeploymentRepo,
   PgTokenRepo,
   PgAuditRepo,
   PgOutboxRepo,
@@ -17,6 +19,8 @@ import type {
   WorkosEventLogRepo,
   ProjectRepo,
   ProjectVersionRepo,
+  DeployTargetRepo,
+  DeploymentRepo,
   TokenRepo,
   AuditRepo,
   OutboxRepo,
@@ -29,6 +33,8 @@ export type RequestRepos = {
   workosEventLog: WorkosEventLogRepo;
   projects: ProjectRepo;
   projectVersions: ProjectVersionRepo;
+  deployTargets: DeployTargetRepo;
+  deployments: DeploymentRepo;
   tokens: TokenRepo;
   audit: AuditRepo;
   outbox: OutboxRepo;
@@ -42,6 +48,8 @@ export function resolveDeps(tx: PoolClient): RequestRepos {
     workosEventLog: new PgWorkosEventLogRepo(tx),
     projects: new PgProjectRepo(tx),
     projectVersions: new PgProjectVersionRepo(tx),
+    deployTargets: new PgDeployTargetRepo(tx),
+    deployments: new PgDeploymentRepo(tx),
     tokens: new PgTokenRepo(tx),
     audit: new PgAuditRepo(tx),
     outbox: new PgOutboxRepo(tx),

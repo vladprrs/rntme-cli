@@ -19,10 +19,10 @@ export type DokployApplication = {
 };
 
 export type DokployClient = {
-  ensureProject(ref: DokployProjectRef): Promise<{ projectId: string }>;
-  findApplicationByName(projectId: string, name: string): Promise<DokployApplication | null>;
+  ensureEnvironment(ref: DokployProjectRef, environmentName: string): Promise<{ environmentId: string }>;
+  findApplicationByName(environmentId: string, name: string): Promise<DokployApplication | null>;
   createApplication(
-    projectId: string,
+    environmentId: string,
     resource: RenderedDokployResource,
   ): Promise<DokployApplication>;
   updateApplication(

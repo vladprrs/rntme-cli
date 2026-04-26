@@ -12,3 +12,9 @@ export function renderHtml(c: Context, node: JSX.Element, status: 200 | 400 | 40
   c.header('Content-Type', 'text/html; charset=utf-8');
   return c.body(body);
 }
+
+export function renderFragment(c: Context, node: JSX.Element, status: 200 | 400 | 403 | 404 | 500 = 200) {
+  c.status(status);
+  c.header('Content-Type', 'text/html; charset=utf-8');
+  return c.body(String(node));
+}

@@ -29,6 +29,31 @@ export function buildOpenApi(env: Env): object {
       '/v1/orgs/{orgSlug}/projects/{projSlug}/versions/{seq}/bundle': {
         get: { summary: 'Redirect to project version bundle' },
       },
+      '/v1/orgs/{orgSlug}/deploy-targets': {
+        get: { summary: 'List deploy targets', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+        post: { summary: 'Create deploy target', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
+      '/v1/orgs/{orgSlug}/deploy-targets/{targetSlug}': {
+        get: { summary: 'Show deploy target', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+        patch: { summary: 'Update deploy target', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+        delete: { summary: 'Delete deploy target', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
+      '/v1/orgs/{orgSlug}/deploy-targets/{targetSlug}/api-token': {
+        put: { summary: 'Rotate deploy target API token', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
+      '/v1/orgs/{orgSlug}/deploy-targets/{targetSlug}/default': {
+        put: { summary: 'Set default deploy target', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
+      '/v1/orgs/{orgSlug}/projects/{projSlug}/deployments': {
+        post: { summary: 'Start deployment', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+        get: { summary: 'List deployments', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
+      '/v1/orgs/{orgSlug}/projects/{projSlug}/deployments/{deploymentId}': {
+        get: { summary: 'Show deployment', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
+      '/v1/orgs/{orgSlug}/projects/{projSlug}/deployments/{deploymentId}/logs': {
+        get: { summary: 'Read deployment logs', security: [{ bearerAuth: [] }, { cookieAuth: [] }] },
+      },
     },
     components: {
       securitySchemes: {

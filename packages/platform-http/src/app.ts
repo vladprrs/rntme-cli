@@ -1,3 +1,4 @@
+import { setImmediate } from 'node:timers';
 import { Hono } from 'hono';
 import type { Env } from './config/env.js';
 import { requestId } from './middleware/request-id.js';
@@ -13,9 +14,15 @@ import { webhookWorkosRoute } from './routes/webhook-workos.js';
 import { orgRoutes } from './routes/orgs.js';
 import { projectRoutes } from './routes/projects.js';
 import { projectVersionRoutes } from './routes/project-versions.js';
+import { deployTargetRoutes } from './routes/deploy-targets.js';
+import { deploymentRoutes } from './routes/deployments.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { auditRoutes } from './routes/audit.js';
 import { opsRoutes } from './routes/ops.js';
+import { runDeployment } from './deploy/executor.js';
+import { SmokeVerifier } from './deploy/smoke-verifier.js';
+import { createDokployClientFactory } from './deploy/dokploy-client-factory.js';
+import { startOrphanDetectLoop } from './deploy/orphan-detect.js';
 import { createUiApp } from './ui/app.js';
 import { buildOpenApi } from './openapi.js';
 import { ApiTokenProvider } from './auth/api-token-provider.js';
@@ -32,7 +39,10 @@ import type {
   TokenRepo,
   BlobStore,
   Ids,
+  SecretCipher,
 } from '@rntme-cli/platform-core';
+import { resolveDeps } from './resolve-deps.js';
+import { PgDeploymentRepo } from '@rntme-cli/platform-storage';
 
 export type AppDeps = {
   env: Env;
@@ -42,6 +52,9 @@ export type AppDeps = {
   pool: Pool;
   blob: BlobStore;
   ids: Ids;
+  cipher?: SecretCipher;
+  enableBackgroundLoops?: boolean;
+  scheduleDeployment?: (deploymentId: string, orgId: string) => void;
   /** Pool-scoped repos used by pre-auth routes only (webhook, auth callback, ops). */
   poolRepos: {
     organizations: OrganizationRepo;
@@ -55,6 +68,47 @@ export type AppDeps = {
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
+  const cipher = deps.cipher ?? {
+    encrypt: () => {
+      throw new Error('PLATFORM_SECRET_ENCRYPTION_KEY is not configured');
+    },
+    decrypt: () => {
+      throw new Error('PLATFORM_SECRET_ENCRYPTION_KEY is not configured');
+    },
+  };
+  const withOrgTx = async <T,>(orgId: string, fn: (repos: ReturnType<typeof resolveDeps>) => Promise<T>): Promise<T> => {
+    const client = await deps.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`SELECT set_config('app.org_id', $1, true)`, [orgId]);
+      const result = await fn(resolveDeps(client));
+      await client.query('COMMIT');
+      return result;
+    } catch (cause) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw cause;
+    } finally {
+      client.release();
+    }
+  };
+  const executorDeps = {
+    blob: deps.blob,
+    withOrgTx,
+    orgSlugFor: async (orgId: string) => {
+      const result = await deps.pool.query<{ slug: string }>(`SELECT slug FROM organization WHERE id=$1 LIMIT 1`, [orgId]);
+      return result.rows[0]?.slug ?? '';
+    },
+    dokployClientFactory: createDokployClientFactory(cipher),
+    smoker: new SmokeVerifier(),
+    logger: deps.logger,
+  };
+  const scheduleDeployment = deps.scheduleDeployment ?? ((deploymentId: string, orgId: string) => {
+    setImmediate(() => {
+      void runDeployment(deploymentId, orgId, executorDeps).catch((cause) => {
+        deps.logger.error({ deploymentId, cause }, 'scheduled deployment failed');
+      });
+    });
+  });
 
   app.use('*', requestId());
   app.use('*', loggerMiddleware(deps.logger));
@@ -145,10 +199,15 @@ export function createApp(deps: AppDeps): Hono {
     });
   });
   authed.route('/orgs', orgRoutes({ ids: deps.ids }));
+  authed.route('/orgs/:orgSlug/deploy-targets', deployTargetRoutes({ ids: deps.ids, cipher }));
   authed.route('/orgs/:orgSlug/projects', projectRoutes({ ids: deps.ids }));
   authed.route(
     '/orgs/:orgSlug/projects/:projSlug',
     projectVersionRoutes({ blob: deps.blob, ids: deps.ids }),
+  );
+  authed.route(
+    '/orgs/:orgSlug/projects/:projSlug',
+    deploymentRoutes({ ids: deps.ids, scheduleDeployment }),
   );
   authed.route('/orgs/:orgSlug/tokens', tokenRoutes({ ids: deps.ids }));
   authed.route('/orgs/:orgSlug/audit', auditRoutes());
@@ -167,6 +226,7 @@ export function createApp(deps: AppDeps): Hono {
       cookiePassword: deps.cookiePassword,
       pool: deps.pool,
       ids: deps.ids,
+      scheduleDeployment,
       poolRepos: {
         organizations: deps.poolRepos.organizations,
         accounts: deps.poolRepos.accounts,
@@ -175,6 +235,15 @@ export function createApp(deps: AppDeps): Hono {
       },
     }),
   );
+
+  if (deps.enableBackgroundLoops !== false) {
+    startOrphanDetectLoop({
+      withOrgTx,
+      findStaleRunning: (staleAfterSeconds) =>
+        new PgDeploymentRepo(deps.pool).findStaleRunning(staleAfterSeconds),
+      logger: deps.logger,
+    });
+  }
 
   return app;
 }
