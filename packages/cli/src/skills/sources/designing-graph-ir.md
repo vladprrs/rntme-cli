@@ -19,7 +19,7 @@ The compiler's `inferRole()` determines dispatch by inspecting nodes and output 
 4. For each **command binding**: declare the graph's `signature.inputs` for every parameter the binding's `parameters` list carries (`required` for mandatory, `nullable` for optional FKs). Output must be `{ type: "row<CommandResult>", from: "<emitNodeId>" }`. Declare exactly one `emit` node referencing the correct PDM aggregate and transition; fill `payload` with `{ $param: ... }` expressions for each `affects` field.
 5. If a query needs **dot-navigation** (e.g. `issue.project.key`): confirm the relation is declared in `qsm.json` under `relations` with `cardinality: "one"`. The compiler resolves dot-nav at lower-time into LEFT JOINs; many-cardinality NAV is rejected with `NAV_FAN_OUT_NOT_ALLOWED`.
 6. For **nullable filters** (`predicate_optional` inputs): place all `predicate_optional` inputs **at the end** of the `signature.inputs` declaration order. The `wrapPredicateOptional` mechanism appends an `OR (? IS NULL)` clause; if a `predicate_optional` `$param` appears before other `$param` references in the same filter expression, positional `?` binding goes out of order (known `rntme_predicate_optional_bug` — fixed in `bcce017`, but the authoring rule remains: keep `predicate_optional` inputs last in signature to avoid reintroducing the misalignment). Place the `predicate_optional` filter in a **separate** `filter` node after any non-optional filters.
-7. Write `artifacts/graph-ir.json`. Run `rntme validate`. Fix all `GRAPH_IR_*` / `GIC_` / `SEM_` / `STRUCT_` / `CMD_` codes.
+7. Write `artifacts/graph-ir.json`. Run `rntme project publish --dry-run`. Fix all `GRAPH_IR_*` / `GIC_` / `SEM_` / `STRUCT_` / `CMD_` codes.
 8. Cross-check: for every shape declared under `shapes`, confirm each `map.into` or `reduce.into` references it, and that every shape field is produced exactly once (`STRUCT_MAP_SHAPE_COVERAGE` / `STRUCT_REDUCE_SHAPE_COVERAGE` enforce coverage).
 
 ## Red flags
@@ -1333,7 +1333,7 @@ Walkthrough: The `listIssues` graph shows a typical query pipeline — `signatur
 
 ## Validation & self-review
 
-Run `rntme validate` from the service root. Fix all errors before proceeding. Key code groups:
+Run `rntme project publish --dry-run` from the project blueprint root. Fix all errors before proceeding. Key code groups:
 
 - `PARSE_INVALID_JSON` / `PARSE_SCHEMA_VIOLATION` — JSON or Zod shape error; check the offending `location.path`.
 - `STRUCT_DAG_CYCLE` — a node references itself or forms a cycle; check `config.input` chains.
@@ -1352,4 +1352,4 @@ Run `rntme validate` from the service root. Fix all errors before proceeding. Ke
 
 ## Next step
 
-When BOTH this skill and designing-qsm are green, invoke Skill: composing-manifest.
+When BOTH this skill and designing-qsm are green, invoke Skill: composing-blueprint.

@@ -51,8 +51,7 @@ export function projectRoutes(deps: {
     const p = await repos.projects.findBySlug(s.org.id, c.req.param('projSlug'));
     if (!isOk(p) || !p.value)
       return c.json({ error: { code: 'PLATFORM_TENANCY_PROJECT_NOT_FOUND', message: c.req.param('projSlug') } }, 404);
-    const count = await repos.projects.countServices(s.org.id, p.value.id);
-    return c.json({ project: p.value, serviceCount: isOk(count) ? count.value : 0 });
+    return c.json({ project: p.value });
   });
 
   app.patch('/:projSlug', requireScope('project:write'), async (c) => {

@@ -15,6 +15,10 @@ let cached: boolean | undefined;
 export function integrationContainersAvailable(): boolean {
   if (process.env['PLATFORM_TEST_DATABASE_URL']) return true;
   if (process.env['SKIP_TESTCONTAINERS'] === '1') return false;
+  return dockerAvailable();
+}
+
+export function dockerAvailable(): boolean {
   if (cached !== undefined) return cached;
   const r = spawnSync('docker', ['info'], { stdio: 'ignore' });
   cached = r.status === 0;

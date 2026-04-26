@@ -1,6 +1,6 @@
 # @rntme-cli/cli
 
-The **rntme CLI** is a command-line interface for interacting with the rntme platform. It provides tools for authentication, publishing project/service bundles, managing projects and services, versioning, tagging, token management, and project deploy planning through the deploy packages.
+The **rntme CLI** is a command-line interface for interacting with the rntme platform. It provides tools for authentication, publishing project blueprint versions, managing projects, token management, and project deploy planning through the deploy packages.
 
 ## Quick Start
 
@@ -12,24 +12,13 @@ npm install -g @rntme-cli/cli
 pnpm add -g @rntme-cli/cli
 ```
 
-### 2. Create `rntme.json` in your service directory
+### 2. Create a project blueprint
 
-```json
-{
-  "name": "my-service",
-  "org": "my-org",
-  "project": "my-project",
-  "service": "my-service",
-  "artifacts": {
-    "pdm": "./artifacts/pdm.json",
-    "qsm": "./artifacts/qsm.json",
-    "ui": "./artifacts/ui.json",
-    "seed": "./artifacts/seed.json"
-  }
-}
+```bash
+rntme init my-project
 ```
 
-For project-first work, `rntme.json` points at the local service or project blueprint folder being validated/published. The canonical authoring/versioning/deploy unit is the validated project blueprint folder; service artifact bundles remain the current CLI publish shape while project-level runtime intake is deferred.
+The canonical authoring and versioning unit is the project blueprint folder rooted at `project.json`.
 
 ### 3. Authenticate
 
@@ -38,16 +27,16 @@ rntme login
 # Obtain a token from https://platform.rntme.com and paste it when prompted
 ```
 
-### 4. Validate the bundle
+### 4. Validate the blueprint
 
 ```bash
-rntme validate
+rntme project publish --dry-run --org my-org --project my-project .
 ```
 
 ### 5. Publish
 
 ```bash
-rntme publish --tag production
+rntme project publish --org my-org --project my-project .
 ```
 
 ## Commands
@@ -59,23 +48,12 @@ Commands:
   login                   Save credentials to local credentials file
   logout                  Remove local credentials
   whoami                  Print the authenticated user/org
-  validate                Validate the local bundle (rntme.json)
-  publish                 Publish the local bundle to the platform
-
   project create <slug>   Create a new project
   project list            List projects in the org
   project show [slug]     Show a project
-
-  service create <slug>   Create a new service
-  service list            List services in the project
-  service show [slug]     Show a service
-
-  version list            List published versions
-  version show <seq|tag>  Show a specific version
-
-  tag list                List tags for a service
-  tag set <name> <seq>    Point a tag at a version
-  tag delete <name>       Delete a tag
+  project publish [dir]   Upload or dry-run a project blueprint
+  project version list    List project versions
+  project version show    Show a project version
 
   token create <name>     Create a machine token
   token list              List tokens in the org
@@ -89,9 +67,8 @@ Global options:
   --json                  Output JSON instead of human-readable text
   --base-url <url>        API base URL (default: https://platform.rntme.com)
   --profile <name>        Credentials profile to use
-  --org <slug>            Org slug (overrides rntme.json)
-  --project <slug>        Project slug (overrides rntme.json)
-  --service <slug>        Service slug (overrides rntme.json)
+  --org <slug>            Org slug
+  --project <slug>        Project slug
   --token <pat>           Auth token (overrides credentials file)
   --verbose               Verbose output
   -q, --quiet             Suppress output on success
@@ -130,9 +107,9 @@ Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.
 
 ### Config Layer
 
-- `CLI_CONFIG_MISSING` — rntme.json not found in any parent directory
-- `CLI_CONFIG_INVALID` — rntme.json is malformed or invalid JSON
-- `CLI_CONFIG_ARTIFACT_NOT_FOUND` — Required artifact file referenced in rntme.json does not exist
+- `CLI_CONFIG_MISSING` — required local config was not found
+- `CLI_CONFIG_INVALID` — local config is malformed or invalid JSON
+- `CLI_CONFIG_ARTIFACT_NOT_FOUND` — required blueprint material does not exist
 
 ### Credentials Layer
 
@@ -143,8 +120,8 @@ Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.
 ### Runtime Layer
 
 - `CLI_RESPONSE_PARSE_FAILED` — Platform API response could not be parsed (exit 10)
-- `CLI_VALIDATE_LOCAL_FAILED` — Local bundle validation failed (exit 6)
-- `CLI_PUBLISH_DIGEST_MISMATCH` — Published digest does not match local bundle (exit 1)
+- `CLI_VALIDATE_LOCAL_FAILED` — local blueprint validation failed (exit 6)
+- `CLI_PUBLISH_DIGEST_MISMATCH` — published digest does not match local project bundle (exit 1)
 - `CLI_NETWORK_TIMEOUT` — Network request timed out (exit 9)
 - `CLI_USAGE` — Incorrect command usage (exit 2)
 
@@ -154,19 +131,19 @@ Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.
 - **Platform API design:** See `docs/superpowers/specs/done/2026-04-19-platform-api-design.md` in the rntme monorepo
 - **Deployment pipeline design:** See `docs/superpowers/specs/2026-04-24-project-deployment-pipeline-design.md` in the rntme monorepo
 
-## Bootstrapping a new service
+## Bootstrapping a new project
 
 ```bash
-rntme init my-svc --org acme --project tracker
+rntme init tracker
 rntme skills install --agent claude-code   # or --agent cursor
 ```
 
 In your agent, invoke `Skill: using-rntme`. The pack routes through:
-brainstorming-rntme-service → designing-ui + designing-pdm → designing-bindings → designing-qsm + designing-graph-ir → composing-manifest → publishing-via-rntme-cli.
+brainstorming-rntme-service → designing-ui + designing-pdm → designing-bindings → designing-qsm + designing-graph-ir → composing-blueprint → publishing-via-rntme-cli.
 
 ### `rntme init <slug>`
 
-Scaffolds `rntme.json` + 7 empty-but-valid artifact files. Flags: `--org`, `--project`, `--artifacts-dir`. Refuses to overwrite existing `rntme.json`.
+Scaffolds `project.json` plus a minimal `services/app` project blueprint. Refuses to overwrite an existing `project.json`.
 
 ### `rntme skills install --agent <name>`
 

@@ -22,6 +22,11 @@ describe('rntme CLI', () => {
     expect(result.stdout).toContain('Usage: rntme');
     expect(result.stdout).toContain('--help');
     expect(result.stdout).toContain('--version');
+    expect(result.stdout).toContain('project publish');
+    expect(result.stdout).toContain('project version list');
+    expect(result.stdout).not.toContain('validate');
+    expect(result.stdout).not.toContain('service create');
+    expect(result.stdout).not.toContain('tag set');
   });
 
   it('prints usage with -h and exits 0', () => {
@@ -60,6 +65,14 @@ describe('cli dispatcher: init', () => {
   it('rejects missing slug', async () => {
     const { main } = await import('../../src/bin/cli.js');
     const code = await main(['init']);
+    expect(code).toBe(1);
+  });
+});
+
+describe('cli dispatcher: removed legacy commands', () => {
+  it.each(['validate', 'publish', 'service', 'version', 'tag'])('rejects %s', async (command) => {
+    const { main } = await import('../../src/bin/cli.js');
+    const code = await main([command]);
     expect(code).toBe(1);
   });
 });

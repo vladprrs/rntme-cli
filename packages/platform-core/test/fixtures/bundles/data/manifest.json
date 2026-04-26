@@ -1,6 +1,0 @@
-{
-  "rntmeVersion": "1.0",
-  "service": { "name": "commerce", "version": "1.0.0" },
-  "surface": { "http": { "port": 3000 } },
-  "studio": { "enabled": false, "mountPath": "/_studio", "maxRows": 1000 }
-}

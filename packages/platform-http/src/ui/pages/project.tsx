@@ -2,16 +2,16 @@ import { Layout } from '../layout.js';
 import { DataTable } from '../components/table.js';
 import { EmptyState } from '../components/empty-state.js';
 import { RelativeTime } from '../components/relative-time.js';
-import type { AuthSubject, Organization, Project, Service } from '@rntme-cli/platform-core';
+import type { AuthSubject, Organization, Project, ProjectVersion } from '@rntme-cli/platform-core';
 import type { EnrichedSubject } from './org.js';
 
 export function ProjectPage(props: {
   subject: EnrichedSubject;
   otherOrgs: readonly Pick<Organization, 'id' | 'slug' | 'displayName'>[];
   project: Project;
-  services: readonly Service[];
+  versions: readonly ProjectVersion[];
 }) {
-  const { subject, project, services } = props;
+  const { subject, project, versions } = props;
   const back = `/${subject.org.slug}`;
   return (
     <Layout title={project.displayName} variant="authed" subject={subject as AuthSubject} otherOrgs={props.otherOrgs}>
@@ -23,27 +23,28 @@ export function ProjectPage(props: {
         <h1 class="text-xl font-semibold tracking-tight">{project.displayName}</h1>
         <p class="text-sm text-gray-600">Slug: <code class="rounded bg-gray-100 px-1">{project.slug}</code></p>
       </header>
-      <h2 class="mb-2 text-sm font-medium text-gray-900">Services</h2>
-      {services.length === 0 ? (
+      <h2 class="mb-2 text-sm font-medium text-gray-900">Project versions</h2>
+      {versions.length === 0 ? (
         <EmptyState
-          title="No services yet."
-          hint="Create one with the CLI:"
-          code={`rntme platform service create ${project.slug} <slug>`}
+          title="No versions yet."
+          hint="Publish a blueprint with the CLI:"
+          code="rntme project publish --create-project"
         />
       ) : (
         <DataTable
-          headers={['Slug', 'Name', 'Updated']}
-          rows={services.map((s) => ({
-            key: s.id,
+          headers={['Seq', 'Digest', 'Services', 'Uploaded']}
+          rows={versions.map((v) => ({
+            key: v.id,
             cells: [
               <a
-                href={`/${subject.org.slug}/projects/${project.slug}/services/${s.slug}`}
+                href={`/${subject.org.slug}/projects/${project.slug}/versions/${v.seq}`}
                 class="font-medium text-blue-700 hover:underline"
               >
-                {s.slug}
+                {`#${v.seq}`}
               </a>,
-              s.displayName,
-              <RelativeTime value={s.updatedAt ?? s.createdAt} />,
+              <code class="text-xs text-gray-500">{v.bundleDigest.slice(0, 17)}...</code>,
+              String(v.summary.services.length),
+              <RelativeTime value={v.createdAt} />,
             ],
           }))}
         />

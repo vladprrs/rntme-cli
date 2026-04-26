@@ -1,12 +1,9 @@
-import { ok, err, isOk, type PlatformError } from '../types/result.js';
+import { ok, err, type PlatformError } from '../types/result.js';
 import type {
   Organization,
   Account,
   MembershipMirror,
   Project,
-  Service,
-  ArtifactVersion,
-  ArtifactTag,
   ApiToken,
   AuditLogEntry,
 } from '../schemas/entities.js';
@@ -15,9 +12,6 @@ import type { AccountRepo } from '../repos/account-repo.js';
 import type { MembershipMirrorRepo } from '../repos/membership-mirror-repo.js';
 import type { WorkosEventLogRepo } from '../repos/workos-event-log-repo.js';
 import type { ProjectRepo } from '../repos/project-repo.js';
-import type { ServiceRepo } from '../repos/service-repo.js';
-import type { ArtifactRepo } from '../repos/artifact-repo.js';
-import type { TagRepo } from '../repos/tag-repo.js';
 import type { TokenRepo } from '../repos/token-repo.js';
 import type { AuditRepo } from '../repos/audit-repo.js';
 import type { OutboxRepo } from '../repos/outbox-repo.js';
@@ -32,9 +26,6 @@ export class FakeStore {
   public accounts = new Map<string, Account>();
   public memberships = new Map<string, MembershipMirror>();
   public projectsByOrg = new Map<string, Project[]>();
-  public servicesByProject = new Map<string, Service[]>();
-  public versionsByService = new Map<string, ArtifactVersion[]>();
-  public tagsByService = new Map<string, ArtifactTag[]>();
   public tokens = new Map<string, ApiToken>();
   public audit: AuditLogEntry[] = [];
   public outbox: { id: bigint; eventType: string; payload: Record<string, unknown>; deliveredAt: Date | null }[] = [];
@@ -191,168 +182,6 @@ export class FakeStore {
       this.projectsByOrg.set(o, list);
       return ok(u);
     },
-    countServices: async (_o, id) => ok((this.servicesByProject.get(id) ?? []).filter((s) => !s.archivedAt).length),
-  };
-
-  readonly services: ServiceRepo = {
-    create: async (r) => {
-      const list = this.servicesByProject.get(r.projectId) ?? [];
-      if (list.some((s) => s.slug === r.slug && !s.archivedAt)) {
-        return err([notFound('PLATFORM_CONFLICT_SLUG_TAKEN', `service slug ${r.slug} taken`)]);
-      }
-      const s: Service = { ...r, archivedAt: null, createdAt: this.now(), updatedAt: this.now() };
-      this.servicesByProject.set(r.projectId, [...list, s]);
-      return ok(s);
-    },
-    findBySlug: async (pid, slug) => ok((this.servicesByProject.get(pid) ?? []).find((s) => s.slug === slug) ?? null),
-    findById: async (o, id) => {
-      for (const list of this.servicesByProject.values()) {
-        const f = list.find((s) => s.id === id && s.orgId === o);
-        if (f) return ok(f);
-      }
-      return ok(null);
-    },
-    list: async (_o, pid) => ok(this.servicesByProject.get(pid) ?? []),
-    patch: async (o, id, patch) => {
-      for (const [pid, list] of this.servicesByProject) {
-        const idx = list.findIndex((s) => s.id === id && s.orgId === o);
-        if (idx >= 0) {
-          const u = { ...list[idx]!, displayName: patch.displayName, updatedAt: this.now() };
-          list[idx] = u;
-          this.servicesByProject.set(pid, list);
-          return ok(u);
-        }
-      }
-      return err([notFound('PLATFORM_TENANCY_SERVICE_NOT_FOUND', id)]);
-    },
-    archive: async (o, id) => {
-      for (const [pid, list] of this.servicesByProject) {
-        const idx = list.findIndex((s) => s.id === id && s.orgId === o);
-        if (idx >= 0) {
-          const u = { ...list[idx]!, archivedAt: this.now(), updatedAt: this.now() };
-          list[idx] = u;
-          this.servicesByProject.set(pid, list);
-          return ok(u);
-        }
-      }
-      return err([notFound('PLATFORM_TENANCY_SERVICE_NOT_FOUND', id)]);
-    },
-    detailWithLatest: async (o, id) => {
-      const svcR = await this.services.findById(o, id);
-      if (!isOk(svcR)) return svcR;
-      if (!svcR.value) return err([notFound('PLATFORM_TENANCY_SERVICE_NOT_FOUND', id)]);
-      const versions = this.versionsByService.get(id) ?? [];
-      const latestVersion = versions.length ? versions[versions.length - 1]! : null;
-      const tags = this.tagsByService.get(id) ?? [];
-      return ok({ service: svcR.value, latestVersion, tags });
-    },
-  };
-
-  readonly artifacts: ArtifactRepo = {
-    findByDigest: async (sid, d) => {
-      const list = this.versionsByService.get(sid) ?? [];
-      return ok(list.find((v) => v.bundleDigest === d) ?? null);
-    },
-    latestSeq: async (sid) => {
-      const list = this.versionsByService.get(sid) ?? [];
-      return ok(list.length ? list[list.length - 1]!.seq : 0);
-    },
-    publish: async (args) => {
-      const list = this.versionsByService.get(args.serviceId) ?? [];
-      const dup = list.find((v) => v.bundleDigest === args.row.bundleDigest);
-      if (dup) return ok(dup);
-      const latest = list.length ? list[list.length - 1]!.seq : 0;
-      if (args.expectedPreviousSeq !== undefined && args.expectedPreviousSeq !== latest) {
-        return err([
-          notFound(
-            'PLATFORM_CONCURRENCY_VERSION_CONFLICT',
-            `expected ${args.expectedPreviousSeq} but latest is ${latest}`,
-          ),
-        ]);
-      }
-      const v: ArtifactVersion = {
-        ...(args.row as Omit<ArtifactVersion, 'seq' | 'publishedAt'>),
-        seq: latest + 1,
-        publishedAt: this.now(),
-      };
-      this.versionsByService.set(args.serviceId, [...list, v]);
-      this.outbox.push({
-        id: this.nextOutboxId++,
-        eventType: 'artifact.version.published',
-        payload: args.outboxPayload,
-        deliveredAt: null,
-      });
-      this.audit.push({
-        id: BigInt(this.audit.length + 1),
-        orgId: v.orgId,
-        actorAccountId: args.auditActorAccountId,
-        actorTokenId: args.auditActorTokenId,
-        action: 'version.published',
-        resourceKind: 'version',
-        resourceId: v.id,
-        payload: { seq: v.seq },
-        createdAt: this.now(),
-      });
-      const tags = this.tagsByService.get(args.serviceId) ?? [];
-      for (const t of args.moveTags) {
-        const idx = tags.findIndex((x) => x.name === t.name);
-        const tag: ArtifactTag = {
-          serviceId: args.serviceId,
-          name: t.name,
-          versionId: v.id,
-          updatedAt: this.now(),
-          updatedByAccountId: t.updatedByAccountId,
-        };
-        if (idx >= 0) tags[idx] = tag;
-        else tags.push(tag);
-        this.audit.push({
-          id: BigInt(this.audit.length + 1),
-          orgId: v.orgId,
-          actorAccountId: args.auditActorAccountId,
-          actorTokenId: args.auditActorTokenId,
-          action: 'tag.moved',
-          resourceKind: 'tag',
-          resourceId: t.name,
-          payload: { versionSeq: v.seq },
-          createdAt: this.now(),
-        });
-      }
-      this.tagsByService.set(args.serviceId, tags);
-      return ok(v);
-    },
-    listBySeq: async (sid, { limit, cursor }) => {
-      let list = this.versionsByService.get(sid) ?? [];
-      if (cursor !== undefined) list = list.filter((v) => v.seq < cursor);
-      return ok([...list].reverse().slice(0, limit));
-    },
-    getBySeq: async (sid, seq) => {
-      const list = this.versionsByService.get(sid) ?? [];
-      return ok(list.find((v) => v.seq === seq) ?? null);
-    },
-  };
-
-  readonly tags: TagRepo = {
-    list: async (sid) => ok(this.tagsByService.get(sid) ?? []),
-    move: async (a) => {
-      const list = this.tagsByService.get(a.serviceId) ?? [];
-      const idx = list.findIndex((t) => t.name === a.name);
-      const t: ArtifactTag = {
-        serviceId: a.serviceId,
-        name: a.name,
-        versionId: a.versionId,
-        updatedAt: this.now(),
-        updatedByAccountId: a.updatedByAccountId,
-      };
-      if (idx >= 0) list[idx] = t;
-      else list.push(t);
-      this.tagsByService.set(a.serviceId, list);
-      return ok(t);
-    },
-    delete: async (sid, name, _actorAccountId) => {
-      const list = (this.tagsByService.get(sid) ?? []).filter((t) => t.name !== name);
-      this.tagsByService.set(sid, list);
-      return ok(undefined);
-    },
   };
 
   readonly tokensRepo: TokenRepo = {
@@ -429,6 +258,11 @@ export class FakeStore {
       const b = this.blobs.get(key);
       if (!b) return err([notFound('PLATFORM_INTERNAL', `blob ${key} missing`)]);
       return ok(JSON.parse(b.toString('utf8')) as T);
+    },
+    getRaw: async (key: string) => {
+      const b = this.blobs.get(key);
+      if (!b) return err([notFound('PLATFORM_INTERNAL', `blob ${key} missing`)]);
+      return ok(Buffer.from(b));
     },
   };
 }

@@ -44,8 +44,9 @@
     "vitest": "^2.1.1"
   },
   "dependencies": {
-    "zod": "^4.0.0",
+    "@rntme/blueprint": "workspace:*",
+    "@rntme-cli/platform-core": "workspace:*",
     "@truestamp/canonify": "^1.0.0",
-    "@rntme-cli/platform-core": "workspace:*"
+    "zod": "^4.0.0"
   }
 }

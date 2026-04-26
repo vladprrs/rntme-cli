@@ -7,7 +7,7 @@ Hono HTTP server that wires `@rntme-cli/platform-core` use-cases to the REST sur
 This service exposes two surfaces on the same origin:
 
 - **`/v1/*` — JSON REST API.** Documented via `/openapi.json` (OpenAPI 3.1). Used by the CLI and external integrations. Authentication via WorkOS AuthKit cookie (humans) or `Authorization: Bearer rntme_pat_…` (machines).
-- **`/` — Browser UI.** Server-rendered dashboard (Hono JSX + htmx + Tailwind CDN) mounted beside the `/v1` sub-app. Lets an authenticated user browse orgs / projects / services / versions / audit log and manage API tokens. Read-only except token create/revoke.
+- **`/` — Browser UI.** Server-rendered dashboard (Hono JSX + htmx + Tailwind CDN) mounted beside the `/v1` sub-app. Lets an authenticated user browse orgs / projects / project versions / audit log and manage API tokens. Read-only except token create/revoke.
 
 ## UI routes
 
@@ -17,8 +17,8 @@ This service exposes two surfaces on the same origin:
 | `GET /login` | Public sign-in landing with CTA to `/v1/auth/login` |
 | `GET /no-org` | Authed user has no org membership yet |
 | `GET /{orgSlug}` | Projects list |
-| `GET /{orgSlug}/projects/{projSlug}` | Project detail + services list |
-| `GET /{orgSlug}/projects/{projSlug}/services/{svcSlug}` | Service detail + versions + tags |
+| `GET /{orgSlug}/projects/{projSlug}` | Project detail + project versions list |
+| `GET /{orgSlug}/projects/{projSlug}/versions/{seq}` | Project version detail |
 | `GET /{orgSlug}/tokens` | API tokens list (+ create form if `token:manage` scope) |
 | `POST /{orgSlug}/tokens` | Create token (htmx) — returns new `<tr>` + one-time plaintext banner |
 | `DELETE /{orgSlug}/tokens/{id}` | Revoke token (htmx) — returns updated row with "revoked" badge |
@@ -70,8 +70,8 @@ See `src/config/env.ts`. Required: `DATABASE_URL`, `RUSTFS_*`, `WORKOS_*`, `PLAT
 
 ## Not in the UI (MVP)
 
-- Creating / renaming / archiving projects or services — CLI only.
-- Publishing versions — CLI only.
+- Creating / renaming / archiving projects — CLI only.
+- Publishing project versions — CLI only.
 - Creating organizations — use the WorkOS Admin Portal.
 - Toggling archived visibility.
 - Client-side SPA state or infinite scroll.

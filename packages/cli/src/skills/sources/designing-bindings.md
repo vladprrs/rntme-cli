@@ -15,7 +15,7 @@ description: Use after designing-ui + designing-pdm. Authors artifacts/bindings.
 4. For query paths, model them as resource reads: `/v1/issues` (list), `/v1/issues/{id}` (detail), `/v1/issues/search` (filtered), `/v1/stats/by-project` (aggregation).
 5. Declare request/response shapes by reference: parameter names must match the graph input names declared in the Graph IR, so `bindTo` must equal the graph's input key.
 6. Write `artifacts/bindings.json` with `version: "1.0"`, `graphSpecRef`, `pdmRef`, `qsmRef`, and a `bindings` map.
-7. Run `rntme validate`. Fix all `BINDINGS_*` codes.
+7. Run `rntme project publish --dry-run`. Fix all `BINDINGS_*` codes.
 8. Iterate with `designing-ui` if any derived type is fuzzy — for example, if a UI action's `paramsFromState` key doesn't match the graph input name, update the binding's `bindTo` field or align the UI accordingly.
 
 ## Red flags
@@ -399,7 +399,7 @@ Walkthrough: The `issues-new` screen in the UI artifact declares a `kind: "comma
 
 ## Validation & self-review
 
-Run `rntme validate` from the service root. Errors are returned as `BindingsError[]` objects with `layer`, `code`, `message`, and optional `path` and `hint`. Common codes:
+Run `rntme project publish --dry-run` from the project blueprint root. Errors are returned as `BindingsError[]` objects with `layer`, `code`, `message`, and optional `path` and `hint`. Common codes:
 
 - `BINDINGS_PARSE_SCHEMA_VIOLATION` — unknown key in the artifact, wrong `version` literal, or invalid enum value (method, in). The artifact schema is strict end-to-end.
 - `BINDINGS_DUPLICATE_METHOD_PATH` — two bindings share the same `method + path` pair; rename one path or use different HTTP methods.

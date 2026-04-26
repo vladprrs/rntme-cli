@@ -5,9 +5,7 @@ import {
   PgMembershipMirrorRepo,
   PgWorkosEventLogRepo,
   PgProjectRepo,
-  PgServiceRepo,
-  PgArtifactRepo,
-  PgTagRepo,
+  PgProjectVersionRepo,
   PgTokenRepo,
   PgAuditRepo,
   PgOutboxRepo,
@@ -18,9 +16,7 @@ import type {
   MembershipMirrorRepo,
   WorkosEventLogRepo,
   ProjectRepo,
-  ServiceRepo,
-  ArtifactRepo,
-  TagRepo,
+  ProjectVersionRepo,
   TokenRepo,
   AuditRepo,
   OutboxRepo,
@@ -32,9 +28,7 @@ export type RequestRepos = {
   memberships: MembershipMirrorRepo;
   workosEventLog: WorkosEventLogRepo;
   projects: ProjectRepo;
-  services: ServiceRepo;
-  artifacts: ArtifactRepo;
-  tags: TagRepo;
+  projectVersions: ProjectVersionRepo;
   tokens: TokenRepo;
   audit: AuditRepo;
   outbox: OutboxRepo;
@@ -47,9 +41,7 @@ export function resolveDeps(tx: PoolClient): RequestRepos {
     memberships: new PgMembershipMirrorRepo(tx),
     workosEventLog: new PgWorkosEventLogRepo(tx),
     projects: new PgProjectRepo(tx),
-    services: new PgServiceRepo(tx),
-    artifacts: new PgArtifactRepo(tx),
-    tags: new PgTagRepo(tx),
+    projectVersions: new PgProjectVersionRepo(tx),
     tokens: new PgTokenRepo(tx),
     audit: new PgAuditRepo(tx),
     outbox: new PgOutboxRepo(tx),

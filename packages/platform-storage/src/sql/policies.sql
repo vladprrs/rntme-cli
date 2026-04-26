@@ -1,11 +1,7 @@
 ALTER TABLE project           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project           FORCE  ROW LEVEL SECURITY;
-ALTER TABLE service           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE service           FORCE  ROW LEVEL SECURITY;
-ALTER TABLE artifact_version  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE artifact_version  FORCE  ROW LEVEL SECURITY;
-ALTER TABLE artifact_tag      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE artifact_tag      FORCE  ROW LEVEL SECURITY;
+ALTER TABLE project_version   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_version   FORCE  ROW LEVEL SECURITY;
 ALTER TABLE api_token         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log         FORCE  ROW LEVEL SECURITY;
@@ -14,18 +10,14 @@ ALTER TABLE event_outbox      FORCE  ROW LEVEL SECURITY;
 ALTER TABLE membership_mirror ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS tenant_isolation_project ON project;
-DROP POLICY IF EXISTS tenant_isolation_service ON service;
-DROP POLICY IF EXISTS tenant_isolation_version ON artifact_version;
-DROP POLICY IF EXISTS tenant_isolation_tag ON artifact_tag;
+DROP POLICY IF EXISTS tenant_isolation_project_version ON project_version;
 DROP POLICY IF EXISTS tenant_isolation_token ON api_token;
 DROP POLICY IF EXISTS tenant_isolation_audit ON audit_log;
 DROP POLICY IF EXISTS tenant_isolation_outbox ON event_outbox;
 DROP POLICY IF EXISTS tenant_isolation_membership ON membership_mirror;
 
 CREATE POLICY tenant_isolation_project    ON project           USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
-CREATE POLICY tenant_isolation_service    ON service           USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
-CREATE POLICY tenant_isolation_version    ON artifact_version  USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
-CREATE POLICY tenant_isolation_tag        ON artifact_tag      USING (EXISTS (SELECT 1 FROM service s WHERE s.id = service_id AND s.org_id = current_setting('app.org_id', true)::uuid));
+CREATE POLICY tenant_isolation_project_version ON project_version USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
 CREATE POLICY tenant_isolation_token      ON api_token         USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);
 CREATE POLICY tenant_isolation_audit      ON audit_log         USING (org_id = current_setting('app.org_id', true)::uuid);
 CREATE POLICY tenant_isolation_outbox     ON event_outbox      USING (org_id = current_setting('app.org_id', true)::uuid) WITH CHECK (org_id = current_setting('app.org_id', true)::uuid);

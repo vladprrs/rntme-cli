@@ -11,48 +11,31 @@ export const ProjectSchema = z.object({
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
-export const ServiceSchema = z.object({
+export const ProjectVersionSummarySchema = z.object({
+  projectName: z.string(),
+  services: z.array(z.string()),
+  routes: z.object({
+    ui: z.record(z.string(), z.string()),
+    http: z.record(z.string(), z.string()),
+  }),
+  middleware: z.record(z.string(), z.unknown()),
+  mounts: z.array(z.unknown()),
+});
+export type ProjectVersionSummary = z.infer<typeof ProjectVersionSummarySchema>;
+
+export const ProjectVersionSchema = z.object({
   id: z.string(),
   orgId: z.string(),
   projectId: z.string(),
-  slug: z.string(),
-  displayName: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  archivedAt: z.string().nullable(),
-});
-export type Service = z.infer<typeof ServiceSchema>;
-
-export const ArtifactVersionSchema = z.object({
-  id: z.string(),
-  orgId: z.string(),
-  serviceId: z.string(),
   seq: z.number().int().positive(),
   bundleDigest: z.string(),
-  previousVersionId: z.string().nullable(),
-  manifestDigest: z.string(),
-  pdmDigest: z.string(),
-  qsmDigest: z.string(),
-  graphIrDigest: z.string(),
-  bindingsDigest: z.string(),
-  uiDigest: z.string(),
-  seedDigest: z.string(),
-  validationSnapshot: z.record(z.string(), z.unknown()),
-  publishedByAccountId: z.string(),
-  publishedByTokenId: z.string().nullable(),
-  publishedAt: z.string(),
-  message: z.string().nullable(),
+  bundleBlobKey: z.string(),
+  bundleSizeBytes: z.number().int().nonnegative(),
+  summary: ProjectVersionSummarySchema,
+  uploadedByAccountId: z.string(),
+  createdAt: z.string(),
 });
-export type ArtifactVersion = z.infer<typeof ArtifactVersionSchema>;
-
-export const ArtifactTagSchema = z.object({
-  serviceId: z.string(),
-  name: z.string(),
-  versionId: z.string(),
-  updatedAt: z.string(),
-  updatedByAccountId: z.string(),
-});
-export type ArtifactTag = z.infer<typeof ArtifactTagSchema>;
+export type ProjectVersion = z.infer<typeof ProjectVersionSchema>;
 
 export const ApiTokenInfoSchema = z.object({
   id: z.string(),
@@ -74,35 +57,6 @@ export const CreateProjectRequestSchema = z.object({
 });
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 
-export const CreateServiceRequestSchema = z.object({
-  slug: z.string(),
-  displayName: z.string(),
-});
-export type CreateServiceRequest = z.infer<typeof CreateServiceRequestSchema>;
-
-export const BundleInputSchema = z.object({
-  manifest: z.record(z.string(), z.unknown()),
-  pdm: z.record(z.string(), z.unknown()),
-  qsm: z.record(z.string(), z.unknown()),
-  graphIr: z.record(z.string(), z.unknown()),
-  bindings: z.record(z.string(), z.unknown()),
-  ui: z.record(z.string(), z.unknown()),
-  seed: z.record(z.string(), z.unknown()),
-});
-
-export const PublishRequestSchema = z.object({
-  bundle: BundleInputSchema,
-  previousVersionSeq: z.number().int().positive().optional(),
-  message: z.string().max(500).optional(),
-  moveTags: z.array(z.string()).max(16).optional(),
-});
-export type PublishRequest = z.infer<typeof PublishRequestSchema>;
-
-export const MoveTagRequestSchema = z.object({
-  versionSeq: z.number().int().positive(),
-});
-export type MoveTagRequest = z.infer<typeof MoveTagRequestSchema>;
-
 export const CreateTokenRequestSchema = z.object({
   name: z.string(),
   scopes: z.array(z.string()),
@@ -112,15 +66,14 @@ export type CreateTokenRequest = z.infer<typeof CreateTokenRequestSchema>;
 
 export const ProjectResponseSchema = z.object({ project: ProjectSchema });
 export const ProjectsListResponseSchema = z.object({ projects: z.array(ProjectSchema) });
-export const ServiceResponseSchema = z.object({ service: ServiceSchema });
-export const ServicesListResponseSchema = z.object({ services: z.array(ServiceSchema) });
-export const VersionResponseSchema = z.object({ version: ArtifactVersionSchema });
-export const VersionsListResponseSchema = z.object({
-  versions: z.array(ArtifactVersionSchema),
-  nextCursor: z.string().nullable().optional(),
+export const ProjectVersionResponseSchema = z.object({
+  version: ProjectVersionSchema,
+  __status: z.number().optional(),
 });
-export const TagResponseSchema = z.object({ tag: ArtifactTagSchema });
-export const TagsListResponseSchema = z.object({ tags: z.array(ArtifactTagSchema) });
+export const ProjectVersionsListResponseSchema = z.object({
+  versions: z.array(ProjectVersionSchema),
+  nextCursor: z.number().nullable().optional(),
+});
 export const TokenCreatedResponseSchema = z.object({
   token: ApiTokenInfoSchema,
   plaintext: z.string(),

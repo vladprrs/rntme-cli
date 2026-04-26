@@ -12,8 +12,7 @@ import { authRoutes } from './routes/auth.js';
 import { webhookWorkosRoute } from './routes/webhook-workos.js';
 import { orgRoutes } from './routes/orgs.js';
 import { projectRoutes } from './routes/projects.js';
-import { serviceRoutes } from './routes/services.js';
-import { versionRoutes } from './routes/versions.js';
+import { projectVersionRoutes } from './routes/project-versions.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { auditRoutes } from './routes/audit.js';
 import { opsRoutes } from './routes/ops.js';
@@ -68,9 +67,7 @@ export function createApp(deps: AppDeps): Hono {
   app.use('*', async (c, next) => {
     if (c.req.method !== 'POST') return next();
     const url = new URL(c.req.url);
-    const isPublish = /\/v1\/orgs\/[^/]+\/projects\/[^/]+\/services\/[^/]+\/versions\/?$/.test(
-      url.pathname,
-    );
+    const isPublish = /\/v1\/orgs\/[^/]+\/projects\/[^/]+\/versions\/?$/.test(url.pathname);
     const cap = isPublish ? 10 * 1024 * 1024 : 1 * 1024 * 1024;
     return bodyLimit(cap)(c, next);
   });
@@ -149,10 +146,9 @@ export function createApp(deps: AppDeps): Hono {
   });
   authed.route('/orgs', orgRoutes({ ids: deps.ids }));
   authed.route('/orgs/:orgSlug/projects', projectRoutes({ ids: deps.ids }));
-  authed.route('/orgs/:orgSlug/projects/:projSlug/services', serviceRoutes({ ids: deps.ids }));
   authed.route(
-    '/orgs/:orgSlug/projects/:projSlug/services/:svcSlug',
-    versionRoutes({ blob: deps.blob, ids: deps.ids }),
+    '/orgs/:orgSlug/projects/:projSlug',
+    projectVersionRoutes({ blob: deps.blob, ids: deps.ids }),
   );
   authed.route('/orgs/:orgSlug/tokens', tokenRoutes({ ids: deps.ids }));
   authed.route('/orgs/:orgSlug/audit', auditRoutes());

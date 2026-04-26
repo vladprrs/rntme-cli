@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
 import { main } from '../../src/bin/cli.js';
-
-const here = dirname(fileURLToPath(import.meta.url));
 
 const BASE = 'https://test.platform';
 const PAT = 'rntme_pat_aaaaaaaaaaaaaaaaaaaaaa';
@@ -103,42 +99,5 @@ describe('project create', () => {
     const r = await runCli(['--org', 'acme', 'project', 'create', 'test']);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain('test');
-  });
-});
-
-describe('publish', () => {
-  it('422 → exit 6 with nested validation error', async () => {
-    server.use(
-      http.post(`${BASE}/v1/orgs/acme/projects/p/services/s/versions`, () =>
-        HttpResponse.json(
-          {
-            error: {
-              code: 'PLATFORM_VALIDATION_BUNDLE_FAILED',
-              message: 'bundle validation failed',
-              cause: {
-                errors: [
-                  {
-                    code: 'QSM_STRUCT_DUP',
-                    message: 'duplicate projection',
-                    path: 'projections[1]',
-                  },
-                ],
-              },
-            },
-          },
-          { status: 422 },
-        ),
-      ),
-    );
-    const fixturesDir = resolve(here, '..', 'fixtures');
-    const cwdBackup = process.cwd();
-    process.chdir(fixturesDir);
-    try {
-      const r = await runCli(['--org', 'acme', '--project', 'p', '--service', 's', 'publish']);
-      expect(r.code).toBe(6);
-      expect(r.stderr).toContain('QSM_STRUCT_DUP');
-    } finally {
-      process.chdir(cwdBackup);
-    }
   });
 });

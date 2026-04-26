@@ -6,19 +6,12 @@ import { dirname, join } from 'node:path';
 import { runLogin } from '../commands/login.js';
 import { runLogout } from '../commands/logout.js';
 import { runWhoami } from '../commands/whoami.js';
-import { runValidateCommand } from '../commands/validate.js';
-import { runPublish } from '../commands/publish.js';
 import { runProjectCreate } from '../commands/project/create.js';
 import { runProjectList } from '../commands/project/list.js';
 import { runProjectShow } from '../commands/project/show.js';
-import { runServiceCreate } from '../commands/service/create.js';
-import { runServiceList } from '../commands/service/list.js';
-import { runServiceShow } from '../commands/service/show.js';
-import { runVersionList } from '../commands/version/list.js';
-import { runVersionShow } from '../commands/version/show.js';
-import { runTagList } from '../commands/tag/list.js';
-import { runTagSet } from '../commands/tag/set.js';
-import { runTagDelete } from '../commands/tag/delete.js';
+import { runProjectPublish } from '../commands/project/publish.js';
+import { runProjectVersionList } from '../commands/project/version-list.js';
+import { runProjectVersionShow } from '../commands/project/version-show.js';
 import { runTokenCreate } from '../commands/token/create.js';
 import { runTokenList } from '../commands/token/list.js';
 import { runTokenRevoke } from '../commands/token/revoke.js';
@@ -32,26 +25,16 @@ Commands:
   login                   Save credentials to local credentials file
   logout                  Remove local credentials
   whoami                  Print the authenticated user/org
-  validate                Validate the local bundle (rntme.json)
-  publish                 Publish the local bundle to the platform
 
-  init <slug>             Scaffold rntme.json + artifacts/ in cwd
+  init <slug>             Scaffold a project blueprint in cwd
   skills install --agent  Install skill pack for the chosen agent
 
   project create <slug>   Create a new project
   project list            List projects in the org
   project show [slug]     Show a project
-
-  service create <slug>   Create a new service
-  service list            List services in the project
-  service show [slug]     Show a service
-
-  version list            List published versions
-  version show <seq|tag>  Show a specific version
-
-  tag list                List tags for a service
-  tag set <name> <seq>    Point a tag at a version
-  tag delete <name>       Delete a tag
+  project publish         Publish a project blueprint version
+  project version list    List project versions
+  project version show    Show a project version
 
   token create <name>     Create a machine token
   token list              List tokens in the org
@@ -61,9 +44,8 @@ Global options:
   --json                  Output JSON instead of human-readable text
   --base-url <url>        API base URL (default: https://platform.rntme.com)
   --profile <name>        Credentials profile to use
-  --org <slug>            Org slug (overrides rntme.json)
-  --project <slug>        Project slug (overrides rntme.json)
-  --service <slug>        Service slug (overrides rntme.json)
+  --org <slug>            Org slug
+  --project <slug>        Project slug
   --token <pat>           Auth token (overrides credentials file)
   --verbose               Verbose output
   -q, --quiet             Suppress output on success
@@ -134,6 +116,9 @@ export async function main(argv: string[]): Promise<number> {
         scopes: { type: 'string', multiple: true },
         expires: { type: 'string' },
         'artifacts-dir': { type: 'string' },
+        folder: { type: 'string' },
+        'create-project': { type: 'boolean' },
+        'dry-run': { type: 'boolean' },
         agent: { type: 'string' },
         target: { type: 'string' },
         force: { type: 'boolean' },
@@ -182,7 +167,7 @@ export async function main(argv: string[]): Promise<number> {
 
   switch (cmd) {
     // -------------------------------------------------------------------------
-    // login / logout / whoami / validate / publish
+    // login / logout / whoami
     // -------------------------------------------------------------------------
     case 'login': {
       const loginFlags: Parameters<typeof runLogin>[0] = {};
@@ -203,33 +188,13 @@ export async function main(argv: string[]): Promise<number> {
       return runWhoami(commonFlags);
     }
 
-    case 'validate': {
-      return runValidateCommand({
-        json: asBool(values['json']),
-        verbose: asBool(values['verbose']),
-      });
-    }
-
-    case 'publish': {
-      const tags = asStringArray(values['tag']);
-      const publishArgs: Parameters<typeof runPublish>[0] = {};
-      setIfDefined(publishArgs, 'tag', tags && tags.length > 0 ? tags : undefined);
-      setIfDefined(publishArgs, 'message', asString(values['message']));
-      const prevSeqRaw = asString(values['previous-version-seq']);
-      if (prevSeqRaw !== undefined) {
-        const n = Number.parseInt(prevSeqRaw, 10);
-        if (!Number.isNaN(n)) publishArgs.previousVersionSeq = n;
-      }
-      return runPublish(publishArgs, commonFlags);
-    }
-
     // -------------------------------------------------------------------------
     // project
     // -------------------------------------------------------------------------
     case 'project': {
       const sub = positionals[1];
       if (!sub) {
-        process.stderr.write('Usage: rntme project <create|list|show> ...\n');
+        process.stderr.write('Usage: rntme project <create|list|show|publish|version> ...\n');
         return 1;
       }
       switch (sub) {
@@ -254,125 +219,53 @@ export async function main(argv: string[]): Promise<number> {
           if (slug !== undefined) showArgs.slug = slug;
           return runProjectShow(showArgs, commonFlags);
         }
+        case 'publish': {
+          const publishArgs: Parameters<typeof runProjectPublish>[0] = {};
+          setIfDefined(publishArgs, 'folder', asString(values['folder']));
+          setIfDefined(publishArgs, 'createProject', asBool(values['create-project']));
+          setIfDefined(publishArgs, 'dryRun', asBool(values['dry-run']));
+          return runProjectPublish(publishArgs, commonFlags);
+        }
+        case 'version': {
+          const versionSub = positionals[2];
+          if (!versionSub) {
+            process.stderr.write('Usage: rntme project version <list|show> ...\n');
+            return 1;
+          }
+          switch (versionSub) {
+            case 'list': {
+              const limitRaw = asString(values['limit']);
+              const versionListArgs: Parameters<typeof runProjectVersionList>[0] = {};
+              if (limitRaw !== undefined) {
+                const n = Number.parseInt(limitRaw, 10);
+                if (!Number.isNaN(n)) versionListArgs.limit = n;
+              }
+              setIfDefined(versionListArgs, 'cursor', asString(values['cursor']));
+              return runProjectVersionList(versionListArgs, commonFlags);
+            }
+            case 'show': {
+              const seqRaw = positionals[3];
+              if (!seqRaw) {
+                process.stderr.write('Usage: rntme project version show <seq>\n');
+                return 1;
+              }
+              const seq = Number.parseInt(seqRaw, 10);
+              if (Number.isNaN(seq) || seq <= 0) {
+                process.stderr.write(`Invalid version seq: ${seqRaw}\n`);
+                return 1;
+              }
+              return runProjectVersionShow({ seq }, commonFlags);
+            }
+            default: {
+              process.stderr.write(`Unknown project version subcommand: ${versionSub}\n`);
+              process.stderr.write('Usage: rntme project version <list|show> ...\n');
+              return 2;
+            }
+          }
+        }
         default: {
           process.stderr.write(`Unknown project subcommand: ${sub}\n`);
-          process.stderr.write('Usage: rntme project <create|list|show> ...\n');
-          return 2;
-        }
-      }
-    }
-
-    // -------------------------------------------------------------------------
-    // service
-    // -------------------------------------------------------------------------
-    case 'service': {
-      const sub = positionals[1];
-      if (!sub) {
-        process.stderr.write('Usage: rntme service <create|list|show> ...\n');
-        return 1;
-      }
-      switch (sub) {
-        case 'create': {
-          const slug = positionals[2];
-          if (!slug) {
-            process.stderr.write('Usage: rntme service create <slug> [--display-name <name>]\n');
-            return 1;
-          }
-          const serviceCreateArgs: Parameters<typeof runServiceCreate>[0] = { slug };
-          setIfDefined(serviceCreateArgs, 'displayName', asString(values['display-name']));
-          return runServiceCreate(serviceCreateArgs, commonFlags);
-        }
-        case 'list': {
-          return runServiceList(commonFlags);
-        }
-        case 'show': {
-          const slug = positionals[2];
-          const showArgs: Parameters<typeof runServiceShow>[0] = {};
-          if (slug !== undefined) showArgs.slug = slug;
-          return runServiceShow(showArgs, commonFlags);
-        }
-        default: {
-          process.stderr.write(`Unknown service subcommand: ${sub}\n`);
-          process.stderr.write('Usage: rntme service <create|list|show> ...\n');
-          return 2;
-        }
-      }
-    }
-
-    // -------------------------------------------------------------------------
-    // version
-    // -------------------------------------------------------------------------
-    case 'version': {
-      const sub = positionals[1];
-      if (!sub) {
-        process.stderr.write('Usage: rntme version <list|show> ...\n');
-        return 1;
-      }
-      switch (sub) {
-        case 'list': {
-          const limitRaw = asString(values['limit']);
-          const versionListArgs: Parameters<typeof runVersionList>[0] = {};
-          if (limitRaw !== undefined) {
-            const n = Number.parseInt(limitRaw, 10);
-            if (!Number.isNaN(n)) versionListArgs.limit = n;
-          }
-          setIfDefined(versionListArgs, 'cursor', asString(values['cursor']));
-          return runVersionList(versionListArgs, commonFlags);
-        }
-        case 'show': {
-          const seqOrTag = positionals[2];
-          if (!seqOrTag) {
-            process.stderr.write('Usage: rntme version show <seq|tag>\n');
-            return 1;
-          }
-          return runVersionShow({ seqOrTag }, commonFlags);
-        }
-        default: {
-          process.stderr.write(`Unknown version subcommand: ${sub}\n`);
-          process.stderr.write('Usage: rntme version <list|show> ...\n');
-          return 2;
-        }
-      }
-    }
-
-    // -------------------------------------------------------------------------
-    // tag
-    // -------------------------------------------------------------------------
-    case 'tag': {
-      const sub = positionals[1];
-      if (!sub) {
-        process.stderr.write('Usage: rntme tag <list|set|delete> ...\n');
-        return 1;
-      }
-      switch (sub) {
-        case 'list': {
-          return runTagList(commonFlags);
-        }
-        case 'set': {
-          const name = positionals[2];
-          const seqRaw = positionals[3];
-          if (!name || !seqRaw) {
-            process.stderr.write('Usage: rntme tag set <name> <seq>\n');
-            return 1;
-          }
-          const seq = Number.parseInt(seqRaw, 10);
-          if (Number.isNaN(seq)) {
-            process.stderr.write(`Invalid version seq: ${seqRaw}\n`);
-            return 1;
-          }
-          return runTagSet({ name, seq }, commonFlags);
-        }
-        case 'delete': {
-          const name = positionals[2];
-          if (!name) {
-            process.stderr.write('Usage: rntme tag delete <name>\n');
-            return 1;
-          }
-          return runTagDelete({ name }, commonFlags);
-        }
-        default: {
-          process.stderr.write(`Unknown tag subcommand: ${sub}\n`);
-          process.stderr.write('Usage: rntme tag <list|set|delete> ...\n');
+          process.stderr.write('Usage: rntme project <create|list|show|publish|version> ...\n');
           return 2;
         }
       }
@@ -427,13 +320,10 @@ export async function main(argv: string[]): Promise<number> {
     case 'init': {
       const slug = positionals[1];
       if (!slug) {
-        process.stderr.write('Usage: rntme init <slug> [--org <s>] [--project <s>] [--artifacts-dir <p>]\n');
+        process.stderr.write('Usage: rntme init <slug>\n');
         return 1;
       }
       const initArgs: Parameters<typeof runInit>[0] = { slug };
-      setIfDefined(initArgs, 'org', asString(values['org']));
-      setIfDefined(initArgs, 'project', asString(values['project']));
-      setIfDefined(initArgs, 'artifactsDir', asString(values['artifacts-dir']));
       setIfDefined(initArgs, 'json', asBool(values['json']));
       return runInit(initArgs);
     }

@@ -31,6 +31,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.1",
     "@hono/zod-openapi": "^0.16.0",
+    "@rntme/blueprint": "workspace:*",
     "@rntme-cli/platform-core": "workspace:*",
     "@rntme-cli/platform-storage": "workspace:*",
     "@workos-inc/node": "^7.32.0",

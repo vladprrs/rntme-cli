@@ -6,7 +6,7 @@ export function buildOpenApi(env: Env): object {
     info: {
       title: 'rntme platform API',
       version: '0.0.0',
-      description: 'Control-plane for rntme projects, services, and artifact versions.',
+      description: 'Control-plane for rntme projects and immutable project versions.',
     },
     servers: [{ url: env.PLATFORM_BASE_URL }],
     paths: {
@@ -19,9 +19,15 @@ export function buildOpenApi(env: Env): object {
         get: { summary: 'List projects' },
         post: { summary: 'Create project' },
       },
-      '/v1/orgs/{orgSlug}/projects/{projSlug}/services/{svcSlug}/versions': {
-        post: { summary: 'Publish version' },
-        get: { summary: 'List versions' },
+      '/v1/orgs/{orgSlug}/projects/{projSlug}/versions': {
+        post: { summary: 'Publish project version' },
+        get: { summary: 'List project versions' },
+      },
+      '/v1/orgs/{orgSlug}/projects/{projSlug}/versions/{seq}': {
+        get: { summary: 'Show project version' },
+      },
+      '/v1/orgs/{orgSlug}/projects/{projSlug}/versions/{seq}/bundle': {
+        get: { summary: 'Redirect to project version bundle' },
       },
     },
     components: {

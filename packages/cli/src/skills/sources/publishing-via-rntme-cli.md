@@ -1,44 +1,44 @@
 ---
 name: publishing-via-rntme-cli
-description: Use after composing-manifest when the bundle passes rntme validate and you want to publish. Walks validate → publish → tag → verify, with error-code mapping.
+description: Use after composing-blueprint when the project blueprint dry-run passes and you want to upload a project version.
 ---
 
 ## What you're building
-No artifact. A successful `rntme publish` call that returns a version seq, sets requested tags, and echoes a bundleDigest matching the local digest.
+No artifact. A successful `rntme project publish` call that uploads the project blueprint, returns a project version seq, and echoes a bundle digest matching the local dry-run.
 
 ## Checklist
-1. Final `rntme validate` from service root — exit 0, no warnings.
-2. Confirm credentials: `rntme whoami` — prints org + scopes; matches rntme.json's org.
-3. `rntme publish --tag <name> --message "<what changed>"` — expects 201 with seq.
-4. Re-run the same publish — expects 200 "idempotent replay", same seq.
-5. `rntme version show <seq>` — confirm bundleDigest matches local.
-6. If additional tags: `rntme tag set <name> <seq>` (atomic, server-side).
+1. Final dry-run from blueprint root: `rntme project publish --dry-run --org <org> --project <project> .`.
+2. Confirm credentials: `rntme whoami` prints org + scopes and the token has `version:publish`.
+3. `rntme project publish --org <org> --project <project> .` expects a created project version seq.
+4. Re-run the same publish. It should be an idempotent replay with the same seq and digest.
+5. `rntme project version show --org <org> --project <project> <seq>` confirms the digest and summary.
+6. `rntme project version list --org <org> --project <project>` shows the uploaded seq first.
 
 ## Red flags
 | Thought | Reality |
 |---|---|
-| "I'll skip validate — publish will catch it" | Server validate IS authoritative but local validate is faster feedback. |
+| "I'll skip dry-run — publish will catch it" | Server validation is authoritative, but dry-run is faster feedback and catches local packaging issues. |
 | "422 means retry" | No — 422 means fix the bundle. 409 is the retry case. |
-| "I'll force-overwrite with --force" | There is no --force for publish. `(service_id, bundleDigest)` is idempotent by design; re-run is always safe. |
-| "I'll delete a tag to move it" | Use `rntme tag set` — atomic. Delete-then-set is racy. |
+| "I'll force-overwrite with --force" | There is no force mode. `(project_id, bundleDigest)` is idempotent by design; re-run is safe. |
+| "I'll tag production here" | Track 1 publishes immutable project versions only. Promotion/tagging is not part of this flow. |
 
 ## Worked example
 
 ```bash
-$ rntme validate
-✓ bundle valid (7 artifacts, bundleDigest=c3a1...d9e2)
+$ rntme project publish --dry-run --org acme --project product-catalog .
+✓ project bundle valid (services=app, digest=c3a1...d9e2)
 
 $ rntme whoami
 { org: acme, account: you@acme.com, role: admin }
 
-$ rntme publish --tag preview --message "add Comment aggregate"
-✓ published seq=3 (bundleDigest=c3a1...d9e2) tag=preview
+$ rntme project publish --org acme --project product-catalog .
+✓ published project version seq=3 (bundleDigest=c3a1...d9e2)
 
-$ rntme publish --tag preview
+$ rntme project publish --org acme --project product-catalog .
 ✓ idempotent replay seq=3 (same bundleDigest)
 
-$ rntme version show 3
-seq=3, publishedAt=..., tags=[preview], digest=c3a1...d9e2
+$ rntme project version show --org acme --project product-catalog 3
+seq=3, createdAt=..., digest=c3a1...d9e2
 ```
 
 ## Exit-code table
@@ -46,11 +46,11 @@ seq=3, publishedAt=..., tags=[preview], digest=c3a1...d9e2
 | Exit | Meaning | Action |
 |---|---|---|
 | 0 | success | — |
-| 2 | config/credentials problem | check rntme.json, `rntme login --token -` |
+| 2 | config/credentials problem | check flags/config, `rntme login --token -` |
 | 3 | auth failed | refresh PAT |
 | 4 | forbidden/scope | widen token scopes |
-| 5 | not found / archived | check project/service slugs |
-| 6 | validation failed (local or server) | fix the artifact per nested error codes |
+| 5 | not found / archived | check org/project slugs |
+| 6 | validation failed (local or server) | fix the blueprint per nested error codes |
 | 7 | concurrent publish | re-run; idempotency-key protects |
 | 8 | rate limited | wait and retry |
 | 9 | network error | retry |
@@ -58,11 +58,11 @@ seq=3, publishedAt=..., tags=[preview], digest=c3a1...d9e2
 
 ## Anti-patterns
 - Committing credentials into the repo (use `rntme login`).
-- Publishing without a `--message` for non-trivial changes (audit log needs it).
-- Using `--previous-version-seq` without reading its meaning (it's a race-guard, not a rollback).
+- Publishing from a nested service directory instead of the project blueprint root.
+- Treating version seq as a service-level version; seq is scoped to the project.
 
 ## Validation & self-review
-Exit when: `rntme version show <seq>` returns the just-published version with the expected tags.
+Exit when: `rntme project version show <seq>` returns the just-published project version with the expected digest.
 
 ## Next step
-Terminal. If iterating: return to the relevant designing-* skill, edit, re-validate, re-publish.
+Terminal. If iterating: return to the relevant designing-* or composing-blueprint skill, edit, dry-run, re-publish.
