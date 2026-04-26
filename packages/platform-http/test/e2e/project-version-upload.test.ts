@@ -14,6 +14,8 @@ import { e2eContainersAvailable } from './docker-available.js';
 
 describe.skipIf(!e2eContainersAvailable())('project version upload flow', () => {
   let env: E2eEnv;
+  let orgSlug: string;
+  let projectSlug: string;
 
   beforeAll(async () => {
     env = await bootE2e();
@@ -24,15 +26,18 @@ describe.skipIf(!e2eContainersAvailable())('project version upload flow', () => 
   });
 
   it('publishes, replays idempotently, lists, shows, and stores a project bundle', async () => {
-    const auth = await seedOrgWithToken(env, 'upload-org', 'upload_org', 'upload_user');
+    const suffix = randomUUID().replace(/-/g, '').slice(0, 8);
+    orgSlug = `upload-org-${suffix}`;
+    projectSlug = `catalog-${suffix}`;
+    const auth = await seedOrgWithToken(env, orgSlug, `upload_org_${suffix}`, `upload_user_${suffix}`);
 
-    const created = await env.app.request('/v1/orgs/upload-org/projects', {
+    const created = await env.app.request(`/v1/orgs/${orgSlug}/projects`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${auth.plain}`,
       },
-      body: JSON.stringify({ slug: 'catalog', displayName: 'Catalog' }),
+      body: JSON.stringify({ slug: projectSlug, displayName: 'Catalog' }),
     });
     expect(created.status).toBe(201);
 
@@ -53,7 +58,7 @@ describe.skipIf(!e2eContainersAvailable())('project version upload flow', () => 
     expect(replayJson.version.seq).toBe(1);
     expect(replayJson.version.id).toBe(firstJson.version.id);
 
-    const list = await env.app.request('/v1/orgs/upload-org/projects/catalog/versions', {
+    const list = await env.app.request(`/v1/orgs/${orgSlug}/projects/${projectSlug}/versions`, {
       headers: { authorization: `Bearer ${auth.plain}` },
     });
     expect(list.status).toBe(200);
@@ -61,7 +66,7 @@ describe.skipIf(!e2eContainersAvailable())('project version upload flow', () => 
     expect(listJson.versions).toHaveLength(1);
     expect(listJson.versions[0]?.bundleDigest).toBe(built.digest);
 
-    const show = await env.app.request('/v1/orgs/upload-org/projects/catalog/versions/1', {
+    const show = await env.app.request(`/v1/orgs/${orgSlug}/projects/${projectSlug}/versions/1`, {
       headers: { authorization: `Bearer ${auth.plain}` },
     });
     expect(show.status).toBe(200);
@@ -76,7 +81,7 @@ describe.skipIf(!e2eContainersAvailable())('project version upload flow', () => 
   });
 
   async function publish(token: string, bytes: string): Promise<Response> {
-    return env.app.request('/v1/orgs/upload-org/projects/catalog/versions', {
+    return env.app.request(`/v1/orgs/${orgSlug}/projects/${projectSlug}/versions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/rntme-project-bundle+json',
