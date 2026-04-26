@@ -9,11 +9,13 @@ describe('createDokployClientFactory', () => {
     const calls: { url: string; init: FetchInit }[] = [];
     const fetcher = vi.fn(async (url: string | URL | Request, init?: FetchInit) => {
       calls.push({ url: String(url), init: init ?? {} });
-      return jsonResponse(
-        String(url).includes('/applications/find')
-          ? { application: { id: 'app-1', name: 'edge' } }
-          : { projectId: 'project-1', application: { id: 'app-1', name: 'edge' } },
-      );
+      if (String(url).includes('/api/project.all')) {
+        return jsonResponse([{ projectId: 'project-1', name: 'project-1', environments: [{ environmentId: 'env-1', name: 'production', applications: [{ applicationId: 'app-1', name: 'edge' }] }] }]);
+      }
+      if (String(url).includes('/api/application.one')) {
+        return jsonResponse({ applicationId: 'app-1', name: 'edge', dockerImage: 'nginx' });
+      }
+      return jsonResponse({});
     });
     const cipher: SecretCipher = {
       encrypt: vi.fn(),
@@ -21,19 +23,20 @@ describe('createDokployClientFactory', () => {
     };
 
     const client = createDokployClientFactory(cipher, fetcher as typeof globalThis.fetch)(target());
-    await client.ensureProject({ mode: 'existing', projectId: 'project-1' });
-    await client.findApplicationByName('project-1', 'edge');
+    await client.ensureEnvironment({ mode: 'existing', projectId: 'project-1' }, 'production');
+    await client.findApplicationByName('env-1', 'edge');
 
     expect(cipher.decrypt).toHaveBeenCalledOnce();
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     expect(calls[0]).toEqual(
       expect.objectContaining({
-        url: 'https://dokploy.example.com/api/v1/projects/ensure',
+        url: 'https://dokploy.example.com/api/project.all',
         init: expect.objectContaining({ headers: expect.objectContaining({ 'x-api-key': 'plain-token' }) }),
       }),
     );
     expect(calls[1]).toEqual(
       expect.objectContaining({
+        url: 'https://dokploy.example.com/api/project.all',
         init: expect.objectContaining({ headers: expect.objectContaining({ 'x-api-key': 'plain-token' }) }),
       }),
     );

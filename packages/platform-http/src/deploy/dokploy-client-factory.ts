@@ -25,14 +25,15 @@ export function createDokployClientFactory(
     }
 
     const baseUrl = normalizeDokployBaseUrl(target.dokployUrl);
-    const request = async <T>(path: string, body: unknown): Promise<T> => {
-      const response = await httpFetch(`${baseUrl}${path}`, {
-        method: 'POST',
+    const request = async <T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> => {
+      const url = method === 'GET' && body ? `${baseUrl}${path}?${new URLSearchParams(body as Record<string, string>)}` : `${baseUrl}${path}`;
+      const response = await httpFetch(url, {
+        method,
         headers: {
           'content-type': 'application/json',
           'x-api-key': token,
         },
-        body: JSON.stringify(body),
+        ...(method === 'POST' && body ? { body: JSON.stringify(body) } : {}),
       });
       if (!response.ok) {
         throw new Error(`Dokploy request failed: ${response.status} ${await response.text()}`);
@@ -41,28 +42,72 @@ export function createDokployClientFactory(
     };
 
     return {
-      ensureProject: async (ref: DokployProjectRef) =>
-        request<{ projectId: string }>('/api/v1/projects/ensure', ref),
-      findApplicationByName: async (projectId: string, name: string) => {
-        const result = await request<{ application: DokployApplication | null }>(
-          '/api/v1/applications/find',
-          { projectId, name },
-        );
-        return result.application;
+      ensureEnvironment: async (ref: DokployProjectRef, environmentName: string) => {
+        const projects = await request<any[]>('GET', '/api/project.all');
+        let project = projects.find((p) => p.name === (ref.mode === 'create' ? ref.projectName : ref.projectId));
+        if (!project) {
+          if (ref.mode !== 'create') throw new Error(`Project ${ref.projectId} not found`);
+          project = await request<any>('POST', '/api/project.create', { name: ref.projectName });
+        }
+        let environment = project.environments?.find((e: any) => e.name === environmentName);
+        if (!environment) {
+          environment = await request<any>('POST', '/api/environment.create', {
+            projectId: project.projectId,
+            name: environmentName,
+          });
+        }
+        return { environmentId: environment.environmentId };
       },
-      createApplication: async (projectId: string, resource: RenderedDokployResource) => {
-        const result = await request<{ application: DokployApplication }>(
-          '/api/v1/applications/create',
-          { projectId, resource },
-        );
-        return result.application;
+      findApplicationByName: async (environmentId: string, name: string) => {
+        const projects = await request<any[]>('GET', '/api/project.all');
+        for (const p of projects) {
+          for (const e of p.environments || []) {
+            if (e.environmentId === environmentId) {
+              const app = e.applications?.find((a: any) => a.name === name);
+              if (app) {
+                const details = await request<any>('GET', '/api/application.one', { applicationId: app.applicationId });
+                return {
+                  id: details.applicationId,
+                  name: details.name,
+                  image: details.dockerImage,
+                  env: details.env ? details.env.split('\n').filter(Boolean).map((l: string) => {
+                    const [name, ...rest] = l.split('=');
+                    return { name, value: rest.join('=') };
+                  }) : [],
+                };
+              }
+              return null;
+            }
+          }
+        }
+        return null;
+      },
+      createApplication: async (environmentId: string, resource: RenderedDokployResource) => {
+        const app = await request<any>('POST', '/api/application.create', {
+          environmentId,
+          name: resource.name,
+          appName: resource.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 63),
+          description: `Managed by rntme-cli`,
+        });
+        await request<any>('POST', '/api/application.update', {
+          applicationId: app.applicationId,
+          buildType: 'dockerfile',
+          dockerImage: resource.image,
+          env: resource.env?.map((e) => `${e.name}=${e.value}`).join('\n') || '',
+        });
+        return { ...app, id: app.applicationId };
       },
       updateApplication: async (applicationId: string, resource: RenderedDokployResource) => {
-        const result = await request<{ application: DokployApplication }>(
-          '/api/v1/applications/update',
-          { applicationId, resource },
-        );
-        return result.application;
+        const app = await request<any>('POST', '/api/application.update', {
+          applicationId,
+          name: resource.name,
+          appName: resource.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 63),
+          description: `Managed by rntme-cli`,
+          buildType: 'dockerfile',
+          dockerImage: resource.image,
+          env: resource.env?.map((e) => `${e.name}=${e.value}`).join('\n') || '',
+        });
+        return { ...app, id: app.applicationId };
       },
     };
   };

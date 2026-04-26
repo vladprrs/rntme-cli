@@ -19,7 +19,7 @@ export type DeploymentApplyResource = {
 export type DeploymentApplyResult = {
   readonly target: {
     readonly kind: 'dokploy';
-    readonly projectId: string;
+    readonly environmentId: string;
   };
   readonly deployment: RenderedDokployPlan['deployment'];
   readonly resources: readonly DeploymentApplyResource[];
@@ -40,15 +40,15 @@ export async function applyDokployPlan(
   const applied: DeploymentApplyResource[] = [];
 
   try {
-    const { projectId } = await client.ensureProject(rendered.targetProject);
+    const { environmentId } = await client.ensureEnvironment(rendered.targetProject, rendered.deployment.environment);
 
     for (const resource of rendered.resources) {
-      const existingResult = await findExistingApplication(client, projectId, resource, applied);
+      const existingResult = await findExistingApplication(client, environmentId, resource, applied);
       if (!existingResult.ok) return existingResult;
 
       const existing = existingResult.value;
       if (existing === null) {
-        const createResult = await createApplication(client, projectId, resource, applied);
+        const createResult = await createApplication(client, environmentId, resource, applied);
         if (!createResult.ok) return createResult;
         applied.push(createResult.value);
       } else if (resourceMatches(existing, resource)) {
@@ -61,7 +61,7 @@ export async function applyDokployPlan(
     }
 
     return ok({
-      target: { kind: 'dokploy', projectId },
+      target: { kind: 'dokploy', environmentId },
       deployment: rendered.deployment,
       resources: applied,
       urls: rendered.urls,
@@ -82,12 +82,12 @@ export async function applyDokployPlan(
 
 async function findExistingApplication(
   client: DokployClient,
-  projectId: string,
+  environmentId: string,
   resource: RenderedDokployResource,
   applied: readonly DeploymentApplyResource[],
 ): Promise<Result<DokployApplication | null, DokployDeploymentError>> {
   try {
-    return ok(await client.findApplicationByName(projectId, resource.name));
+    return ok(await client.findApplicationByName(environmentId, resource.name));
   } catch (cause) {
     return partialFailure(cause, resource, applied, 'find');
   }
@@ -95,12 +95,12 @@ async function findExistingApplication(
 
 async function createApplication(
   client: DokployClient,
-  projectId: string,
+  environmentId: string,
   resource: RenderedDokployResource,
   applied: readonly DeploymentApplyResource[],
 ): Promise<Result<DeploymentApplyResource, DokployDeploymentError>> {
   try {
-    const target = await client.createApplication(projectId, resource);
+    const target = await client.createApplication(environmentId, resource);
     return ok(appliedResource(resource, target, 'created'));
   } catch (cause) {
     return partialFailure(cause, resource, applied, 'create');
