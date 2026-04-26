@@ -1,13 +1,13 @@
 # @rntme-cli/platform-http
 
-Hono HTTP server that wires `@rntme-cli/platform-core` use-cases to the REST surface at `platform.rntme.com`. WorkOS AuthKit for humans, bearer API tokens for machines.
+Hono HTTP server that wires `@rntme-cli/platform-core` use-cases to the REST surface and server-rendered UI at `platform.rntme.com`. WorkOS AuthKit handles humans with auto-refreshing sealed sessions; bearer API tokens handle machines.
 
 ## Surfaces
 
 This service exposes two surfaces on the same origin:
 
 - **`/v1/*` — JSON REST API.** Documented via `/openapi.json` (OpenAPI 3.1). Used by the CLI and external integrations. Authentication via WorkOS AuthKit cookie (humans) or `Authorization: Bearer rntme_pat_…` (machines).
-- **`/` — Browser UI.** Server-rendered dashboard (Hono JSX + htmx + Tailwind CDN). Lets an authenticated user browse orgs / projects / services / versions / audit log and manage API tokens. Read-only except token create/revoke.
+- **`/` — Browser UI.** Server-rendered dashboard (Hono JSX + htmx + Tailwind CDN) mounted beside the `/v1` sub-app. Lets an authenticated user browse orgs / projects / services / versions / audit log and manage API tokens. Read-only except token create/revoke.
 
 ## UI routes
 
@@ -32,7 +32,7 @@ This service exposes two surfaces on the same origin:
 3. WorkOS redirects to `/v1/auth/callback?code=…`. Callback upserts account + org, sets `rntme_session` sealed cookie on `.rntme.com`, and:
    - If request accepts JSON — returns JSON (CLI / tests).
    - Otherwise — 302 to `/`.
-4. Authed `/` → `/{orgSlug}`.
+4. Authed `/` → `/{orgSlug}`. Session refresh is automatic through the WorkOS-backed provider; failed refresh clears the sealed cookie and returns the user to login.
 
 ## Session cookie
 
@@ -40,6 +40,7 @@ This service exposes two surfaces on the same origin:
 - Domain: `PLATFORM_SESSION_COOKIE_DOMAIN` (`.rntme.com` in prod).
 - `HttpOnly`, `Secure`, `SameSite=Lax`.
 - Max age 30 days.
+- Refresh: WorkOS session refresh is attempted before expiry and reseals the cookie when the provider returns a fresh payload.
 
 ## CSRF
 

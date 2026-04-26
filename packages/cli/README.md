@@ -1,6 +1,6 @@
 # @rntme-cli/cli
 
-The **rntme CLI** is a command-line interface for interacting with the rntme platform. It provides tools for authentication, publishing service bundles, managing projects and services, versioning, tagging, and token management.
+The **rntme CLI** is a command-line interface for interacting with the rntme platform. It provides tools for authentication, publishing project/service bundles, managing projects and services, versioning, tagging, token management, and project deploy planning through the deploy packages.
 
 ## Quick Start
 
@@ -28,6 +28,8 @@ pnpm add -g @rntme-cli/cli
   }
 }
 ```
+
+For project-first work, `rntme.json` points at the local service or project blueprint folder being validated/published. The canonical authoring/versioning/deploy unit is the validated project blueprint folder; service artifact bundles remain the current CLI publish shape while project-level runtime intake is deferred.
 
 ### 3. Authenticate
 
@@ -78,6 +80,10 @@ Commands:
   token create <name>     Create a machine token
   token list              List tokens in the org
   token revoke <id>       Revoke a token
+
+  deploy plan             Produce a redacted project deployment plan
+  deploy render dokploy   Render the plan for Dokploy
+  deploy apply dokploy    Apply the rendered Dokploy plan
 
 Global options:
   --json                  Output JSON instead of human-readable text
@@ -146,6 +152,7 @@ Error codes follow the format `CLI_<LAYER>_<KIND>`. Exit code mapping per [exit.
 
 - **CLI design spec:** See `docs/superpowers/specs/done/2026-04-19-rntme-cli-platform-commands-design.md` in the rntme monorepo
 - **Platform API design:** See `docs/superpowers/specs/done/2026-04-19-platform-api-design.md` in the rntme monorepo
+- **Deployment pipeline design:** See `docs/superpowers/specs/2026-04-24-project-deployment-pipeline-design.md` in the rntme monorepo
 
 ## Bootstrapping a new service
 

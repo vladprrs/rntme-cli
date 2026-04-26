@@ -11,6 +11,7 @@ inside `vladprrs/rntme` until it is mature enough to live independently.
 - `packages/platform-http/` — Hono platform API and server-rendered UI.
 - `packages/deploy-core/` — target-neutral project deployment planning.
 - `packages/deploy-dokploy/` — Dokploy render/apply adapter.
+- `apps/landing/` — rntme.com marketing site and pilot-program landing copy.
 
 ## Standalone build
 
