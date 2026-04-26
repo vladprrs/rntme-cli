@@ -14,7 +14,7 @@ You ran `rntme init <slug>` and have empty-but-valid artifacts. Start with the b
   → Invoke Skill: brainstorming-rntme-service
 
 ### Quick-edit mode
-You have an existing service bundle and want to change ONE artifact. Skip brainstorming. Cross-artifact consistency is your responsibility; `rntme validate` catches structural mismatches.
+You have an existing service bundle and want to change ONE artifact. Skip brainstorming. Cross-artifact consistency is your responsibility; `rntme project publish --dry-run` catches structural mismatches.
 
   → Invoke the matching skill:
     - change a screen/form/list → designing-ui
@@ -22,7 +22,7 @@ You have an existing service bundle and want to change ONE artifact. Skip brains
     - expose a new command/query → designing-bindings
     - add a projection / JOIN → designing-qsm
     - change query compilation → designing-graph-ir
-    - bump metadata or wire services → composing-manifest
+    - bump metadata or wire services → composing-blueprint
     - just publish → publishing-via-rntme-cli
 
 ## Red flags
@@ -37,13 +37,13 @@ You have an existing service bundle and want to change ONE artifact. Skip brains
 1. Confirm you have `rntme.json` in your cwd. Missing → run `rntme init <slug>` first.
 2. Decide: new service (full pipeline) vs quick-edit (single skill).
 3. Invoke the matching Skill; do not freelance.
-4. After each design-skill completes, run `rntme validate`. Do not advance until exit 0.
+4. After each design-skill completes, run `rntme project publish --dry-run`. Do not advance until exit 0.
 5. Never edit @rntme/* packages to make validate pass — edit the artifact.
 
 ## Anti-patterns
 - Starting without `rntme init` (no rntme.json to anchor paths).
 - Editing multiple artifacts simultaneously without validating between them.
-- Calling `rntme publish` before a clean `rntme validate`.
+- Calling `rntme project publish` before a clean `rntme project publish --dry-run`.
 
 ## Validation & self-review
 This skill produces no artifact. Exit when you have invoked the next skill.

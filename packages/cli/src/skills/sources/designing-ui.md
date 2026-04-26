@@ -16,7 +16,7 @@ description: Use when authoring artifacts/ui.json (pages, components, forms, lis
 5. Cross-check with `designing-pdm`: every `kind: "command"` action `binding` must correspond to a PDM aggregate transition, and every form field listed in `paramsFromState` must exist on the PDM aggregate.
 6. Declare `manifest.routes` — every page needs a route pattern (e.g. `"/issues"`, `"/issues/:id"`). The `layout` key must match a key in `manifest.layouts`; the `screen` key must be a base path under `screens/`.
 7. Write `artifacts/ui.json` in `ResolvedSource` form (see type reference and worked example below).
-8. Run `rntme validate`. Fix any `UI_*` codes before advancing.
+8. Run `rntme project publish --dry-run`. Fix any `UI_*` codes before advancing.
 9. Sync-point with `designing-pdm`: if any command `binding` ID changed, update `paramsFromState` keys to match the PDM `affects` field names.
 
 ## Red flags
@@ -1418,7 +1418,7 @@ Walkthrough: `manifest.routes` maps six URL patterns to the single `"main"` layo
 
 ## Validation & self-review
 
-Run `rntme validate` from the service root. Fix `UI_*` error codes before advancing. Common codes and their meanings:
+Run `rntme project publish --dry-run` from the project blueprint root. Fix `UI_*` error codes before advancing. Common codes and their meanings:
 
 - `UI_STRUCTURAL_MISSING_SCREEN` — a route's `screen` base path has no corresponding `.spec.json` / `.screen.json` pair in the resolved source.
 - `UI_REFERENCES_UNKNOWN_BINDING_QUERY` — a `DataBinding.binding` or `CommandAction.binding` ID is not present in the bindings artifact (validated by `resolvers.resolveBinding`).
@@ -1433,4 +1433,4 @@ Do not edit `@rntme/ui` source to make validation pass — fix `ui.json`.
 
 ## Next step
 
-When BOTH this skill and designing-pdm pass `rntme validate`, invoke Skill: designing-bindings.
+When BOTH this skill and designing-pdm pass `rntme project publish --dry-run`, invoke Skill: designing-bindings.

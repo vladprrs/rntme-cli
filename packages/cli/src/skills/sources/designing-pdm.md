@@ -14,9 +14,9 @@ description: Use when authoring or revising artifacts/pdm.json (aggregates, even
 3. Cross-check with `designing-ui`: every UI form action (Create, Update, etc.) must map to exactly one PDM transition. No orphan actions.
 4. Cross-check events: every transition produces an event (named `<Aggregate><TransitionPascal>`, e.g. `IssueReport`). Events are past-tense by convention; transitions are camelCase imperative (`report`, `submit`, `close`).
 5. Write `artifacts/pdm.json`. Use the worked example below as the shape reference.
-6. Run `rntme validate`. Fix any `PDM_*` codes before advancing. Do not edit `@rntme/pdm` to make validation pass — edit `pdm.json`.
+6. Run `rntme project publish --dry-run`. Fix any `PDM_*` codes before advancing. Do not edit `@rntme/pdm` to make validation pass — edit `pdm.json`.
 7. If `designing-ui` has changed since you last read it, re-read the brief and the UI file; iterate PDM with those in mind.
-8. When BOTH this skill and `designing-ui` pass `rntme validate`, invoke Skill: designing-bindings.
+8. When BOTH this skill and `designing-ui` pass `rntme project publish --dry-run`, invoke Skill: designing-bindings.
 
 ## Red flags
 
@@ -308,7 +308,7 @@ Walkthrough: `Issue` carries only the fields that are domain facts — `title`, 
 ## Validation & self-review
 
 - Re-read `brief.md`: does every use-case map to at least one transition + derived event? Is every aggregate from the brief present as an entity?
-- Run `rntme validate`. Fix any `PDM_*` code — never edit `@rntme/pdm` to make validate pass; edit `pdm.json`.
+- Run `rntme project publish --dry-run`. Fix any `PDM_*` code — never edit `@rntme/pdm` to make validate pass; edit `pdm.json`.
 - Common error codes and their meanings:
   - `PDM_PARSE_SCHEMA_VIOLATION` — Zod rejected the shape. Usually a missing required field, a wrong type, or an unknown key (`.strict()` rejects extras).
   - `PDM_STRUCT_KEY_UNKNOWN_FIELD` — `keys` array references a field name that doesn't exist in `fields`.
@@ -325,4 +325,4 @@ Walkthrough: `Issue` carries only the fields that are domain facts — `title`, 
 
 ## Next step
 
-Once BOTH this skill and `designing-ui` pass `rntme validate`, invoke Skill: designing-bindings.
+Once BOTH this skill and `designing-ui` pass `rntme project publish --dry-run`, invoke Skill: designing-bindings.

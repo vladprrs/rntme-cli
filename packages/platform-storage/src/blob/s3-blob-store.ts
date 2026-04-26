@@ -1,4 +1,4 @@
-import type { Buffer } from 'node:buffer';
+import { Buffer } from 'node:buffer';
 import {
   S3Client,
   PutObjectCommand,
@@ -70,10 +70,20 @@ export class S3BlobStore implements BlobStore {
   }
 
   async getJson<T = unknown>(key: string): Promise<Result<T, PlatformError>> {
+    const raw = await this.getRaw(key);
+    if (!raw.ok) return raw;
+    try {
+      return ok(JSON.parse(raw.value.toString('utf8')) as T);
+    } catch (cause) {
+      return err([{ code: 'PLATFORM_STORAGE_BLOB_UPLOAD_FAILED', message: String(cause), cause }]);
+    }
+  }
+
+  async getRaw(key: string): Promise<Result<Buffer, PlatformError>> {
     try {
       const res = await this.client.send(new GetObjectCommand({ Bucket: this.opts.bucket, Key: key }));
-      const body = await res.Body!.transformToString('utf8');
-      return ok(JSON.parse(body) as T);
+      const bytes = await res.Body!.transformToByteArray();
+      return ok(Buffer.from(bytes));
     } catch (cause) {
       return err([{ code: 'PLATFORM_STORAGE_BLOB_UPLOAD_FAILED', message: String(cause), cause }]);
     }

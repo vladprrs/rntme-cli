@@ -21,7 +21,7 @@ describe.skipIf(!integrationContainersAvailable())('migrations', () => {
     if (container) await container.stop();
   });
 
-  it('apply cleanly and create tables', async () => {
+  it('apply cleanly and create project-first tables', async () => {
     const pool = createPool(connectionUri);
     const db = createDb(pool);
     await runMigrations(db, pool);
@@ -29,9 +29,11 @@ describe.skipIf(!integrationContainersAvailable())('migrations', () => {
     const r = await pool.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
     const names = r.rows.map((x) => x.tablename).sort();
     expect(names).toContain('project');
-    expect(names).toContain('service');
-    expect(names).toContain('artifact_version');
+    expect(names).toContain('project_version');
     expect(names).toContain('api_token');
+    expect(names).not.toContain('service');
+    expect(names).not.toContain('artifact_version');
+    expect(names).not.toContain('artifact_tag');
     await pool.end();
   });
 });

@@ -48,6 +48,6 @@ export async function stopPostgres(h: PgHandles): Promise<void> {
 
 export async function resetSchema(pool: Pool): Promise<void> {
   await pool.query(
-    `TRUNCATE TABLE audit_log, event_outbox, artifact_tag, artifact_version, service, project, api_token, membership_mirror, workos_event_log, account, organization RESTART IDENTITY CASCADE;`,
+    `TRUNCATE TABLE audit_log, event_outbox, project_version, project, api_token, membership_mirror, workos_event_log, account, organization RESTART IDENTITY CASCADE;`,
   );
 }

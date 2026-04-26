@@ -17,7 +17,7 @@ import type {
   TokenRepo,
   Ids,
 } from '@rntme-cli/platform-core';
-import { isOk, listProjects, listServices, listVersions, listTags, listTokens, createToken, revokeToken } from '@rntme-cli/platform-core';
+import { getProjectVersion, isOk, listProjects, listProjectVersions, listTokens, createToken, revokeToken } from '@rntme-cli/platform-core';
 import { TokenCreated } from './fragments/token-created.js';
 import { TokenRow } from './fragments/token-row.js';
 import { hasScope } from './scopes.js';
@@ -28,7 +28,7 @@ import { NoOrgPage } from './pages/no-org.js';
 import { ErrorPage } from './pages/error.js';
 import { OrgPage } from './pages/org.js';
 import { ProjectPage } from './pages/project.js';
-import { ServicePage } from './pages/service.js';
+import { ProjectVersionPage } from './pages/project-version.js';
 import { AuditPage } from './pages/audit.js';
 import { TokensPage } from './pages/tokens.js';
 
@@ -362,22 +362,25 @@ export function createUiApp(deps: UiDeps): Hono {
         404,
       );
     }
-    const [svcRes, otherRes, orgRes] = await Promise.all([
-      listServices({ repos: { services: repos.services } }, { orgId: s.org.id, projectId: projLookup.value.id }),
+    const [versionsRes, otherRes, orgRes] = await Promise.all([
+      listProjectVersions(
+        { repos: { projectVersions: repos.projectVersions } },
+        { projectId: projLookup.value.id, limit: 50, cursor: undefined },
+      ),
       repos.organizations.listForAccount(s.account.id),
       repos.organizations.findById(s.org.id),
     ]);
-    if (!svcRes.ok) {
-      const detail = svcRes.errors[0]?.message ?? 'Unknown error';
+    if (!versionsRes.ok) {
+      const detail = versionsRes.errors[0]?.message ?? 'Unknown error';
       return renderHtml(c, <ErrorPage status={500} title="Error" detail={detail} />, 500);
     }
     const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
-    return renderHtml(c, <ProjectPage subject={enrichedSubject} otherOrgs={otherOrgs} project={projLookup.value} services={svcRes.value} />);
+    return renderHtml(c, <ProjectPage subject={enrichedSubject} otherOrgs={otherOrgs} project={projLookup.value} versions={versionsRes.value} />);
   });
 
-  authed.get('/:orgSlug/projects/:projSlug/services/:svcSlug', async (c) => {
+  authed.get('/:orgSlug/projects/:projSlug/versions/:seq', async (c) => {
     const repos = resolveDeps(c.get('tx'));
     const s = c.get('subject');
     if (s.org.slug !== c.req.param('orgSlug')) {
@@ -388,7 +391,10 @@ export function createUiApp(deps: UiDeps): Hono {
       );
     }
     const projSlug = c.req.param('projSlug')!;
-    const svcSlug = c.req.param('svcSlug')!;
+    const seq = Number(c.req.param('seq'));
+    if (!Number.isInteger(seq) || seq <= 0) {
+      return renderHtml(c, <ErrorPage status={404} title="Version not found" backHref={`/${s.org.slug}/projects/${projSlug}`} />, 404);
+    }
     const projLookup = await repos.projects.findBySlug(s.org.id, projSlug);
     if (!isOk(projLookup) || !projLookup.value) {
       return renderHtml(
@@ -397,36 +403,31 @@ export function createUiApp(deps: UiDeps): Hono {
         404,
       );
     }
-    const svcLookup = await repos.services.findBySlug(projLookup.value.id, svcSlug);
-    if (!isOk(svcLookup) || !svcLookup.value) {
-      return renderHtml(
-        c,
-        <ErrorPage status={404} title="Service not found" backHref={`/${s.org.slug}/projects/${projSlug}`} />,
-        404,
-      );
-    }
-    const [versRes, tagsRes, otherRes, orgRes] = await Promise.all([
-      listVersions({ repos: { artifacts: repos.artifacts } }, { serviceId: svcLookup.value.id, limit: 50, cursor: undefined }),
-      listTags({ repos: { tags: repos.tags } }, { serviceId: svcLookup.value.id }),
+    const [versionRes, otherRes, orgRes] = await Promise.all([
+      getProjectVersion(
+        { repos: { projectVersions: repos.projectVersions } },
+        { projectId: projLookup.value.id, seq },
+      ),
       repos.organizations.listForAccount(s.account.id),
       repos.organizations.findById(s.org.id),
     ]);
-    if (!versRes.ok) {
-      const detail = versRes.errors[0]?.message ?? 'Unknown error';
+    if (!versionRes.ok) {
+      const detail = versionRes.errors[0]?.message ?? 'Unknown error';
       return renderHtml(c, <ErrorPage status={500} title="Error" detail={detail} />, 500);
+    }
+    if (!versionRes.value) {
+      return renderHtml(c, <ErrorPage status={404} title="Version not found" backHref={`/${s.org.slug}/projects/${projSlug}`} />, 404);
     }
     const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
     return renderHtml(
       c,
-      <ServicePage
+      <ProjectVersionPage
         subject={enrichedSubject}
         otherOrgs={otherOrgs}
         project={projLookup.value}
-        service={svcLookup.value}
-        versions={versRes.value}
-        tags={isOk(tagsRes) ? tagsRes.value : []}
+        version={versionRes.value}
       />,
     );
   });

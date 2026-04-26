@@ -5,19 +5,21 @@ export * from './types/brands.js';
 export * from './schemas/primitives.js';
 export * from './schemas/entities.js';
 export * from './schemas/requests.js';
+export * from './schemas/project-version.js';
 export * from './auth/scopes.js';
 export * from './auth/provider.js';
 export * from './clock.js';
 export * from './ids.js';
 export { canonicalize, sha256Hex, canonicalDigest } from './validation/canonical-json.js';
-export * from './validation/bundle.js';
+export {
+  canonicalBundleDigest,
+  parseCanonicalBundle,
+  type ParsedCanonicalBundle,
+} from './validation/canonical-bundle.js';
 
 export * from './use-cases/projects.js';
-export * from './use-cases/services.js';
-export * from './use-cases/tags.js';
-export * from './use-cases/versions.js';
+export * from './use-cases/project-versions.js';
 export * from './use-cases/tokens.js';
-export * from './use-cases/publish-version.js';
 export * from './use-cases/workos-sync.js';
 export * from './use-cases/archive-org-cascade.js';
 
@@ -26,9 +28,7 @@ export * from './repos/account-repo.js';
 export * from './repos/membership-mirror-repo.js';
 export * from './repos/workos-event-log-repo.js';
 export * from './repos/project-repo.js';
-export * from './repos/service-repo.js';
-export * from './repos/artifact-repo.js';
-export * from './repos/tag-repo.js';
+export * from './repos/project-version-repo.js';
 export * from './repos/token-repo.js';
 export * from './repos/audit-repo.js';
 export * from './repos/outbox-repo.js';

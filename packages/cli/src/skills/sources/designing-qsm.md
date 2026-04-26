@@ -14,7 +14,7 @@ description: Use after designing-bindings. Paired with designing-graph-ir. Autho
 3. Declare `exposed`: the subset of entity fields that consumers may read. Do not include `generated` fields (`id`, `createdAt`, `updatedAt`, `actor`) — the validator rejects them in `exposed` (`QSM_XREF_EXPOSED_INCLUDES_GENERATED`). Include only the fields your queries actually need.
 4. Set `table` to a stable SQL identifier (e.g. `"projection_issue"`, `"projects"`, `"users"`). If omitted, it defaults to `projection_<lowercased projection name>`. Collisions between two projections that resolve to the same table name are rejected (`QSM_STRUCT_DUPLICATE_TABLE`).
 5. For each query graph that uses dot-navigation (e.g. `issue.project.key`), declare a relation in the `relations` map. The key is `"<SourceProjection>.<relationName>"` where `<relationName>` matches the PDM relation name exactly (no rename). Fill `to` (target projection name), `localKey`, `foreignKey`, `cardinality`, and optionally `role`. Relations are B2 cross-validated against PDM — the `to` projection's source entity must match PDM's `to`, and `localKey`, `foreignKey`, `cardinality` must be identical to the PDM relation.
-6. Write `artifacts/qsm.json`. Validate with `rntme validate`. Fix all `QSM_*` codes.
+6. Write `artifacts/qsm.json`. Validate with `rntme project publish --dry-run`. Fix all `QSM_*` codes.
 7. If a projection shape changes (e.g. you add a field to `exposed`), re-check the bindings queries and graph-ir nodes that read from it — their output shapes may need updating.
 8. `cardinality: "many"` is valid in the schema but the SQL compiler refuses to lower it (`NAV_FAN_OUT_NOT_ALLOWED`). Do not declare many-cardinality relations expecting them to produce JOINs; they are reserved for forward compatibility only.
 
@@ -202,7 +202,7 @@ Walkthrough: `IssueView` is an `entity-mirror` over the `Issue` PDM entity; its 
 
 ## Validation & self-review
 
-Run `rntme validate` from the service root. Fix all `QSM_*` codes — never edit `@rntme/qsm` to make validation pass; edit `qsm.json`. Common codes and their meaning:
+Run `rntme project publish --dry-run` from the project blueprint root. Fix all `QSM_*` codes — never edit `@rntme/qsm` to make validation pass; edit `qsm.json`. Common codes and their meaning:
 
 - `QSM_PARSE_SCHEMA_VIOLATION` — Zod rejected the shape. Usually an unknown key (`.strict()` rejects extras), wrong type, or missing required field.
 - `QSM_STRUCT_PROJECTION_KEYS_EMPTY` / `QSM_STRUCT_PROJECTION_GRAIN_EMPTY` / `QSM_STRUCT_PROJECTION_EXPOSED_EMPTY` — the respective array is empty; all three must have at least one entry.
@@ -224,4 +224,4 @@ Run `rntme validate` from the service root. Fix all `QSM_*` codes — never edit
 
 ## Next step
 
-When BOTH this skill and designing-graph-ir are green, invoke Skill: composing-manifest.
+When BOTH this skill and designing-graph-ir are green, invoke Skill: composing-blueprint.

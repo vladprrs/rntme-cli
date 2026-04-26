@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { SlugSchema, TagNameSchema, TokenNameSchema, UuidSchema, WorkosIdSchema } from './primitives.js';
+import { SlugSchema, TokenNameSchema, UuidSchema, WorkosIdSchema } from './primitives.js';
 
-const Sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
 export const RoleSchema = z.enum(['admin', 'member']);
 export const ScopeSchema = z.enum([
   'project:read',
@@ -51,49 +50,6 @@ export const ProjectSchema = z.object({
   updatedAt: z.date(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
-
-export const ServiceSchema = z.object({
-  id: UuidSchema,
-  orgId: UuidSchema,
-  projectId: UuidSchema,
-  slug: SlugSchema,
-  displayName: z.string().min(1).max(120),
-  archivedAt: z.date().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-export type Service = z.infer<typeof ServiceSchema>;
-
-export const ArtifactVersionSchema = z.object({
-  id: UuidSchema,
-  orgId: UuidSchema,
-  serviceId: UuidSchema,
-  seq: z.number().int().positive(),
-  bundleDigest: Sha256Hex,
-  previousVersionId: UuidSchema.nullable(),
-  manifestDigest: Sha256Hex,
-  pdmDigest: Sha256Hex,
-  qsmDigest: Sha256Hex,
-  graphIrDigest: Sha256Hex,
-  bindingsDigest: Sha256Hex,
-  uiDigest: Sha256Hex,
-  seedDigest: Sha256Hex,
-  validationSnapshot: z.record(z.string(), z.unknown()),
-  publishedByAccountId: UuidSchema,
-  publishedByTokenId: UuidSchema.nullable(),
-  publishedAt: z.date(),
-  message: z.string().max(500).nullable(),
-});
-export type ArtifactVersion = z.infer<typeof ArtifactVersionSchema>;
-
-export const ArtifactTagSchema = z.object({
-  serviceId: UuidSchema,
-  name: TagNameSchema,
-  versionId: UuidSchema,
-  updatedAt: z.date(),
-  updatedByAccountId: UuidSchema,
-});
-export type ArtifactTag = z.infer<typeof ArtifactTagSchema>;
 
 export const ApiTokenSchema = z.object({
   id: UuidSchema,

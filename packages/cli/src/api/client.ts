@@ -32,6 +32,8 @@ export type ApiCallOptions<T> = {
   baseUrl: string;
   token: string | null;
   body?: unknown;
+  rawBody?: string;
+  contentType?: string;
   responseSchema: z.ZodType<T>;
   requestId?: string;
   timeoutMs?: number;
@@ -43,7 +45,7 @@ export async function apiCall<T>(opts: ApiCallOptions<T>): Promise<Result<T, Cli
   const requestId = opts.requestId ?? `req_${randomUUID().replaceAll('-', '')}`;
   const url = `${opts.baseUrl.replace(/\/+$/, '')}${opts.path}`;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'Content-Type': opts.contentType ?? 'application/json',
     'User-Agent': `rntme-cli/${VERSION} (node/${process.version.replace(/^v/, '')})`,
     'X-Request-ID': requestId,
   };
@@ -57,7 +59,7 @@ export async function apiCall<T>(opts: ApiCallOptions<T>): Promise<Result<T, Cli
     res = await fetch(url, {
       method: opts.method,
       headers,
-      body: opts.body === undefined ? null : JSON.stringify(opts.body),
+      body: opts.rawBody ?? (opts.body === undefined ? null : JSON.stringify(opts.body)),
       signal: controller.signal,
     });
   } catch (cause) {
@@ -87,6 +89,12 @@ export async function apiCall<T>(opts: ApiCallOptions<T>): Promise<Result<T, Cli
         code: 'CLI_RESPONSE_PARSE_FAILED',
         message: `response did not match expected schema: ${schemaResult.error.issues.map((i) => i.message).join('; ')}`,
         requestId: echoedRequestId,
+      });
+    }
+    if (schemaResult.data && typeof schemaResult.data === 'object') {
+      Object.defineProperty(schemaResult.data, '__status', {
+        value: res.status,
+        enumerable: false,
       });
     }
     return ok(schemaResult.data);

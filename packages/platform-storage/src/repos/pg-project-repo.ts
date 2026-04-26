@@ -1,7 +1,7 @@
-import { and, count, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { ok, err, type Result, type PlatformError, type ProjectRepo, type Project } from '@rntme-cli/platform-core';
 import { createDb, type Db, type PgQueryable } from '../pg/pool.js';
-import { project, service } from '../schema/projects.js';
+import { project } from '../schema/projects.js';
 
 function toP(r: typeof project.$inferSelect): Project {
   return {
@@ -93,20 +93,6 @@ export class PgProjectRepo implements ProjectRepo {
         .returning();
       if (!rows[0]) return err([{ code: 'PLATFORM_TENANCY_PROJECT_NOT_FOUND', message: id }]);
       return ok(toP(rows[0]));
-    } catch (cause) {
-      return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
-    }
-  }
-
-  async countServices(orgId: string, id: string): Promise<Result<number, PlatformError>> {
-    try {
-      const r = await this.db
-        .select({ c: count() })
-        .from(service)
-        .where(
-          and(eq(service.orgId, orgId), eq(service.projectId, id), isNull(service.archivedAt)),
-        );
-      return ok(Number(r[0]?.c ?? 0));
     } catch (cause) {
       return err([{ code: 'PLATFORM_STORAGE_DB_UNAVAILABLE', message: String(cause), cause }]);
     }

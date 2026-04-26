@@ -19,32 +19,26 @@ describe('runInit', () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('scaffolds rntme.json and 7 artifact files on fresh dir', async () => {
+  it('scaffolds a project blueprint on fresh dir without rntme.json', async () => {
     const exit = await runInit({ slug: 'my-svc' });
     expect(exit).toBe(0);
-    expect(existsSync(join(tmp, 'rntme.json'))).toBe(true);
-    for (const f of ['manifest.json', 'pdm.json', 'qsm.json', 'graph-ir.json', 'bindings.json', 'ui.json', 'seed.json']) {
-      expect(existsSync(join(tmp, 'artifacts', f))).toBe(true);
-    }
+    expect(existsSync(join(tmp, 'rntme.json'))).toBe(false);
+    expect(existsSync(join(tmp, 'project.json'))).toBe(true);
+    expect(existsSync(join(tmp, 'pdm', 'pdm.json'))).toBe(true);
+    expect(existsSync(join(tmp, 'pdm', 'entities'))).toBe(true);
+    expect(existsSync(join(tmp, 'services', 'app', 'service.json'))).toBe(true);
+    expect(existsSync(join(tmp, 'services', 'app', 'qsm', 'qsm.json'))).toBe(true);
+    expect(existsSync(join(tmp, 'services', 'app', 'ui', 'manifest.json'))).toBe(true);
   });
 
-  it('substitutes service slug, default org/project placeholders', async () => {
+  it('uses the provided slug as project name and app service by default', async () => {
     await runInit({ slug: 'my-svc' });
-    const cfg = JSON.parse(readFileSync(join(tmp, 'rntme.json'), 'utf8'));
-    expect(cfg.service).toBe('my-svc');
-    expect(cfg.org).toBe('{{fill-me}}');
-    expect(cfg.project).toBe('{{fill-me}}');
-    expect(cfg.artifacts.pdm).toBe('artifacts/pdm.json');
+    const project = JSON.parse(readFileSync(join(tmp, 'project.json'), 'utf8'));
+    expect(project.name).toBe('my-svc');
+    expect(project.services).toEqual(['app']);
   });
 
-  it('substitutes org + project when provided', async () => {
-    await runInit({ slug: 'api', org: 'acme', project: 'tracker' });
-    const cfg = JSON.parse(readFileSync(join(tmp, 'rntme.json'), 'utf8'));
-    expect(cfg.org).toBe('acme');
-    expect(cfg.project).toBe('tracker');
-  });
-
-  it('refuses when rntme.json already exists', async () => {
+  it('refuses when project.json already exists', async () => {
     await runInit({ slug: 'one' });
     const exit = await runInit({ slug: 'two' });
     expect(exit).toBe(2);
@@ -55,10 +49,9 @@ describe('runInit', () => {
     expect(exit).toBe(2);
   });
 
-  it('respects --artifacts-dir', async () => {
+  it('ignores legacy artifact directory options for project blueprints', async () => {
     await runInit({ slug: 'svc', artifactsDir: 'bundle' });
-    expect(existsSync(join(tmp, 'bundle', 'pdm.json'))).toBe(true);
-    const cfg = JSON.parse(readFileSync(join(tmp, 'rntme.json'), 'utf8'));
-    expect(cfg.artifacts.pdm).toBe('bundle/pdm.json');
+    expect(existsSync(join(tmp, 'pdm', 'pdm.json'))).toBe(true);
+    expect(existsSync(join(tmp, 'bundle'))).toBe(false);
   });
 });

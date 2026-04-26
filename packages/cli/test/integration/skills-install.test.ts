@@ -12,7 +12,7 @@ const EXPECTED = [
   'designing-bindings',
   'designing-qsm',
   'designing-graph-ir',
-  'composing-manifest',
+  'composing-blueprint',
   'publishing-via-rntme-cli',
 ];
 

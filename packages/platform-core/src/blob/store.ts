@@ -29,4 +29,5 @@ export interface BlobStore {
   putIfAbsent(key: string, body: Buffer): Promise<Result<void, PlatformError>>;
   presignedGet(key: string, expiresSeconds: number): Promise<Result<string, PlatformError>>;
   getJson<T = unknown>(key: string): Promise<Result<T, PlatformError>>;
+  getRaw(key: string): Promise<Result<Buffer, PlatformError>>;
 }
