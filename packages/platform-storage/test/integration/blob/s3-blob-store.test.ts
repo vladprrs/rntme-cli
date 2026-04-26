@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { S3BlobStore } from '../../../src/blob/s3-blob-store.js';
@@ -10,6 +11,7 @@ const externalS3 = readExternalS3();
 describe.skipIf(!externalS3 && !dockerAvailable())('S3BlobStore', () => {
   let minio: StartedTestContainer | undefined;
   let store: S3BlobStore;
+  const keyPrefix = `integration/${randomUUID()}`;
 
   beforeAll(async () => {
     if (externalS3) {
@@ -30,7 +32,7 @@ describe.skipIf(!externalS3 && !dockerAvailable())('S3BlobStore', () => {
   });
 
   it('putIfAbsent round-trips via getJson', async () => {
-    const key = 'sha256/ab/abcdef.json';
+    const key = `${keyPrefix}/sha256/ab/abcdef.json`;
     const put = await store.putIfAbsent(key, Buffer.from(JSON.stringify({ hello: 'world' })));
     expect(isOk(put)).toBe(true);
     const got = await store.getJson(key);
@@ -38,7 +40,7 @@ describe.skipIf(!externalS3 && !dockerAvailable())('S3BlobStore', () => {
   });
 
   it('getRaw round-trips arbitrary bytes', async () => {
-    const key = 'raw/test.bin';
+    const key = `${keyPrefix}/raw/test.bin`;
     const payload = Buffer.from([1, 2, 3, 4, 5, 0xff, 0x00]);
     const put = await store.putIfAbsent(key, payload);
     expect(isOk(put)).toBe(true);
@@ -48,7 +50,7 @@ describe.skipIf(!externalS3 && !dockerAvailable())('S3BlobStore', () => {
   });
 
   it('presignedGet returns a URL', async () => {
-    const key = 'sha256/cd/cdef01.json';
+    const key = `${keyPrefix}/sha256/cd/cdef01.json`;
     await store.putIfAbsent(key, Buffer.from('{}'));
     const url = await store.presignedGet(key, 60);
     expect(isOk(url) && url.value).toMatch(/^http/);

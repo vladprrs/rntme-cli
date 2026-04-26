@@ -3,7 +3,6 @@ import {
   uuid,
   text,
   timestamp,
-  integer,
   jsonb,
   unique,
   index,
@@ -22,7 +21,7 @@ export const projectVersion = pgTable(
     projectId: uuid('project_id')
       .notNull()
       .references(() => project.id, { onDelete: 'cascade' }),
-    seq: integer('seq').notNull(),
+    seq: bigint('seq', { mode: 'number' }).notNull(),
     bundleDigest: text('bundle_digest').notNull(),
     bundleBlobKey: text('bundle_blob_key').notNull(),
     bundleSizeBytes: bigint('bundle_size_bytes', { mode: 'number' }).notNull(),
