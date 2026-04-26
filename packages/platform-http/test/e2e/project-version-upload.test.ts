@@ -3,6 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve, relative, sep } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import {
   canonicalBundleDigest,
   canonicalize,
@@ -76,7 +77,7 @@ describe.skipIf(!e2eContainersAvailable())('project version upload flow', () => 
     const stored = await env.deps.blob.getRaw(firstJson.version.bundleBlobKey);
     expect(isOk(stored)).toBe(true);
     if (isOk(stored)) {
-      expect(stored.value.toString('utf8')).toBe(built.bytes);
+      expect(gunzipSync(stored.value).toString('utf8')).toBe(built.bytes);
     }
   });
 
