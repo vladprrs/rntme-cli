@@ -117,7 +117,7 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
     const mockDokploy = createMockDokployApp();
     const dokployClientFactory = createDokployClientFactory(env.deps.cipher!, async (input, init) => {
       const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url);
-      return mockDokploy.app.request(url.pathname, init);
+      return mockDokploy.app.request(url.href, init);
     });
 
     await runDeployment(queuedJson.deployment.id, auth.orgId, {

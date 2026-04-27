@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID, createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { bootE2e, type E2eEnv } from './harness.js';
 import { e2eContainersAvailable } from './docker-available.js';
 
@@ -22,35 +23,43 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
       displayName: 'Tok User',
     });
     if (!o.ok || !a.ok) throw new Error('seed failed');
-    const membership = await env.seedRepos.memberships.upsert({ orgId: o.value.id, accountId: a.value.id, role: 'admin' });
-    if (!membership.ok) throw new Error('membership seed failed');
+    await env.ownerPool.query(
+      `INSERT INTO membership_mirror (org_id, account_id, role)
+       VALUES ($1,$2,'admin')
+       ON CONFLICT (org_id, account_id) DO UPDATE SET role=EXCLUDED.role, updated_at=now()`,
+      [o.value.id, a.value.id],
+    );
 
     const admin = 'rntme_pat_' + 'c'.repeat(22);
-    const adminToken = await env.seedRepos.tokens.create({
-      id: randomUUID(),
-      orgId: o.value.id,
-      accountId: a.value.id,
-      name: 'admin',
-      tokenHash: new Uint8Array(createHash('sha256').update(admin).digest()),
-      prefix: admin.slice(0, 12),
-      scopes: ['project:read', 'project:write', 'version:publish', 'member:read', 'token:manage'],
-      expiresAt: null,
-    });
-    if (!adminToken.ok) throw new Error('admin token seed failed');
+    const adminHash = new Uint8Array(createHash('sha256').update(admin).digest());
+    await env.ownerPool.query(
+      `INSERT INTO api_token (id, org_id, account_id, name, token_hash, prefix, scopes, expires_at)
+       VALUES ($1,$2,$3,'admin',$4,$5,$6,NULL)`,
+      [
+        randomUUID(),
+        o.value.id,
+        a.value.id,
+        Buffer.from(adminHash),
+        admin.slice(0, 12),
+        ['project:read', 'project:write', 'version:publish', 'member:read', 'token:manage'],
+      ]
+    );
     bearer = admin;
 
     const ro = 'rntme_pat_' + 'd'.repeat(22);
-    const readOnlyToken = await env.seedRepos.tokens.create({
-      id: randomUUID(),
-      orgId: o.value.id,
-      accountId: a.value.id,
-      name: 'readonly',
-      tokenHash: new Uint8Array(createHash('sha256').update(ro).digest()),
-      prefix: ro.slice(0, 12),
-      scopes: ['project:read'],
-      expiresAt: null,
-    });
-    if (!readOnlyToken.ok) throw new Error('read-only token seed failed');
+    const roHash = new Uint8Array(createHash('sha256').update(ro).digest());
+    await env.ownerPool.query(
+      `INSERT INTO api_token (id, org_id, account_id, name, token_hash, prefix, scopes, expires_at)
+       VALUES ($1,$2,$3,'readonly',$4,$5,$6,NULL)`,
+      [
+        randomUUID(),
+        o.value.id,
+        a.value.id,
+        Buffer.from(roHash),
+        ro.slice(0, 12),
+        ['project:read'],
+      ]
+    );
     readOnlyBearer = ro;
     orgSlug = o.value.slug;
   }, 300_000);
