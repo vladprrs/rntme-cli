@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID, createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { bootE2e, type E2eEnv } from './harness.js';
 import { e2eContainersAvailable } from './docker-available.js';
 
@@ -18,19 +19,26 @@ describe.skipIf(!e2eContainersAvailable())('tenant isolation', () => {
       displayName: workosUser,
     });
     if (!org.ok || !acc.ok) throw new Error('seed');
-    await env.deps.poolRepos.memberships.upsert({ orgId: org.value.id, accountId: acc.value.id, role: 'admin' });
+    await env.ownerPool.query(
+      `INSERT INTO membership_mirror (org_id, account_id, role)
+       VALUES ($1,$2,'admin')
+       ON CONFLICT (org_id, account_id) DO UPDATE SET role=EXCLUDED.role, updated_at=now()`,
+      [org.value.id, acc.value.id],
+    );
     const plain = 'rntme_pat_' + randomUUID().replace(/-/g, '').slice(0, 22);
     const hash = new Uint8Array(createHash('sha256').update(plain).digest());
-    await env.deps.poolRepos.tokens.create({
-      id: randomUUID(),
-      orgId: org.value.id,
-      accountId: acc.value.id,
-      name: 't',
-      tokenHash: hash,
-      prefix: plain.slice(0, 12),
-      scopes: ['project:read', 'project:write', 'version:publish'],
-      expiresAt: null,
-    });
+    await env.ownerPool.query(
+      `INSERT INTO api_token (id, org_id, account_id, name, token_hash, prefix, scopes, expires_at)
+       VALUES ($1,$2,$3,'t',$4,$5,$6,NULL)`,
+      [
+        randomUUID(),
+        org.value.id,
+        acc.value.id,
+        Buffer.from(hash),
+        plain.slice(0, 12),
+        ['project:read', 'project:write', 'version:publish'],
+      ]
+    );
     return { plain, slug };
   }
 

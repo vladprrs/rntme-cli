@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Hono } from 'hono';
-import type { DokployApplication } from '@rntme-cli/deploy-dokploy';
 
 export function createMockDokployApp() {
   const app = new Hono();
