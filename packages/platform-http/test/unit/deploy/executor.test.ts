@@ -102,12 +102,41 @@ describe('runDeployment', () => {
       expect.any(Object),
     );
   });
+
+  it('derives a wildcard public app URL from org, project, and environment for legacy targets', async () => {
+    const renderPlan = vi.fn(() =>
+      ok({
+        target: { kind: 'dokploy' as const, endpoint: 'https://dokploy.example.test' },
+        targetProject: { mode: 'existing' as const, projectId: 'project-1' },
+        deployment: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const },
+        resources: [],
+        urls: { projectUrl: 'https://acme-shop-default.rntme.com', publicRoutes: [] },
+        digest: 'sha256:rendered',
+        warnings: [],
+      }),
+    );
+    const { deps } = setup({
+      deploymentConfigOverrides: {},
+      targetPublicBaseUrl: null,
+      renderPlan: renderPlan as never,
+    });
+
+    await runDeployment('deployment-1', 'org-1', deps);
+
+    expect(renderPlan).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ publicBaseUrl: 'https://acme-shop-default.rntme.com' }),
+    );
+  });
 });
 
 function setup(
   overrides: Partial<Pick<ExecutorDeps, 'loadComposed'>> & {
     bundleFiles?: Record<string, unknown>;
+    deploymentConfigOverrides?: Record<string, unknown>;
     planProject?: ExecutorDeps['planProject'];
+    renderPlan?: ExecutorDeps['renderPlan'];
+    targetPublicBaseUrl?: string | null;
     verificationReport?: { checks: never[] | [{ name: string; url: string; status: number; latencyMs: number; ok: boolean }]; ok: boolean; partialOk: boolean };
   } = {},
 ) {
@@ -121,7 +150,7 @@ function setup(
         projectVersionId: 'version-1',
         targetId: 'target-1',
         status: 'running' as const,
-        configOverrides: { publicBaseUrl: 'https://app.example.test' },
+        configOverrides: overrides.deploymentConfigOverrides ?? { publicBaseUrl: 'https://app.example.test' },
         renderedPlanDigest: null,
         applyResult: null,
         verificationReport: null,
@@ -182,7 +211,10 @@ function setup(
         displayName: 'Staging',
         kind: 'dokploy' as const,
         dokployUrl: 'https://dokploy.example.test',
-        publicBaseUrl: 'https://app.example.test',
+        publicBaseUrl:
+          overrides.targetPublicBaseUrl === undefined
+            ? 'https://app.example.test'
+            : overrides.targetPublicBaseUrl,
         dokployProjectId: 'project-1',
         dokployProjectName: null,
         allowCreateProject: false,
@@ -229,7 +261,7 @@ function setup(
         },
       })),
     planProject: overrides.planProject ?? vi.fn(() => ok({ project: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, infrastructure: { eventBus: { kind: 'kafka' as const, mode: 'external' as const, brokers: ['redpanda:9092'] } }, workloads: [], edge: { routes: [], middleware: [] }, diagnostics: { warnings: [] } })) as never,
-    renderPlan: vi.fn(() => ok({ target: { kind: 'dokploy' as const, endpoint: 'https://dokploy.example.test' }, targetProject: { mode: 'existing' as const, projectId: 'project-1' }, deployment: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, resources: [], urls: { projectUrl: 'https://app.example.test', publicRoutes: [] }, digest: 'sha256:rendered', warnings: [] })) as never,
+    renderPlan: overrides.renderPlan ?? vi.fn(() => ok({ target: { kind: 'dokploy' as const, endpoint: 'https://dokploy.example.test' }, targetProject: { mode: 'existing' as const, projectId: 'project-1' }, deployment: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, resources: [], urls: { projectUrl: 'https://app.example.test', publicRoutes: [] }, digest: 'sha256:rendered', warnings: [] })) as never,
     applyPlan: vi.fn(async () => ok({ target: { kind: 'dokploy' as const, projectId: 'project-1' }, deployment: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, resources: [], urls: { projectUrl: 'https://app.example.test', publicRoutes: [] }, renderedPlanDigest: 'sha256:rendered', warnings: [], verificationHints: { healthUrl: 'https://app.example.test/health', publicRouteUrls: [] } })) as never,
     heartbeatMs: 10_000,
   };

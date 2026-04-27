@@ -465,7 +465,15 @@ export function createUiApp(deps: UiDeps): Hono {
     const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
-    return renderHtml(c, <DeployTargetsPage subject={enrichedSubject} otherOrgs={otherOrgs} targets={targetsRes.value} />);
+    return renderHtml(
+      c,
+      <DeployTargetsPage
+        subject={enrichedSubject}
+        otherOrgs={otherOrgs}
+        publicDeployDomain={deps.env.PLATFORM_PUBLIC_DEPLOY_DOMAIN}
+        targets={targetsRes.value}
+      />,
+    );
   });
 
   authed.get('/:orgSlug/deploy-targets/:targetSlug', async (c) => {
@@ -482,7 +490,15 @@ export function createUiApp(deps: UiDeps): Hono {
     const otherOrgs = isOk(otherRes) ? otherRes.value.filter((o) => o.slug !== s.org.slug) : [];
     const orgDisplayName = (isOk(orgRes) && orgRes.value?.displayName) ? orgRes.value.displayName : s.org.slug;
     const enrichedSubject = { ...s, org: { ...s.org, displayName: orgDisplayName } };
-    return renderHtml(c, <DeployTargetDetailPage subject={enrichedSubject} otherOrgs={otherOrgs} target={targetRes.value} />);
+    return renderHtml(
+      c,
+      <DeployTargetDetailPage
+        subject={enrichedSubject}
+        otherOrgs={otherOrgs}
+        publicDeployDomain={deps.env.PLATFORM_PUBLIC_DEPLOY_DOMAIN}
+        target={targetRes.value}
+      />,
+    );
   });
 
   authed.post('/:orgSlug/projects/:projSlug/deployments', sameOriginOnly(deps.env.PLATFORM_BASE_URL), async (c) => {

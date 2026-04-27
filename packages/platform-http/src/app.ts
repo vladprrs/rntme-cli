@@ -101,6 +101,7 @@ export function createApp(deps: AppDeps): Hono {
     dokployClientFactory: createDokployClientFactory(cipher),
     smoker: new SmokeVerifier(),
     logger: deps.logger,
+    publicDeployDomain: deps.env.PLATFORM_PUBLIC_DEPLOY_DOMAIN,
   };
   const scheduleDeployment = deps.scheduleDeployment ?? ((deploymentId: string, orgId: string) => {
     setImmediate(() => {

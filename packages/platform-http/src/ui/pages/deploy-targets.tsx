@@ -6,6 +6,7 @@ import type { EnrichedSubject } from './org.js';
 export function DeployTargetsPage(props: {
   subject: EnrichedSubject;
   otherOrgs: readonly Pick<Organization, 'id' | 'slug' | 'displayName'>[];
+  publicDeployDomain: string;
   targets: readonly DeployTarget[];
 }) {
   return (
@@ -23,7 +24,7 @@ export function DeployTargetsPage(props: {
           cells: [
             <a class="font-medium text-blue-700 hover:underline" href={`/${props.subject.org.slug}/deploy-targets/${target.slug}`}>{target.slug}</a>,
             target.kind,
-            target.publicBaseUrl ?? 'Not configured',
+            displayPublicUrl(target.publicBaseUrl, props.publicDeployDomain),
             target.isDefault ? 'Yes' : 'No',
           ],
         }))}
@@ -35,6 +36,7 @@ export function DeployTargetsPage(props: {
 export function DeployTargetDetailPage(props: {
   subject: EnrichedSubject;
   otherOrgs: readonly Pick<Organization, 'id' | 'slug' | 'displayName'>[];
+  publicDeployDomain: string;
   target: DeployTarget;
 }) {
   const target = props.target;
@@ -49,10 +51,14 @@ export function DeployTargetDetailPage(props: {
       <dl class="mt-4 grid gap-3 text-sm">
         <div><dt class="font-medium">Kind</dt><dd>{target.kind}</dd></div>
         <div><dt class="font-medium">Dokploy URL</dt><dd>{target.dokployUrl}</dd></div>
-        <div><dt class="font-medium">Public URL</dt><dd>{target.publicBaseUrl ?? 'Not configured'}</dd></div>
+        <div><dt class="font-medium">Public URL</dt><dd>{displayPublicUrl(target.publicBaseUrl, props.publicDeployDomain)}</dd></div>
         <div><dt class="font-medium">Project</dt><dd>{target.dokployProjectId ?? target.dokployProjectName ?? 'Not configured'}</dd></div>
         <div><dt class="font-medium">API token</dt><dd>{target.apiTokenRedacted}</dd></div>
       </dl>
     </Layout>
   );
+}
+
+function displayPublicUrl(publicBaseUrl: string | null, publicDeployDomain: string): string {
+  return publicBaseUrl ?? `Auto (${publicDeployDomain})`;
 }
