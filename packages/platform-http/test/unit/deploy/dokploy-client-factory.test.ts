@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RenderedDokployResource } from '@rntme-cli/deploy-dokploy';
 import type { DeployTargetWithSecret, SecretCipher } from '@rntme-cli/platform-core';
 import { createDokployClientFactory } from '../../../src/deploy/dokploy-client-factory.js';
+import { createMockDokployApp } from '../../fixtures/mock-dokploy.js';
 
 describe('createDokployClientFactory', () => {
   it('decrypts the target token and sends it as x-api-key on client calls', async () => {
@@ -184,6 +185,29 @@ describe('createDokployClientFactory', () => {
       id: 'app-created',
       name: 'rntme-acme-notes-edge',
     });
+  });
+
+  it('runs the configure/deploy/start lifecycle against the e2e Dokploy mock', async () => {
+    const mock = createMockDokployApp();
+    const cipher: SecretCipher = {
+      encrypt: vi.fn(),
+      decrypt: vi.fn(() => 'plain-token'),
+    };
+
+    const client = createDokployClientFactory(cipher, async (input, init) => {
+      const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url);
+      return mock.app.request(url.href, init);
+    })(target());
+
+    const { environmentId } = await client.ensureEnvironment(
+      { mode: 'existing', projectId: 'mock-project' },
+      'production',
+    );
+    const created = await client.createApplication(environmentId, renderedEdgeResource());
+
+    await expect(client.configureApplication(created.id, renderedEdgeResource())).resolves.toBeUndefined();
+    await expect(client.deployApplication(created.id)).resolves.toBeUndefined();
+    await expect(client.startApplication(created.id)).resolves.toBeUndefined();
   });
 
   it('throws a redacted decrypt failure', () => {
