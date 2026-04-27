@@ -37,7 +37,7 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
   it('queues and executes a happy-path Dokploy deployment', async () => {
     const suffix = randomUUID().replace(/-/g, '').slice(0, 8);
     const orgSlug = `deploy-org-${suffix}`;
-    const projectSlug = `catalog-${suffix}`;
+    const projectSlug = `notes-${suffix}`;
     const auth = await seedOrgWithToken(env, orgSlug, `deploy_org_${suffix}`, `deploy_user_${suffix}`);
 
     const created = await env.app.request(`/v1/orgs/${orgSlug}/projects`, {
@@ -50,7 +50,7 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
     });
     expect(created.status).toBe(201);
 
-    const built = buildBundle(resolve(process.cwd(), '../../../packages/blueprint/test/fixtures/product-catalog-project'));
+    const built = buildBundle(resolve(process.cwd(), '../../../demo/notes-blueprint'));
     const published = await env.app.request(`/v1/orgs/${orgSlug}/projects/${projectSlug}/versions`, {
       method: 'POST',
       headers: {
@@ -103,11 +103,7 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
       body: JSON.stringify({
         projectVersionSeq: 1,
         targetSlug: 'preview',
-        configOverrides: {
-          integrationModuleImages: {
-            'mod-workos': 'ghcr.io/rntme/mod-workos:test',
-          },
-        },
+        configOverrides: {},
       }),
     });
     expect(queued.status).toBe(202);
@@ -149,8 +145,16 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
       headers: { authorization: `Bearer ${auth.plain}` },
     });
     expect(show.status).toBe(200);
-    const showJson = await show.json() as { deployment: { status: string; renderedPlanDigest: string | null } };
-    expect(showJson.deployment.status).toBe('succeeded');
+    const showJson = await show.json() as {
+      deployment: {
+        status: string;
+        renderedPlanDigest: string | null;
+        errorCode?: string | null;
+        errorMessage?: string | null;
+        verificationReport?: unknown;
+      };
+    };
+    expect(showJson.deployment.status, JSON.stringify(showJson.deployment)).toBe('succeeded');
     expect(showJson.deployment.renderedPlanDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(mockDokploy.applications.size).toBeGreaterThan(0);
 
