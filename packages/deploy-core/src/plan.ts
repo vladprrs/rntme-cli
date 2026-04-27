@@ -22,6 +22,7 @@ export type DomainServiceWorkload = {
   readonly resourceName: string;
   readonly runtime: { readonly image: string };
   readonly artifact: { readonly source: 'composed-project'; readonly serviceSlug: string };
+  readonly runtimeFiles: Readonly<Record<string, string>>;
   readonly persistence: { readonly mode: 'ephemeral' };
 };
 
@@ -136,7 +137,7 @@ function buildWorkloads(
   errors: DeploymentPlanError[],
 ): DeploymentWorkload[] {
   const workloads: DeploymentWorkload[] = [];
-  const runtimeImage = config.runtimeImage ?? 'ghcr.io/vladprrs/rntme-runtime:1.0';
+  const runtimeImage = config.runtimeImage ?? 'rntme-runtime';
 
   for (const service of Object.values(project.services)) {
     if (service.kind === 'domain') {
@@ -147,6 +148,7 @@ function buildWorkloads(
         resourceName: resourceName(config.orgSlug, project.name, service.slug),
         runtime: { image: runtimeImage },
         artifact: { source: 'composed-project', serviceSlug: service.slug },
+        runtimeFiles: service.runtimeFiles ?? {},
         persistence: { mode: 'ephemeral' },
       });
       continue;

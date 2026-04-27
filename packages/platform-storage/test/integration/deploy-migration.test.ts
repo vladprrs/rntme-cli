@@ -91,5 +91,14 @@ d('deploy migrations', () => {
         AND contype = 'c'
     `);
     expect(terminalCheck.rows).toHaveLength(1);
+
+    const publicBaseUrlColumn = await h.pool.query<{ column_name: string; is_nullable: string }>(`
+      SELECT column_name, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'deploy_target'
+        AND column_name = 'public_base_url'
+    `);
+    expect(publicBaseUrlColumn.rows).toEqual([{ column_name: 'public_base_url', is_nullable: 'YES' }]);
   });
 });

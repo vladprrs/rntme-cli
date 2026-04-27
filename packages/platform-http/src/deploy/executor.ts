@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { clearInterval, setInterval } from 'node:timers';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,7 +6,7 @@ import { gunzipSync } from 'node:zlib';
 import { loadComposedBlueprint, type ComposedBlueprint } from '@rntme/blueprint';
 import type { ComposedProjectInput, ProjectDeploymentPlan } from '@rntme-cli/deploy-core';
 import { buildProjectDeploymentPlan } from '@rntme-cli/deploy-core';
-import type { DeploymentApplyResult, RenderedDokployPlan, RenderedDokployResource } from '@rntme-cli/deploy-dokploy';
+import type { DeploymentApplyResult, RenderedDokployPlan } from '@rntme-cli/deploy-dokploy';
 import { applyDokployPlan, renderDokployPlan } from '@rntme-cli/deploy-dokploy';
 import {
   isOk,
@@ -102,7 +101,8 @@ export async function runDeployment(
     const orgSlug = await deps.orgSlugFor(orgId);
     const redactedTarget = redactTarget(target);
     const config = buildProjectDeploymentConfig(redactedTarget, orgSlug, ctx.configOverrides);
-    const plan = (deps.planProject ?? buildProjectDeploymentPlan)(toDeployCoreInput(composed.value), config);
+    const deployInput = await toDeployCoreInput(composed.value, tmpDir);
+    const plan = (deps.planProject ?? buildProjectDeploymentPlan)(deployInput, config);
     if (!plan.ok) {
       await finalize(deps, deploymentId, orgId, 'failed', {
         errorCode: plan.errors[0]?.code ?? 'DEPLOY_PLAN_UNKNOWN',
@@ -123,14 +123,13 @@ export async function runDeployment(
       });
       return;
     }
-    const renderedPlan = await attachRuntimeArtifactFiles(rendered.value, composed.value, tmpDir);
     await deps.withOrgTx(orgId, (repos) =>
-      repos.deployments.setRenderedDigest(deploymentId, renderedPlan.digest),
+      repos.deployments.setRenderedDigest(deploymentId, rendered.value.digest),
     );
 
     await appendLog(deps, deploymentId, orgId, 'info', 'apply', 'Applying Dokploy plan');
     const applied = await (deps.applyPlan ?? applyDokployPlan)(
-      renderedPlan,
+      rendered.value as RenderedDokployPlan,
       deps.dokployClientFactory(target),
     );
     if (!applied.ok) {
@@ -266,51 +265,28 @@ function defaultLoadComposed(dir: string): ResultLike<LoadedDeployProject> {
   return result as ResultLike<LoadedDeployProject>;
 }
 
-function toDeployCoreInput(value: LoadedDeployProject): ComposedProjectInput {
+async function toDeployCoreInput(value: LoadedDeployProject, rootDir: string): Promise<ComposedProjectInput> {
   if (!isComposedBlueprint(value)) return value;
 
   return {
     name: value.project.name,
     services: Object.fromEntries(
-      value.project.services.map((slug) => [slug, { slug, kind: value.services[slug]?.kind ?? 'domain' }]),
+      await Promise.all(
+        value.project.services.map(async (slug) => [
+          slug,
+          {
+            slug,
+            kind: value.services[slug]?.kind ?? 'domain',
+            ...(value.services[slug]?.kind === 'domain'
+              ? { runtimeFiles: await buildRuntimeArtifactFiles(value, rootDir, slug) }
+              : {}),
+          },
+        ]),
+      ),
     ),
     ...(value.project.routes === undefined ? {} : { routes: value.project.routes }),
     ...(value.project.middleware === undefined ? {} : { middleware: value.project.middleware }),
     ...(value.project.mounts === undefined ? {} : { mounts: value.project.mounts }),
-  };
-}
-
-async function attachRuntimeArtifactFiles(
-  rendered: RenderedDokployPlan,
-  project: LoadedDeployProject,
-  rootDir: string,
-): Promise<RenderedDokployPlan> {
-  if (!isComposedBlueprint(project)) return rendered;
-
-  const resources = await Promise.all(
-    rendered.resources.map(async (resource) => {
-      if (resource.workloadKind !== 'domain-service') return resource;
-      return attachDomainRuntimeFiles(resource, project, rootDir);
-    }),
-  );
-
-  return withDigest({ ...rendered, resources });
-}
-
-async function attachDomainRuntimeFiles(
-  resource: RenderedDokployResource,
-  project: ComposedBlueprint,
-  rootDir: string,
-): Promise<RenderedDokployResource> {
-  const artifactFiles = await buildRuntimeArtifactFiles(project, rootDir, resource.workloadSlug);
-  const { build, ...resourceWithoutBuild } = resource;
-  return {
-    ...resourceWithoutBuild,
-    image: build?.baseImage ?? resource.image,
-    files: {
-      ...artifactFiles,
-      ...(resource.files ?? {}),
-    },
   };
 }
 
@@ -341,7 +317,7 @@ async function buildRuntimeArtifactFiles(
     addJsonFile(files, `graphs/${graphId}.json`, graph);
   }
 
-  await addDirectoryFiles(files, rootDir, `services/${serviceSlug}/ui`, 'ui');
+  await addOptionalDirectoryFiles(files, rootDir, `services/${serviceSlug}/ui`, 'ui');
   if (service.seed !== null) {
     await addOptionalTextFile(files, rootDir, `services/${serviceSlug}/seed/seed.json`, 'seed.json');
   }
@@ -349,14 +325,19 @@ async function buildRuntimeArtifactFiles(
   return files;
 }
 
-async function addDirectoryFiles(
+async function addOptionalDirectoryFiles(
   files: Record<string, string>,
   rootDir: string,
   sourceRel: string,
   targetRel: string,
 ): Promise<void> {
   const sourceRoot = join(rootDir, sourceRel);
-  await addDirectoryFilesFrom(files, sourceRoot, sourceRoot, targetRel);
+  try {
+    await addDirectoryFilesFrom(files, sourceRoot, sourceRoot, targetRel);
+  } catch (cause) {
+    if (errorCode(cause) === 'ENOENT') return;
+    throw cause;
+  }
 }
 
 async function addDirectoryFilesFrom(
@@ -373,8 +354,7 @@ async function addDirectoryFilesFrom(
       continue;
     }
     if (entry.isFile()) {
-      const rel = relative(sourceRoot, sourcePath);
-      files[`/srv/artifacts/${join(targetRel, rel)}`] = await readFile(sourcePath, 'utf8');
+      files[join(targetRel, relative(sourceRoot, sourcePath))] = await readFile(sourcePath, 'utf8');
     }
   }
 }
@@ -386,29 +366,21 @@ async function addOptionalTextFile(
   targetRel: string,
 ): Promise<void> {
   try {
-    files[`/srv/artifacts/${targetRel}`] = await readFile(join(rootDir, sourceRel), 'utf8');
+    files[targetRel] = await readFile(join(rootDir, sourceRel), 'utf8');
   } catch (cause) {
     if (errorCode(cause) === 'ENOENT') return;
     throw cause;
   }
 }
 
+function addJsonFile(files: Record<string, string>, targetRel: string, value: unknown): void {
+  files[targetRel] = `${JSON.stringify(value, null, 2)}\n`;
+}
+
 function errorCode(cause: unknown): string | undefined {
   if (typeof cause !== 'object' || cause === null || !('code' in cause)) return undefined;
   const code = (cause as { readonly code?: unknown }).code;
   return typeof code === 'string' ? code : undefined;
-}
-
-function addJsonFile(files: Record<string, string>, targetRel: string, value: unknown): void {
-  files[`/srv/artifacts/${targetRel}`] = `${JSON.stringify(value, null, 2)}\n`;
-}
-
-function withDigest(rendered: RenderedDokployPlan): RenderedDokployPlan {
-  const { digest: _digest, ...withoutDigest } = rendered;
-  return {
-    ...rendered,
-    digest: `sha256:${createHash('sha256').update(JSON.stringify(withoutDigest)).digest('hex')}`,
-  };
 }
 
 function isComposedBlueprint(value: LoadedDeployProject): value is ComposedBlueprint {

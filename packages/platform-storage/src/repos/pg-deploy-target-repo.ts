@@ -31,8 +31,8 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
 
         const inserted = await db.query(
           `INSERT INTO deploy_target (
-             id, org_id, slug, display_name, kind, dokploy_url,
-             public_base_url, dokploy_project_id, dokploy_project_name, allow_create_project,
+             id, org_id, slug, display_name, kind, dokploy_url, public_base_url,
+             dokploy_project_id, dokploy_project_name, allow_create_project,
              api_token_ciphertext, api_token_nonce, api_token_key_version,
              event_bus_config, policy_values, is_default
            )
@@ -281,7 +281,7 @@ function rowToTarget(r: DbRow): DeployTarget {
     displayName: r['display_name'] as string,
     kind: r['kind'] as 'dokploy',
     dokployUrl: r['dokploy_url'] as string,
-    publicBaseUrl: r['public_base_url'] as string,
+    publicBaseUrl: (r['public_base_url'] ?? null) as string | null,
     dokployProjectId: (r['dokploy_project_id'] ?? null) as string | null,
     dokployProjectName: (r['dokploy_project_name'] ?? null) as string | null,
     allowCreateProject: r['allow_create_project'] as boolean,

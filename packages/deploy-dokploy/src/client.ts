@@ -29,8 +29,7 @@ export type DokployClient = {
     applicationId: string,
     resource: RenderedDokployResource,
   ): Promise<DokployApplication>;
-  deployApplication(
-    applicationId: string,
-    resource: RenderedDokployResource,
-  ): Promise<void>;
+  configureApplication(applicationId: string, resource: RenderedDokployResource): Promise<void>;
+  deployApplication(applicationId: string): Promise<void>;
+  startApplication(applicationId: string): Promise<void>;
 };

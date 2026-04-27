@@ -22,26 +22,7 @@ describe('CreateDeployTargetRequestSchema', () => {
     expect(r.success).toBe(true);
   });
 
-  it('rejects missing apiToken', () => {
-    const r = CreateDeployTargetRequestSchema.safeParse({
-      slug: 'x',
-      displayName: 'X',
-      kind: 'dokploy',
-      dokployUrl: 'https://x.example.test',
-      publicBaseUrl: 'https://notes.example.test',
-      eventBus: { kind: 'kafka', brokers: [] },
-      policyValues: {},
-      isDefault: false,
-    });
-    expect(r.success).toBe(false);
-  });
-
-  it('forbids apiToken in update payload', () => {
-    const r = UpdateDeployTargetRequestSchema.safeParse({ apiToken: 'leak' });
-    expect(r.success).toBe(false);
-  });
-
-  it('requires a real public base URL on create payloads', () => {
+  it('requires a public app base URL on create', () => {
     const r = CreateDeployTargetRequestSchema.safeParse({
       slug: 'dokploy-staging',
       displayName: 'Staging',
@@ -56,12 +37,43 @@ describe('CreateDeployTargetRequestSchema', () => {
     expect(r.success).toBe(false);
   });
 
-  it('does not materialize policyValues when omitted from update payloads', () => {
-    const r = UpdateDeployTargetRequestSchema.safeParse({ displayName: 'Staging EU' });
+  it('leaves omitted policyValues undefined on patch', () => {
+    const r = UpdateDeployTargetRequestSchema.parse({ displayName: 'Renamed' });
+    expect(r).toEqual({ displayName: 'Renamed' });
+    expect(r.policyValues).toBeUndefined();
+  });
+
+  it('accepts public app base URL patches', () => {
+    const r = UpdateDeployTargetRequestSchema.safeParse({
+      publicBaseUrl: 'https://notes.example.test',
+    });
     expect(r.success).toBe(true);
-    if (!r.success) return;
-    expect(r.data).toEqual({ displayName: 'Staging EU' });
-    expect('policyValues' in r.data).toBe(false);
+  });
+
+  it('rejects non-http public app base URLs', () => {
+    const r = UpdateDeployTargetRequestSchema.safeParse({
+      publicBaseUrl: 'ftp://notes.example.test',
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it('rejects missing apiToken', () => {
+    const r = CreateDeployTargetRequestSchema.safeParse({
+      slug: 'x',
+      displayName: 'X',
+      kind: 'dokploy',
+      dokployUrl: 'https://x.example.test',
+      publicBaseUrl: 'https://x-app.example.test',
+      eventBus: { kind: 'kafka', brokers: [] },
+      policyValues: {},
+      isDefault: false,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it('forbids apiToken in update payload', () => {
+    const r = UpdateDeployTargetRequestSchema.safeParse({ apiToken: 'leak' });
+    expect(r.success).toBe(false);
   });
 
   it('requires apiToken in rotate payload', () => {

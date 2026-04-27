@@ -30,13 +30,32 @@ describe('buildProjectDeploymentConfig', () => {
 
 describe('buildDokployTargetConfig', () => {
   it('normalizes Dokploy endpoint and forwards project ref', () => {
-    expect(buildDokployTargetConfig(target(), {})).toEqual({
+    expect(buildDokployTargetConfig(target(), { publicBaseUrl: 'https://app.example.test' })).toEqual({
       endpoint: 'https://dokploy.example.test',
       projectId: 'project-1',
       projectName: undefined,
       allowCreateProject: false,
+      publicBaseUrl: 'https://app.example.test',
+    });
+  });
+
+  it('uses the deploy target public app base URL by default', () => {
+    expect(buildDokployTargetConfig(target(), {})).toMatchObject({
+      endpoint: 'https://dokploy.example.test',
       publicBaseUrl: 'https://notes.example.test',
     });
+  });
+
+  it('rejects legacy targets without a public app base URL unless an override is provided', () => {
+    expect(() =>
+      buildDokployTargetConfig({ ...target(), publicBaseUrl: null }, {}),
+    ).toThrow(/DEPLOY_TARGET_PUBLIC_BASE_URL_REQUIRED/);
+    expect(
+      buildDokployTargetConfig(
+        { ...target(), publicBaseUrl: null },
+        { publicBaseUrl: 'https://override.example.test' },
+      ).publicBaseUrl,
+    ).toBe('https://override.example.test');
   });
 });
 

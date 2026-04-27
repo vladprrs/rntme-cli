@@ -17,9 +17,16 @@ export const EventBusConfigSchema = z.object({
 });
 export type EventBusConfig = z.infer<typeof EventBusConfigSchema>;
 
-const PolicyValuesShapeSchema = z.record(z.string(), z.record(z.string(), z.unknown()));
-export const PolicyValuesSchema = PolicyValuesShapeSchema.default({});
-export type PolicyValues = z.infer<typeof PolicyValuesShapeSchema>;
+export const PolicyValuesSchema = z.record(z.string(), z.record(z.string(), z.unknown())).default({});
+export type PolicyValues = z.infer<typeof PolicyValuesSchema>;
+const PatchPolicyValuesSchema = z.record(z.string(), z.record(z.string(), z.unknown()));
+const HttpUrlSchema = z.string().url().refine(
+  (value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  },
+  { message: 'expected an http(s) URL' },
+);
 
 export const DeployTargetKindSchema = z.enum(['dokploy']);
 export type DeployTargetKind = z.infer<typeof DeployTargetKindSchema>;
@@ -29,8 +36,8 @@ export const CreateDeployTargetRequestSchema = z
     slug: SlugSchema,
     displayName: z.string().min(1).max(120),
     kind: DeployTargetKindSchema,
-    dokployUrl: z.string().url(),
-    publicBaseUrl: z.string().url(),
+    dokployUrl: HttpUrlSchema,
+    publicBaseUrl: HttpUrlSchema,
     dokployProjectId: z.string().min(1).optional(),
     dokployProjectName: z.string().min(1).optional(),
     allowCreateProject: z.boolean().default(false),
@@ -52,13 +59,13 @@ export type CreateDeployTargetRequest = z.infer<typeof CreateDeployTargetRequest
 export const UpdateDeployTargetRequestSchema = z
   .object({
     displayName: z.string().min(1).max(120).optional(),
-    dokployUrl: z.string().url().optional(),
-    publicBaseUrl: z.string().url().optional(),
+    dokployUrl: HttpUrlSchema.optional(),
+    publicBaseUrl: HttpUrlSchema.optional(),
     dokployProjectId: z.string().min(1).nullable().optional(),
     dokployProjectName: z.string().min(1).nullable().optional(),
     allowCreateProject: z.boolean().optional(),
     eventBus: EventBusConfigSchema.optional(),
-    policyValues: PolicyValuesShapeSchema.optional(),
+    policyValues: PatchPolicyValuesSchema.optional(),
     isDefault: z.boolean().optional(),
   })
   .strict();
@@ -73,8 +80,8 @@ export const DeployTargetSchema = z.object({
   slug: SlugSchema,
   displayName: z.string(),
   kind: DeployTargetKindSchema,
-  dokployUrl: z.string(),
-  publicBaseUrl: z.string(),
+  dokployUrl: HttpUrlSchema,
+  publicBaseUrl: HttpUrlSchema.nullable(),
   dokployProjectId: z.string().nullable(),
   dokployProjectName: z.string().nullable(),
   allowCreateProject: z.boolean(),

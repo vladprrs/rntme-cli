@@ -61,10 +61,14 @@ export function buildDokployTargetConfig(
   configOverrides: Record<string, unknown>,
 ): DokployTargetConfig {
   const overrides = configOverrides as DeployConfigOverrides;
+  const publicBaseUrl = overrides.publicBaseUrl ?? target.publicBaseUrl;
+  if (publicBaseUrl === null || publicBaseUrl === undefined || publicBaseUrl === '') {
+    throw new Error('DEPLOY_TARGET_PUBLIC_BASE_URL_REQUIRED');
+  }
   return {
     endpoint: normalizeDokployBaseUrl(target.dokployUrl),
     allowCreateProject: target.allowCreateProject,
-    publicBaseUrl: overrides.publicBaseUrl ?? target.publicBaseUrl,
+    publicBaseUrl,
     ...(target.dokployProjectId === null ? {} : { projectId: target.dokployProjectId }),
     ...(target.dokployProjectName === null ? {} : { projectName: target.dokployProjectName }),
   };

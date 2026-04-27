@@ -1,5 +1,5 @@
 {
-  "id": "840bbaf1-c3f5-4078-95f2-ccd3d74389a0",
+  "id": "7d810019-02aa-4d21-83ce-6c46d7c5840d",
   "prevId": "6f2399a5-cf03-4efd-b9ba-b8014f1c14bb",
   "version": "7",
   "dialect": "postgresql",
@@ -523,7 +523,7 @@
           "name": "public_base_url",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "dokploy_project_id": {
           "name": "dokploy_project_id",

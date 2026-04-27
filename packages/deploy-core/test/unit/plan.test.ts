@@ -6,8 +6,8 @@ import type { ProjectDeploymentConfig } from '../../src/config.js';
 const project: ComposedProjectInput = {
   name: 'commerce',
   services: {
-    catalog: { slug: 'catalog', kind: 'domain' },
-    app: { slug: 'app', kind: 'domain' },
+    catalog: { slug: 'catalog', kind: 'domain', runtimeFiles: { 'manifest.json': '{}' } },
+    app: { slug: 'app', kind: 'domain', runtimeFiles: { 'manifest.json': '{}' } },
     'mod-workos': { slug: 'mod-workos', kind: 'integration' },
   },
   routes: {
@@ -57,7 +57,8 @@ describe('buildProjectDeploymentPlan', () => {
       'edge',
     ]);
     expect(r.value.workloads.find((w) => w.kind === 'domain-service' && w.slug === 'catalog')).toMatchObject({
-      runtime: { image: 'ghcr.io/vladprrs/rntme-runtime:1.0' },
+      runtime: { image: 'rntme-runtime' },
+      runtimeFiles: { 'manifest.json': '{}' },
       persistence: { mode: 'ephemeral' },
     });
     expect(r.value.workloads.find((w) => w.kind === 'integration-module')).toMatchObject({

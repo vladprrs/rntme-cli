@@ -15,6 +15,10 @@ const plan: ProjectDeploymentPlan = {
       resourceName: 'rntme-acme-commerce-catalog',
       runtime: { image: 'rntme-runtime' },
       artifact: { source: 'composed-project', serviceSlug: 'catalog' },
+      runtimeFiles: {
+        'manifest.json': '{"service":{"name":"catalog"}}',
+        'graphs/listCatalog.json': '{"id":"listCatalog"}',
+      },
       persistence: { mode: 'ephemeral' },
     },
     {
@@ -64,29 +68,21 @@ describe('renderDokployPlan', () => {
     expect(r.value.resources[0]).toMatchObject({
       kind: 'application',
       workloadKind: 'domain-service',
-      image: 'rntme-acme-commerce-catalog:artifact',
-      build: {
-        kind: 'domain-service-artifact',
-        baseImage: 'rntme-runtime',
-        image: 'rntme-acme-commerce-catalog:artifact',
-        artifact: { source: 'composed-project', serviceSlug: 'catalog' },
-        context: {
-          kind: 'generated',
-          serviceSlug: 'catalog',
-          files: [
-            'Dockerfile',
-            'artifacts/catalog/manifest.json',
-            'artifacts/catalog/pdm.json',
-            'artifacts/catalog/qsm.json',
-            'artifacts/catalog/bindings.json',
-            'artifacts/catalog/ui.json',
-          ],
-        },
+      image: 'rntme-runtime',
+      files: {
+        '/srv/artifacts/graphs/listCatalog.json': '{"id":"listCatalog"}',
+        '/srv/artifacts/manifest.json': '{"service":{"name":"catalog"}}',
       },
     });
+    expect(r.value.resources[0]).not.toHaveProperty('build');
     expect(r.value.resources[0].env).toContainEqual({
       name: 'RNTME_EVENT_BUS_BROKERS',
       value: 'redpanda.internal:9092',
+      secret: false,
+    });
+    expect(r.value.resources[0].env).toContainEqual({
+      name: 'RNTME_ARTIFACTS_DIR',
+      value: '/srv/artifacts',
       secret: false,
     });
     expect(r.value.digest).toMatch(/^sha256:/);
@@ -164,6 +160,47 @@ describe('renderDokployPlan', () => {
     if (!r.ok) {
       expect(r.errors).toContainEqual(
         expect.objectContaining({ code: 'DEPLOY_RENDER_DOKPLOY_INVALID_NGINX_CONFIG' }),
+      );
+    }
+  });
+
+  it('rejects domain services without runtime artifact files', () => {
+    const r = renderDokployPlan(
+      {
+        ...plan,
+        workloads: [
+          {
+            kind: 'domain-service',
+            slug: 'catalog',
+            serviceSlug: 'catalog',
+            resourceName: 'rntme-acme-commerce-catalog',
+            runtime: { image: 'rntme-runtime' },
+            artifact: { source: 'composed-project', serviceSlug: 'catalog' },
+            runtimeFiles: {},
+            persistence: { mode: 'ephemeral' },
+          },
+          {
+            kind: 'edge-gateway',
+            slug: 'edge',
+            resourceName: 'rntme-acme-commerce-edge',
+            image: 'nginx:1.27-alpine',
+          },
+        ],
+      },
+      {
+        endpoint: 'https://dokploy.example.com',
+        projectId: 'project_123',
+        publicBaseUrl: 'https://commerce.example.com',
+      },
+    );
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_RENDER_DOKPLOY_MISSING_RUNTIME_FILES',
+          resource: 'rntme-acme-commerce-catalog',
+        }),
       );
     }
   });
@@ -279,6 +316,7 @@ describe('renderDokployPlan', () => {
             resourceName: 'rntme-acme-commerce-billing-api',
             runtime: { image: 'rntme-runtime' },
             artifact: { source: 'composed-project', serviceSlug: 'billing-api' },
+            runtimeFiles: { 'manifest.json': '{}' },
             persistence: { mode: 'ephemeral' },
           },
           {
@@ -288,6 +326,7 @@ describe('renderDokployPlan', () => {
             resourceName: 'rntme-acme-commerce-billing_api',
             runtime: { image: 'rntme-runtime' },
             artifact: { source: 'composed-project', serviceSlug: 'billing_api' },
+            runtimeFiles: { 'manifest.json': '{}' },
             persistence: { mode: 'ephemeral' },
           },
           {

@@ -4,6 +4,7 @@ export const DEPLOY_DOKPLOY_ERROR_CODES = {
   DEPLOY_APPLY_DOKPLOY_PARTIAL_FAILURE: 'DEPLOY_APPLY_DOKPLOY_PARTIAL_FAILURE',
   DEPLOY_RENDER_DOKPLOY_INVALID_NGINX_CONFIG: 'DEPLOY_RENDER_DOKPLOY_INVALID_NGINX_CONFIG',
   DEPLOY_RENDER_DOKPLOY_NAME_COLLISION: 'DEPLOY_RENDER_DOKPLOY_NAME_COLLISION',
+  DEPLOY_RENDER_DOKPLOY_MISSING_RUNTIME_FILES: 'DEPLOY_RENDER_DOKPLOY_MISSING_RUNTIME_FILES',
 } as const;
 
 export type DokployDeploymentErrorCode = keyof typeof DEPLOY_DOKPLOY_ERROR_CODES;
@@ -18,7 +19,7 @@ export type DokployPartialFailureResource = {
 };
 
 export type DokployPartialFailureStep = {
-  readonly action: 'find' | 'create' | 'update' | 'deploy';
+  readonly action: 'find' | 'create' | 'update' | 'configure' | 'deploy' | 'start';
   readonly resourceName: string;
   readonly workloadSlug: string;
 };
