@@ -31,12 +31,12 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
 
         const inserted = await db.query(
           `INSERT INTO deploy_target (
-             id, org_id, slug, display_name, kind, dokploy_url,
+             id, org_id, slug, display_name, kind, dokploy_url, public_base_url,
              dokploy_project_id, dokploy_project_name, allow_create_project,
              api_token_ciphertext, api_token_nonce, api_token_key_version,
              event_bus_config, policy_values, is_default
            )
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
            RETURNING *`,
           [
             args.row.id,
@@ -45,6 +45,7 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
             args.row.displayName,
             args.row.kind,
             args.row.dokployUrl,
+            args.row.publicBaseUrl,
             args.row.dokployProjectId,
             args.row.dokployProjectName,
             args.row.allowCreateProject,
@@ -95,6 +96,7 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
         const values: unknown[] = [];
         addSet(sets, values, 'display_name', args.patch.displayName);
         addSet(sets, values, 'dokploy_url', args.patch.dokployUrl);
+        addSet(sets, values, 'public_base_url', args.patch.publicBaseUrl);
         addSet(sets, values, 'dokploy_project_id', args.patch.dokployProjectId);
         addSet(sets, values, 'dokploy_project_name', args.patch.dokployProjectName);
         addSet(sets, values, 'allow_create_project', args.patch.allowCreateProject);
@@ -279,6 +281,7 @@ function rowToTarget(r: DbRow): DeployTarget {
     displayName: r['display_name'] as string,
     kind: r['kind'] as 'dokploy',
     dokployUrl: r['dokploy_url'] as string,
+    publicBaseUrl: (r['public_base_url'] ?? null) as string | null,
     dokployProjectId: (r['dokploy_project_id'] ?? null) as string | null,
     dokployProjectName: (r['dokploy_project_name'] ?? null) as string | null,
     allowCreateProject: r['allow_create_project'] as boolean,
@@ -300,6 +303,7 @@ function rowToTargetWithSecret(r: DbRow): DeployTargetWithSecret {
     displayName: target.displayName,
     kind: target.kind,
     dokployUrl: target.dokployUrl,
+    publicBaseUrl: target.publicBaseUrl,
     dokployProjectId: target.dokployProjectId,
     dokployProjectName: target.dokployProjectName,
     allowCreateProject: target.allowCreateProject,

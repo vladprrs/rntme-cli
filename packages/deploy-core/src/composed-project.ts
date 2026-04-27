@@ -3,6 +3,7 @@ export type ServiceKind = 'domain' | 'integration';
 export type ComposedProjectService = {
   readonly slug: string;
   readonly kind: ServiceKind;
+  readonly runtimeFiles?: Readonly<Record<string, string>>;
 };
 
 export type ProjectRouteMap = {

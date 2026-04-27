@@ -149,6 +149,7 @@ function deployTarget(overrides: Partial<DeployTarget> = {}): DeployTarget {
     displayName: 'Staging',
     kind: 'dokploy',
     dokployUrl: 'https://dok.example.test',
+    publicBaseUrl: 'https://notes.example.test',
     dokployProjectId: 'project-1',
     dokployProjectName: null,
     allowCreateProject: false,

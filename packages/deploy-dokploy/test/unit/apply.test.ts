@@ -73,6 +73,59 @@ describe('applyDokployPlan', () => {
     expect(JSON.stringify(r.value)).not.toContain('token');
   });
 
+  it('configures, deploys, and starts created applications before returning success', async () => {
+    const client = new FakeDokployClient();
+    const resourceWithRuntimeConfig = resource({
+      build: {
+        kind: 'domain-service-artifact',
+        baseImage: 'rntme-runtime',
+        image: 'rntme-acme-commerce-catalog:artifact',
+        artifact: { source: 'composed-project', serviceSlug: 'catalog' },
+        context: {
+          kind: 'generated',
+          serviceSlug: 'catalog',
+          files: ['Dockerfile', 'artifacts/catalog/manifest.json'],
+        },
+      },
+      image: 'rntme-acme-commerce-catalog:artifact',
+      ports: [{ containerPort: 8080, protocol: 'http' }],
+      ingress: {
+        publicBaseUrl: 'https://commerce.example.com',
+        containerPort: 8080,
+        healthPath: '/health',
+        routes: [
+          {
+            routeId: 'ui:/',
+            path: '/',
+            url: 'https://commerce.example.com/',
+          },
+        ],
+      },
+      files: { '/etc/rntme/generated.json': '{"ok":true}' },
+    });
+
+    const r = await applyDokployPlan({ ...rendered, resources: [resourceWithRuntimeConfig] }, client);
+
+    expect(r.ok).toBe(true);
+    expect(client.lifecycleCalls).toEqual([
+      'create:rntme-acme-commerce-catalog',
+      'configure:app_1:rntme-acme-commerce-catalog',
+      'deploy:app_1',
+      'start:app_1',
+    ]);
+    expect(client.configureCalls).toEqual([
+      {
+        applicationId: 'app_1',
+        resource: expect.objectContaining({
+          build: resourceWithRuntimeConfig.build,
+          ports: resourceWithRuntimeConfig.ports,
+          ingress: resourceWithRuntimeConfig.ingress,
+          files: resourceWithRuntimeConfig.files,
+        }),
+      },
+    ]);
+  });
+
   it('joins trailing slash project URLs for health checks and includes UI hints when present', async () => {
     const client = new FakeDokployClient();
     const r = await applyDokployPlan(
@@ -375,6 +428,35 @@ describe('applyDokployPlan', () => {
     }
   });
 
+  it('reports lifecycle failures after resource apply as partial failures', async () => {
+    const client = new FakeDokployClient([], { failStartFor: 'app_1' });
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_APPLY_DOKPLOY_PARTIAL_FAILURE',
+          resource: 'rntme-acme-commerce-catalog',
+          partialFailure: expect.objectContaining({
+            failedStep: {
+              action: 'start',
+              resourceName: 'rntme-acme-commerce-catalog',
+              workloadSlug: 'catalog',
+            },
+            retrySafe: true,
+          }),
+        }),
+      );
+      expect(client.lifecycleCalls).toEqual([
+        'create:rntme-acme-commerce-catalog',
+        'configure:app_1:rntme-acme-commerce-catalog',
+        'deploy:app_1',
+        'start:app_1',
+      ]);
+    }
+  });
+
   it('returns environment initialization failures with a sanitized cause', async () => {
     const client = new FakeDokployClient([], { failEnvironment: true });
     const r = await applyDokployPlan(rendered, client);
@@ -418,6 +500,13 @@ class FakeDokployClient implements DokployClient {
     readonly applicationId: string;
     readonly resource: RenderedDokployResource;
   }> = [];
+  readonly configureCalls: Array<{
+    readonly applicationId: string;
+    readonly resource: RenderedDokployResource;
+  }> = [];
+  readonly deployCalls: Array<{ readonly applicationId: string }> = [];
+  readonly startCalls: Array<{ readonly applicationId: string }> = [];
+  readonly lifecycleCalls: string[] = [];
 
   private next = 1;
 
@@ -428,6 +517,9 @@ class FakeDokployClient implements DokployClient {
       readonly failFindFor?: string;
       readonly failCreateFor?: string;
       readonly failUpdateFor?: string;
+      readonly failConfigureFor?: string;
+      readonly failDeployFor?: string;
+      readonly failStartFor?: string;
       readonly failMessage?: string;
     } = {},
   ) {
@@ -459,6 +551,7 @@ class FakeDokployClient implements DokployClient {
     input: RenderedDokployResource,
   ): Promise<{ id: string; name: string }> {
     if (this.failures.failCreateFor === input.name) throw secretError('create failed');
+    this.lifecycleCalls.push(`create:${input.name}`);
     this.createCalls.push({ environmentId, resource: input });
     const app = { id: `app_${this.next++}`, name: input.name };
     this.apps.set(app.name, app);
@@ -470,10 +563,29 @@ class FakeDokployClient implements DokployClient {
     input: RenderedDokployResource,
   ): Promise<{ id: string; name: string }> {
     if (this.failures.failUpdateFor === input.name) throw secretError('update failed');
+    this.lifecycleCalls.push(`update:${id}:${input.name}`);
     this.updateCalls.push({ applicationId: id, resource: input });
     const app = { id, name: input.name };
     this.apps.set(input.name, app);
     return app;
+  }
+
+  async configureApplication(id: string, input: RenderedDokployResource): Promise<void> {
+    this.lifecycleCalls.push(`configure:${id}:${input.name}`);
+    this.configureCalls.push({ applicationId: id, resource: input });
+    if (this.failures.failConfigureFor === id) throw secretError('configure failed');
+  }
+
+  async deployApplication(id: string): Promise<void> {
+    this.lifecycleCalls.push(`deploy:${id}`);
+    this.deployCalls.push({ applicationId: id });
+    if (this.failures.failDeployFor === id) throw secretError('deploy failed');
+  }
+
+  async startApplication(id: string): Promise<void> {
+    this.lifecycleCalls.push(`start:${id}`);
+    this.startCalls.push({ applicationId: id });
+    if (this.failures.failStartFor === id) throw secretError('start failed');
   }
 }
 

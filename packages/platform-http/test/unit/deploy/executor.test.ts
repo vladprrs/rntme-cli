@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it, vi } from 'vitest';
+import type { ComposedBlueprint } from '@rntme/blueprint';
 import { ok, type DeploymentRepo, type DeployTargetRepo, type ProjectVersionRepo } from '@rntme-cli/platform-core';
 import { runDeployment, type ExecutorDeps } from '../../../src/deploy/executor.js';
 
@@ -56,10 +57,57 @@ describe('runDeployment', () => {
       warnings: ['smoke verification completed with warnings'],
     });
   });
+
+  it('adapts composed blueprints into deploy-core input with runtime artifact files', async () => {
+    const planProject = vi.fn(() =>
+      ok({
+        project: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const },
+        infrastructure: { eventBus: { kind: 'kafka' as const, mode: 'external' as const, brokers: ['redpanda:9092'] } },
+        workloads: [],
+        edge: { routes: [], middleware: [] },
+        diagnostics: { warnings: [] },
+      }),
+    );
+    const { deps } = setup({
+      bundleFiles: {
+        'project.json': { name: 'shop', services: ['api'] },
+        'services/api/ui/manifest.json': { version: '2.0', routes: {} },
+        'services/api/seed/seed.json': [{ id: 'seed-1' }],
+      },
+      loadComposed: () => ({ ok: true, value: composedBlueprint() }),
+      planProject: planProject as never,
+    });
+
+    await runDeployment('deployment-1', 'org-1', deps);
+
+    expect(planProject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        services: {
+          api: expect.objectContaining({
+            slug: 'api',
+            kind: 'domain',
+            runtimeFiles: expect.objectContaining({
+              'bindings.json': expect.stringContaining('"bindings"'),
+              'graphs/listNotes.json': expect.stringContaining('"listNotes"'),
+              'manifest.json': expect.stringContaining('"service"'),
+              'pdm.json': expect.stringContaining('"entities"'),
+              'qsm.json': expect.stringContaining('"projections"'),
+              'seed.json': expect.stringContaining('"seed-1"'),
+              'shapes.json': expect.stringContaining('"NoteView"'),
+              'ui/manifest.json': expect.stringContaining('"2.0"'),
+            }),
+          }),
+        },
+      }),
+      expect.any(Object),
+    );
+  });
 });
 
 function setup(
   overrides: Partial<Pick<ExecutorDeps, 'loadComposed'>> & {
+    bundleFiles?: Record<string, unknown>;
+    planProject?: ExecutorDeps['planProject'];
     verificationReport?: { checks: never[] | [{ name: string; url: string; status: number; latencyMs: number; ok: boolean }]; ok: boolean; partialOk: boolean };
   } = {},
 ) {
@@ -134,6 +182,7 @@ function setup(
         displayName: 'Staging',
         kind: 'dokploy' as const,
         dokployUrl: 'https://dokploy.example.test',
+        publicBaseUrl: 'https://app.example.test',
         dokployProjectId: 'project-1',
         dokployProjectName: null,
         allowCreateProject: false,
@@ -154,7 +203,7 @@ function setup(
       presignedGet: vi.fn(),
       getJson: vi.fn(),
       getRaw: vi.fn(async () =>
-        ok(gzipSync(Buffer.from(JSON.stringify({ version: 1, files: { 'project.json': { name: 'shop', services: [] } } })))),
+        ok(gzipSync(Buffer.from(JSON.stringify({ version: 1, files: overrides.bundleFiles ?? { 'project.json': { name: 'shop', services: [] } } })))),
       ),
     },
     withOrgTx: async (_orgId, fn) =>
@@ -179,10 +228,37 @@ function setup(
           mounts: [],
         },
       })),
-    planProject: vi.fn(() => ok({ project: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, infrastructure: { eventBus: { kind: 'kafka' as const, mode: 'external' as const, brokers: ['redpanda:9092'] } }, workloads: [], edge: { routes: [], middleware: [] }, diagnostics: { warnings: [] } })) as never,
+    planProject: overrides.planProject ?? vi.fn(() => ok({ project: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, infrastructure: { eventBus: { kind: 'kafka' as const, mode: 'external' as const, brokers: ['redpanda:9092'] } }, workloads: [], edge: { routes: [], middleware: [] }, diagnostics: { warnings: [] } })) as never,
     renderPlan: vi.fn(() => ok({ target: { kind: 'dokploy' as const, endpoint: 'https://dokploy.example.test' }, targetProject: { mode: 'existing' as const, projectId: 'project-1' }, deployment: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, resources: [], urls: { projectUrl: 'https://app.example.test', publicRoutes: [] }, digest: 'sha256:rendered', warnings: [] })) as never,
     applyPlan: vi.fn(async () => ok({ target: { kind: 'dokploy' as const, projectId: 'project-1' }, deployment: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const }, resources: [], urls: { projectUrl: 'https://app.example.test', publicRoutes: [] }, renderedPlanDigest: 'sha256:rendered', warnings: [], verificationHints: { healthUrl: 'https://app.example.test/health', publicRouteUrls: [] } })) as never,
     heartbeatMs: 10_000,
   };
   return { deps, deployments };
+}
+
+function composedBlueprint(): ComposedBlueprint {
+  return {
+    project: { name: 'shop', services: ['api'], routes: { ui: { '/': 'api' } } },
+    pdm: { entities: {} } as never,
+    routing: { httpBaseByService: {}, uiPathsByService: {} },
+    bindingRegistry: {},
+    services: {
+      api: {
+        slug: 'api',
+        kind: 'domain',
+        qsm: null,
+        artifacts: { hasGraphs: true, hasBindings: true, hasUi: true, hasSeed: true, hasQsm: true },
+        graphSpec: {
+          version: '1.0-rc7',
+          shapes: { NoteView: { fields: {} } },
+          graphs: { listNotes: { id: 'listNotes', signature: { inputs: {}, output: { type: 'rowset<NoteView>', from: 'items' } }, nodes: [] } },
+        },
+        qsmValidated: { projections: {}, relations: {} } as never,
+        bindings: { artifact: { version: '1.0', bindings: {} }, resolved: {} } as never,
+        seed: { events: [] } as never,
+        compiledUi: null,
+        eventTypes: [],
+      },
+    },
+  };
 }

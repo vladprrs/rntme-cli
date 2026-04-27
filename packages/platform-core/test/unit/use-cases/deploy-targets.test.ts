@@ -7,6 +7,7 @@ import type {
 } from '../../../src/index.js';
 import { SeededIds } from '../../../src/ids.js';
 import { err, isOk, ok, type PlatformError } from '../../../src/types/result.js';
+import { UpdateDeployTargetRequestSchema } from '../../../src/schemas/deploy-target.js';
 import {
   createDeployTarget,
   deleteDeployTarget,
@@ -35,6 +36,7 @@ describe('deploy target use-cases', () => {
           apiTokenCiphertext: Buffer.from('ciphertext'),
           apiTokenNonce: Buffer.from('nonce'),
           apiTokenKeyVersion: 7,
+          publicBaseUrl: 'https://notes.example.test',
         }),
       }),
     );
@@ -112,6 +114,25 @@ describe('deploy target use-cases', () => {
     expect(repo.setDefault).toHaveBeenCalledWith(expect.objectContaining({ slug: base.slug }));
     expect(repo.delete).toHaveBeenCalledWith(expect.objectContaining({ slug: base.slug }));
   });
+
+  it('does not patch policyValues when omitted from an update request', async () => {
+    const { deps, repo } = setup();
+    const parsedPatch = UpdateDeployTargetRequestSchema.parse({ displayName: 'Staging EU' });
+
+    await updateDeployTarget(deps, {
+      orgId: '11111111-1111-4111-8111-111111111111',
+      slug: 'dokploy-staging',
+      accountId: '22222222-2222-4222-8222-222222222222',
+      tokenId: null,
+      patch: parsedPatch,
+    });
+
+    expect(repo.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patch: { displayName: 'Staging EU' },
+      }),
+    );
+  });
 });
 
 function setup(overrides: { cipher?: SecretCipher; createResult?: ReturnType<typeof ok<DeployTarget>> | ReturnType<typeof err<PlatformError>> } = {}) {
@@ -153,6 +174,7 @@ function createRequest() {
     displayName: 'Staging',
     kind: 'dokploy' as const,
     dokployUrl: 'https://dok.example.test',
+    publicBaseUrl: 'https://notes.example.test',
     dokployProjectId: 'project-1',
     allowCreateProject: false,
     apiToken: 'dkp_secret',
@@ -170,6 +192,7 @@ function deployTarget(): DeployTarget {
     displayName: 'Staging',
     kind: 'dokploy',
     dokployUrl: 'https://dok.example.test',
+    publicBaseUrl: 'https://notes.example.test',
     dokployProjectId: 'project-1',
     dokployProjectName: null,
     allowCreateProject: false,

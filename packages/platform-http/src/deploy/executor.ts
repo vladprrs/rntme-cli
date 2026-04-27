@@ -1,9 +1,9 @@
 import { clearInterval, setInterval } from 'node:timers';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { loadComposedBlueprint } from '@rntme/blueprint';
+import { loadComposedBlueprint, type ComposedBlueprint } from '@rntme/blueprint';
 import type { ComposedProjectInput, ProjectDeploymentPlan } from '@rntme-cli/deploy-core';
 import { buildProjectDeploymentPlan } from '@rntme-cli/deploy-core';
 import type { DeploymentApplyResult, RenderedDokployPlan } from '@rntme-cli/deploy-dokploy';
@@ -42,7 +42,7 @@ export type ExecutorDeps = {
   readonly dokployClientFactory: DokployClientFactory;
   readonly smoker: SmokeVerifier;
   readonly logger: Pick<Logger, 'error' | 'warn' | 'info'>;
-  readonly loadComposed?: (dir: string) => ResultLike<ComposedProjectInput>;
+  readonly loadComposed?: (dir: string) => ResultLike<LoadedDeployProject>;
   readonly planProject?: typeof buildProjectDeploymentPlan;
   readonly renderPlan?: typeof renderDokployPlan;
   readonly applyPlan?: typeof applyDokployPlan;
@@ -55,6 +55,8 @@ type DeploymentContext = {
   readonly configOverrides: Record<string, unknown>;
   readonly bundleBlobKey: string;
 };
+
+type LoadedDeployProject = ComposedProjectInput | ComposedBlueprint;
 
 export async function runDeployment(
   deploymentId: string,
@@ -99,7 +101,8 @@ export async function runDeployment(
     const orgSlug = await deps.orgSlugFor(orgId);
     const redactedTarget = redactTarget(target);
     const config = buildProjectDeploymentConfig(redactedTarget, orgSlug, ctx.configOverrides);
-    const plan = (deps.planProject ?? buildProjectDeploymentPlan)(composed.value, config);
+    const deployInput = await toDeployCoreInput(composed.value, tmpDir);
+    const plan = (deps.planProject ?? buildProjectDeploymentPlan)(deployInput, config);
     if (!plan.ok) {
       await finalize(deps, deploymentId, orgId, 'failed', {
         errorCode: plan.errors[0]?.code ?? 'DEPLOY_PLAN_UNKNOWN',
@@ -257,31 +260,138 @@ async function materializeBundle(bundle: CanonicalBundle): Promise<string> {
   return dir;
 }
 
-function defaultLoadComposed(dir: string): ResultLike<ComposedProjectInput> {
+function defaultLoadComposed(dir: string): ResultLike<LoadedDeployProject> {
   const result = loadComposedBlueprint(dir);
-  if (!result.ok) return result;
-  return { ok: true, value: toDeployCoreInput(result.value) };
+  return result as ResultLike<LoadedDeployProject>;
 }
 
-function toDeployCoreInput(value: {
-  readonly project: {
-    readonly name: string;
-    readonly services: readonly string[];
-    readonly routes?: ComposedProjectInput['routes'];
-    readonly middleware?: ComposedProjectInput['middleware'];
-    readonly mounts?: ComposedProjectInput['mounts'];
-  };
-  readonly services: Record<string, { readonly kind: 'domain' | 'integration' }>;
-}): ComposedProjectInput {
+async function toDeployCoreInput(value: LoadedDeployProject, rootDir: string): Promise<ComposedProjectInput> {
+  if (!isComposedBlueprint(value)) return value;
+
   return {
     name: value.project.name,
     services: Object.fromEntries(
-      value.project.services.map((slug) => [slug, { slug, kind: value.services[slug]?.kind ?? 'domain' }]),
+      await Promise.all(
+        value.project.services.map(async (slug) => [
+          slug,
+          {
+            slug,
+            kind: value.services[slug]?.kind ?? 'domain',
+            ...(value.services[slug]?.kind === 'domain'
+              ? { runtimeFiles: await buildRuntimeArtifactFiles(value, rootDir, slug) }
+              : {}),
+          },
+        ]),
+      ),
     ),
     ...(value.project.routes === undefined ? {} : { routes: value.project.routes }),
     ...(value.project.middleware === undefined ? {} : { middleware: value.project.middleware }),
     ...(value.project.mounts === undefined ? {} : { mounts: value.project.mounts }),
   };
+}
+
+async function buildRuntimeArtifactFiles(
+  project: ComposedBlueprint,
+  rootDir: string,
+  serviceSlug: string,
+): Promise<Record<string, string>> {
+  const service = project.services[serviceSlug];
+  if (service === undefined) throw new Error(`DEPLOY_EXECUTOR_SERVICE_ARTIFACTS_NOT_FOUND:${serviceSlug}`);
+  if (service.graphSpec === null) throw new Error(`DEPLOY_EXECUTOR_SERVICE_GRAPHS_NOT_FOUND:${serviceSlug}`);
+  if (service.qsmValidated === null) throw new Error(`DEPLOY_EXECUTOR_SERVICE_QSM_NOT_FOUND:${serviceSlug}`);
+  if (service.bindings === null) throw new Error(`DEPLOY_EXECUTOR_SERVICE_BINDINGS_NOT_FOUND:${serviceSlug}`);
+
+  const files: Record<string, string> = {};
+  addJsonFile(files, 'manifest.json', {
+    rntmeVersion: '1.0',
+    service: { name: serviceSlug, version: '1.0.0' },
+    surface: { http: { enabled: true, port: 3000 } },
+    seed: { enabled: service.seed !== null, path: 'seed.json' },
+  });
+  addJsonFile(files, 'pdm.json', project.pdm);
+  addJsonFile(files, 'qsm.json', service.qsmValidated);
+  addJsonFile(files, 'bindings.json', service.bindings.artifact);
+  addJsonFile(files, 'shapes.json', service.graphSpec.shapes);
+
+  for (const [graphId, graph] of Object.entries(service.graphSpec.graphs)) {
+    addJsonFile(files, `graphs/${graphId}.json`, graph);
+  }
+
+  await addOptionalDirectoryFiles(files, rootDir, `services/${serviceSlug}/ui`, 'ui');
+  if (service.seed !== null) {
+    await addOptionalTextFile(files, rootDir, `services/${serviceSlug}/seed/seed.json`, 'seed.json');
+  }
+
+  return files;
+}
+
+async function addOptionalDirectoryFiles(
+  files: Record<string, string>,
+  rootDir: string,
+  sourceRel: string,
+  targetRel: string,
+): Promise<void> {
+  const sourceRoot = join(rootDir, sourceRel);
+  try {
+    await addDirectoryFilesFrom(files, sourceRoot, sourceRoot, targetRel);
+  } catch (cause) {
+    if (errorCode(cause) === 'ENOENT') return;
+    throw cause;
+  }
+}
+
+async function addDirectoryFilesFrom(
+  files: Record<string, string>,
+  sourceRoot: string,
+  currentDir: string,
+  targetRel: string,
+): Promise<void> {
+  const entries = await readdir(currentDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const sourcePath = join(currentDir, entry.name);
+    if (entry.isDirectory()) {
+      await addDirectoryFilesFrom(files, sourceRoot, sourcePath, targetRel);
+      continue;
+    }
+    if (entry.isFile()) {
+      files[join(targetRel, relative(sourceRoot, sourcePath))] = await readFile(sourcePath, 'utf8');
+    }
+  }
+}
+
+async function addOptionalTextFile(
+  files: Record<string, string>,
+  rootDir: string,
+  sourceRel: string,
+  targetRel: string,
+): Promise<void> {
+  try {
+    files[targetRel] = await readFile(join(rootDir, sourceRel), 'utf8');
+  } catch (cause) {
+    if (errorCode(cause) === 'ENOENT') return;
+    throw cause;
+  }
+}
+
+function addJsonFile(files: Record<string, string>, targetRel: string, value: unknown): void {
+  files[targetRel] = `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function errorCode(cause: unknown): string | undefined {
+  if (typeof cause !== 'object' || cause === null || !('code' in cause)) return undefined;
+  const code = (cause as { readonly code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
+
+function isComposedBlueprint(value: LoadedDeployProject): value is ComposedBlueprint {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'project' in value &&
+    'pdm' in value &&
+    'routing' in value &&
+    'bindingRegistry' in value
+  );
 }
 
 function redactTarget(target: DeployTargetWithSecret): DeployTarget {

@@ -70,6 +70,7 @@ d('PgDeployTargetRepo', () => {
       slug: 'prod',
       displayName: 'Production',
       kind: 'dokploy',
+      publicBaseUrl: 'https://notes.example.com',
       apiTokenRedacted: '***',
       isDefault: true,
       eventBus: EVENT_BUS,
@@ -101,6 +102,7 @@ d('PgDeployTargetRepo', () => {
         patch: {
           displayName: 'Prod EU',
           dokployUrl: 'https://dokploy-eu.example.com',
+          publicBaseUrl: 'https://notes-eu.example.com',
           dokployProjectId: 'dokploy-project-eu',
           dokployProjectName: null,
           allowCreateProject: false,
@@ -117,6 +119,7 @@ d('PgDeployTargetRepo', () => {
     expect(updated.value).toMatchObject({
       displayName: 'Prod EU',
       dokployUrl: 'https://dokploy-eu.example.com',
+      publicBaseUrl: 'https://notes-eu.example.com',
       dokployProjectId: 'dokploy-project-eu',
       dokployProjectName: null,
       allowCreateProject: false,
@@ -329,6 +332,7 @@ d('PgDeployTargetRepo', () => {
       displayName: overrides.displayName ?? 'Production',
       kind: 'dokploy' as const,
       dokployUrl: 'https://dokploy.example.com',
+      publicBaseUrl: 'https://notes.example.com',
       dokployProjectId: 'dokploy-project',
       dokployProjectName: null,
       allowCreateProject: false,

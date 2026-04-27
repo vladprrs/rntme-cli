@@ -17,13 +17,13 @@ export function DeployTargetsPage(props: {
         </div>
       </header>
       <DataTable
-        headers={['Slug', 'Kind', 'Dokploy', 'Default']}
+        headers={['Slug', 'Kind', 'Public URL', 'Default']}
         rows={props.targets.map((target) => ({
           key: target.id,
           cells: [
             <a class="font-medium text-blue-700 hover:underline" href={`/${props.subject.org.slug}/deploy-targets/${target.slug}`}>{target.slug}</a>,
             target.kind,
-            target.dokployUrl,
+            target.publicBaseUrl ?? 'Not configured',
             target.isDefault ? 'Yes' : 'No',
           ],
         }))}
@@ -49,6 +49,7 @@ export function DeployTargetDetailPage(props: {
       <dl class="mt-4 grid gap-3 text-sm">
         <div><dt class="font-medium">Kind</dt><dd>{target.kind}</dd></div>
         <div><dt class="font-medium">Dokploy URL</dt><dd>{target.dokployUrl}</dd></div>
+        <div><dt class="font-medium">Public URL</dt><dd>{target.publicBaseUrl ?? 'Not configured'}</dd></div>
         <div><dt class="font-medium">Project</dt><dd>{target.dokployProjectId ?? target.dokployProjectName ?? 'Not configured'}</dd></div>
         <div><dt class="font-medium">API token</dt><dd>{target.apiTokenRedacted}</dd></div>
       </dl>

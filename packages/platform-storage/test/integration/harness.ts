@@ -25,6 +25,7 @@ export async function startPostgres(): Promise<PgHandles> {
     ownerUrl = container.getConnectionUri();
   }
   const pool = createPool(ownerUrl);
+  pool.on('error', () => undefined);
   const db = createDb(pool);
   await runMigrations(db, pool);
 
@@ -36,6 +37,7 @@ export async function startPostgres(): Promise<PgHandles> {
   parsed.password = 'platform_app';
   const appUrl = parsed.toString();
   const appPool = createPool(appUrl);
+  appPool.on('error', () => undefined);
 
   return { container, ownerUrl, appUrl, pool, appPool, db };
 }

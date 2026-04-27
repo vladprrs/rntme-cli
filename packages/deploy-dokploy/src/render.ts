@@ -108,6 +108,19 @@ export function renderDokployPlan(
   const nginxConfig = renderEdgeGatewayConfig(plan, upstreams);
   if (!nginxConfig.ok) return nginxConfig;
 
+  const missingRuntimeFiles = plan.workloads.find(
+    (workload) => workload.kind === 'domain-service' && Object.keys(workload.runtimeFiles).length === 0,
+  );
+  if (missingRuntimeFiles !== undefined) {
+    return err([
+      {
+        code: 'DEPLOY_RENDER_DOKPLOY_MISSING_RUNTIME_FILES',
+        message: `domain service "${missingRuntimeFiles.slug}" has no runtime artifact files`,
+        resource: missingRuntimeFiles.resourceName,
+      },
+    ]);
+  }
+
   const resources = plan.workloads.map((workload) =>
     renderResource(plan, workload, nginxConfig.value),
   );
@@ -251,25 +264,13 @@ function renderResource(
   }
 
   if (workload.kind === 'domain-service') {
-    const image = `${name}:artifact`;
     return {
       logicalId: workload.slug,
       kind: 'application',
       workloadKind: workload.kind,
       workloadSlug: workload.slug,
       name,
-      image,
-      build: {
-        kind: 'domain-service-artifact',
-        baseImage: workload.runtime.image,
-        image,
-        artifact: workload.artifact,
-        context: {
-          kind: 'generated',
-          serviceSlug: workload.artifact.serviceSlug,
-          files: generatedDomainArtifactFiles(workload.artifact.serviceSlug),
-        },
-      },
+      image: workload.runtime.image,
       env: [
         {
           name: 'RNTME_EVENT_BUS_BROKERS',
@@ -281,23 +282,24 @@ function renderResource(
           value: workload.persistence.mode,
           secret: false,
         },
+        {
+          name: 'RNTME_ARTIFACTS_DIR',
+          value: '/srv/artifacts',
+          secret: false,
+        },
       ],
       labels,
+      files: runtimeFileMounts(workload.runtimeFiles),
     };
   }
 
   return assertNever(workload);
 }
 
-function generatedDomainArtifactFiles(serviceSlug: string): readonly string[] {
-  return [
-    'Dockerfile',
-    `artifacts/${serviceSlug}/manifest.json`,
-    `artifacts/${serviceSlug}/pdm.json`,
-    `artifacts/${serviceSlug}/qsm.json`,
-    `artifacts/${serviceSlug}/bindings.json`,
-    `artifacts/${serviceSlug}/ui.json`,
-  ];
+function runtimeFileMounts(files: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    sortedEntries(files).map(([path, content]) => [`/srv/artifacts/${path.replace(/^\/+/, '')}`, content]),
+  );
 }
 
 function findNameCollision(resources: readonly RenderedDokployResource[]): string | null {
