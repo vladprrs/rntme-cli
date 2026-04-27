@@ -50,12 +50,19 @@ export async function applyDokployPlan(
       if (existing === null) {
         const createResult = await createApplication(client, environmentId, resource, applied);
         if (!createResult.ok) return createResult;
+        const deployResult = await deployApplication(client, createResult.value, resource, applied);
+        if (!deployResult.ok) return deployResult;
         applied.push(createResult.value);
       } else if (resourceMatches(existing, resource)) {
-        applied.push(appliedResource(resource, existing, 'unchanged'));
+        const unchanged = appliedResource(resource, existing, 'unchanged');
+        const deployResult = await deployApplication(client, unchanged, resource, applied);
+        if (!deployResult.ok) return deployResult;
+        applied.push(unchanged);
       } else {
         const updateResult = await updateApplication(client, existing.id, resource, applied);
         if (!updateResult.ok) return updateResult;
+        const deployResult = await deployApplication(client, updateResult.value, resource, applied);
+        if (!deployResult.ok) return deployResult;
         applied.push(updateResult.value);
       }
     }
@@ -118,6 +125,20 @@ async function updateApplication(
     return ok(appliedResource(resource, target, 'updated'));
   } catch (cause) {
     return partialFailure(cause, resource, applied, 'update');
+  }
+}
+
+async function deployApplication(
+  client: DokployClient,
+  target: DeploymentApplyResource,
+  resource: RenderedDokployResource,
+  applied: readonly DeploymentApplyResource[],
+): Promise<Result<void, DokployDeploymentError>> {
+  try {
+    await client.deployApplication(target.targetResourceId, resource);
+    return ok(undefined);
+  } catch (cause) {
+    return partialFailure(cause, resource, [...applied, target], 'deploy');
   }
 }
 

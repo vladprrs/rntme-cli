@@ -72,6 +72,7 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
         displayName: 'Preview',
         kind: 'dokploy',
         dokployUrl: 'http://mock-dokploy.local/api',
+        publicBaseUrl: `https://preview-${suffix}.example.test`,
         dokployProjectName: `rntme-${suffix}`,
         allowCreateProject: true,
         apiToken: 'dokploy-token',

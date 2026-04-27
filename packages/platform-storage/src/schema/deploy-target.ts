@@ -31,6 +31,7 @@ export const deployTarget = pgTable(
     displayName: text('display_name').notNull(),
     kind: text('kind').notNull(),
     dokployUrl: text('dokploy_url').notNull(),
+    publicBaseUrl: text('public_base_url').notNull(),
     dokployProjectId: text('dokploy_project_id'),
     dokployProjectName: text('dokploy_project_name'),
     allowCreateProject: boolean('allow_create_project').notNull().default(false),

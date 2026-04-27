@@ -13,6 +13,7 @@ export type DeployTargetInsertRow = {
   readonly displayName: string;
   readonly kind: 'dokploy';
   readonly dokployUrl: string;
+  readonly publicBaseUrl: string;
   readonly dokployProjectId: string | null;
   readonly dokployProjectName: string | null;
   readonly allowCreateProject: boolean;
@@ -27,6 +28,7 @@ export type DeployTargetInsertRow = {
 export type DeployTargetUpdateRow = {
   readonly displayName?: string;
   readonly dokployUrl?: string;
+  readonly publicBaseUrl?: string;
   readonly dokployProjectId?: string | null;
   readonly dokployProjectName?: string | null;
   readonly allowCreateProject?: boolean;

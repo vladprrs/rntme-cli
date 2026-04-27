@@ -29,6 +29,13 @@
       "when": 1777217376425,
       "tag": "0003_deploy",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777296774469,
+      "tag": "0004_deploy_target_public_base_url",
+      "breakpoints": true
     }
   ]
 }

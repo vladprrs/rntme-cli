@@ -30,12 +30,12 @@ describe('buildProjectDeploymentConfig', () => {
 
 describe('buildDokployTargetConfig', () => {
   it('normalizes Dokploy endpoint and forwards project ref', () => {
-    expect(buildDokployTargetConfig(target(), { publicBaseUrl: 'https://app.example.test' })).toEqual({
+    expect(buildDokployTargetConfig(target(), {})).toEqual({
       endpoint: 'https://dokploy.example.test',
       projectId: 'project-1',
       projectName: undefined,
       allowCreateProject: false,
-      publicBaseUrl: 'https://app.example.test',
+      publicBaseUrl: 'https://notes.example.test',
     });
   });
 });
@@ -48,6 +48,7 @@ function target(): DeployTarget {
     displayName: 'Staging',
     kind: 'dokploy',
     dokployUrl: 'https://dokploy.example.test/api',
+    publicBaseUrl: 'https://notes.example.test',
     dokployProjectId: 'project-1',
     dokployProjectName: null,
     allowCreateProject: false,

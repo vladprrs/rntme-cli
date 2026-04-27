@@ -64,7 +64,7 @@ export function buildDokployTargetConfig(
   return {
     endpoint: normalizeDokployBaseUrl(target.dokployUrl),
     allowCreateProject: target.allowCreateProject,
-    publicBaseUrl: overrides.publicBaseUrl ?? normalizeDokployBaseUrl(target.dokployUrl),
+    publicBaseUrl: overrides.publicBaseUrl ?? target.publicBaseUrl,
     ...(target.dokployProjectId === null ? {} : { projectId: target.dokployProjectId }),
     ...(target.dokployProjectName === null ? {} : { projectName: target.dokployProjectName }),
   };

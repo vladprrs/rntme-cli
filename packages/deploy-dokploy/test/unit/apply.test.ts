@@ -68,6 +68,9 @@ describe('applyDokployPlan', () => {
         }),
       },
     ]);
+    expect(client.deployCalls).toEqual([
+      { applicationId: 'app_1', resourceName: 'rntme-acme-commerce-catalog' },
+    ]);
     expect(r.value.verificationHints.healthUrl).toBe('https://commerce.example.com/health');
     expect(r.value.verificationHints.uiUrl).toBeUndefined();
     expect(JSON.stringify(r.value)).not.toContain('token');
@@ -117,6 +120,9 @@ describe('applyDokployPlan', () => {
           labels: { 'rntme.workload': 'catalog' },
         }),
       },
+    ]);
+    expect(client.deployCalls).toEqual([
+      { applicationId: 'app_existing', resourceName: 'rntme-acme-commerce-catalog' },
     ]);
   });
 
@@ -418,6 +424,10 @@ class FakeDokployClient implements DokployClient {
     readonly applicationId: string;
     readonly resource: RenderedDokployResource;
   }> = [];
+  readonly deployCalls: Array<{
+    readonly applicationId: string;
+    readonly resourceName: string;
+  }> = [];
 
   private next = 1;
 
@@ -474,6 +484,10 @@ class FakeDokployClient implements DokployClient {
     const app = { id, name: input.name };
     this.apps.set(input.name, app);
     return app;
+  }
+
+  async deployApplication(id: string, input: RenderedDokployResource): Promise<void> {
+    this.deployCalls.push({ applicationId: id, resourceName: input.name });
   }
 }
 

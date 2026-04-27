@@ -35,6 +35,7 @@ export async function createDeployTarget(
       displayName: input.req.displayName,
       kind: input.req.kind,
       dokployUrl: input.req.dokployUrl,
+      publicBaseUrl: input.req.publicBaseUrl,
       dokployProjectId: input.req.dokployProjectId ?? null,
       dokployProjectName: input.req.dokployProjectName ?? null,
       allowCreateProject: input.req.allowCreateProject,
@@ -59,6 +60,7 @@ export async function updateDeployTarget(
   } = {};
   if (input.patch.displayName !== undefined) patch.displayName = input.patch.displayName;
   if (input.patch.dokployUrl !== undefined) patch.dokployUrl = input.patch.dokployUrl;
+  if (input.patch.publicBaseUrl !== undefined) patch.publicBaseUrl = input.patch.publicBaseUrl;
   if (input.patch.dokployProjectId !== undefined) patch.dokployProjectId = input.patch.dokployProjectId;
   if (input.patch.dokployProjectName !== undefined) {
     patch.dokployProjectName = input.patch.dokployProjectName;

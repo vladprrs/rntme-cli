@@ -17,8 +17,9 @@ export const EventBusConfigSchema = z.object({
 });
 export type EventBusConfig = z.infer<typeof EventBusConfigSchema>;
 
-export const PolicyValuesSchema = z.record(z.string(), z.record(z.string(), z.unknown())).default({});
-export type PolicyValues = z.infer<typeof PolicyValuesSchema>;
+const PolicyValuesShapeSchema = z.record(z.string(), z.record(z.string(), z.unknown()));
+export const PolicyValuesSchema = PolicyValuesShapeSchema.default({});
+export type PolicyValues = z.infer<typeof PolicyValuesShapeSchema>;
 
 export const DeployTargetKindSchema = z.enum(['dokploy']);
 export type DeployTargetKind = z.infer<typeof DeployTargetKindSchema>;
@@ -29,6 +30,7 @@ export const CreateDeployTargetRequestSchema = z
     displayName: z.string().min(1).max(120),
     kind: DeployTargetKindSchema,
     dokployUrl: z.string().url(),
+    publicBaseUrl: z.string().url(),
     dokployProjectId: z.string().min(1).optional(),
     dokployProjectName: z.string().min(1).optional(),
     allowCreateProject: z.boolean().default(false),
@@ -51,11 +53,12 @@ export const UpdateDeployTargetRequestSchema = z
   .object({
     displayName: z.string().min(1).max(120).optional(),
     dokployUrl: z.string().url().optional(),
+    publicBaseUrl: z.string().url().optional(),
     dokployProjectId: z.string().min(1).nullable().optional(),
     dokployProjectName: z.string().min(1).nullable().optional(),
     allowCreateProject: z.boolean().optional(),
     eventBus: EventBusConfigSchema.optional(),
-    policyValues: PolicyValuesSchema.optional(),
+    policyValues: PolicyValuesShapeSchema.optional(),
     isDefault: z.boolean().optional(),
   })
   .strict();
@@ -71,6 +74,7 @@ export const DeployTargetSchema = z.object({
   displayName: z.string(),
   kind: DeployTargetKindSchema,
   dokployUrl: z.string(),
+  publicBaseUrl: z.string(),
   dokployProjectId: z.string().nullable(),
   dokployProjectName: z.string().nullable(),
   allowCreateProject: z.boolean(),

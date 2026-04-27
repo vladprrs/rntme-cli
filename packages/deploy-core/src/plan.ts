@@ -136,7 +136,7 @@ function buildWorkloads(
   errors: DeploymentPlanError[],
 ): DeploymentWorkload[] {
   const workloads: DeploymentWorkload[] = [];
-  const runtimeImage = config.runtimeImage ?? 'rntme-runtime';
+  const runtimeImage = config.runtimeImage ?? 'ghcr.io/vladprrs/rntme-runtime:1.0';
 
   for (const service of Object.values(project.services)) {
     if (service.kind === 'domain') {
