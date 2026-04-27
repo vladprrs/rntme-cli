@@ -31,7 +31,7 @@ export class PgDeploymentRepo implements DeploymentRepo {
              id, project_id, org_id, project_version_id, target_id,
              config_overrides, started_by_account_id
            )
-           VALUES ($1,$2,$3,$4,$5,$6,$7)
+           VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)
            RETURNING *`,
           [
             args.row.id,
@@ -39,7 +39,7 @@ export class PgDeploymentRepo implements DeploymentRepo {
             args.row.orgId,
             args.row.projectVersionId,
             args.row.targetId,
-            args.row.configOverrides,
+            jsonParam(args.row.configOverrides),
             args.row.startedByAccountId,
           ],
         );
@@ -154,9 +154,9 @@ export class PgDeploymentRepo implements DeploymentRepo {
     applyResult: Record<string, unknown>,
   ): Promise<Result<void, PlatformError>> {
     try {
-      await this.db.query(`UPDATE deployment SET apply_result=$2 WHERE id=$1`, [
+      await this.db.query(`UPDATE deployment SET apply_result=$2::jsonb WHERE id=$1`, [
         id,
-        applyResult,
+        jsonParam(applyResult),
       ]);
       return ok(undefined);
     } catch (cause) {
@@ -175,9 +175,9 @@ export class PgDeploymentRepo implements DeploymentRepo {
              finished_at=now(),
              error_code=$3,
              error_message=$4,
-             apply_result=COALESCE($5, apply_result),
-             verification_report=$6,
-             warnings=$7
+             apply_result=COALESCE($5::jsonb, apply_result),
+             verification_report=$6::jsonb,
+             warnings=$7::jsonb
          WHERE id=$1
            AND status NOT IN ('succeeded','succeeded_with_warnings','failed','failed_orphaned')
          RETURNING id, org_id, started_by_account_id, status`,
@@ -186,9 +186,9 @@ export class PgDeploymentRepo implements DeploymentRepo {
           args.status,
           args.errorCode ?? null,
           args.errorMessage ?? null,
-          args.applyResult ?? null,
-          args.verificationReport ?? null,
-          args.warnings ?? [],
+          jsonParam(args.applyResult ?? null),
+          jsonParam(args.verificationReport ?? null),
+          jsonParam(args.warnings ?? []),
         ],
       );
       const row = updated.rows[0] as DbRow | undefined;
@@ -345,6 +345,10 @@ function truncateMessage(message: string): string {
   return `${out}${TRUNCATED_SUFFIX}`;
 }
 
+function jsonParam(value: unknown): string | null {
+  return value === null ? null : JSON.stringify(value);
+}
+
 async function audit(
   db: PgQueryable,
   args: {
@@ -358,14 +362,14 @@ async function audit(
 ): Promise<void> {
   await db.query(
     `INSERT INTO audit_log (org_id, actor_account_id, actor_token_id, action, resource_kind, resource_id, payload)
-     VALUES ($1,$2,$3,$4,'deployment',$5,$6)`,
+     VALUES ($1,$2,$3,$4,'deployment',$5,$6::jsonb)`,
     [
       args.orgId,
       args.actorAccountId,
       args.actorTokenId,
       args.action,
       args.resourceId,
-      args.payload,
+      jsonParam(args.payload),
     ],
   );
 }
@@ -429,7 +433,7 @@ async function withSystemRlsDisabled<T>(
 }
 
 function isPool(db: PgQueryable): db is Pool {
-  return typeof (db as Pool).connect === 'function';
+  return typeof (db as { release?: unknown }).release !== 'function';
 }
 
 function invalidTransition(id: string): Result<never, PlatformError> {

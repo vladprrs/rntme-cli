@@ -25,6 +25,7 @@ export type E2eEnv = {
   ownerPool: ReturnType<typeof createPool>;
   app: ReturnType<typeof createApp>;
   deps: AppDeps;
+  seedRepos: AppDeps['poolRepos'];
   teardown(): Promise<void>;
 };
 
@@ -94,6 +95,14 @@ export async function bootE2e(options: BootE2eOptions = {}): Promise<E2eEnv> {
     projects: new PgProjectRepo(pool),
     tokens: new PgTokenRepo(pool),
   };
+  const seedRepos = {
+    organizations: new PgOrganizationRepo(ownerPool),
+    accounts: new PgAccountRepo(ownerPool),
+    memberships: new PgMembershipMirrorRepo(ownerPool),
+    workosEventLog: new PgWorkosEventLogRepo(ownerPool),
+    projects: new PgProjectRepo(ownerPool),
+    tokens: new PgTokenRepo(ownerPool),
+  };
   const deps: AppDeps = {
     env,
     logger,
@@ -114,6 +123,7 @@ export async function bootE2e(options: BootE2eOptions = {}): Promise<E2eEnv> {
     ownerPool,
     app,
     deps,
+    seedRepos,
     teardown: async () => {
       await pool.end();
       await ownerPool.end();

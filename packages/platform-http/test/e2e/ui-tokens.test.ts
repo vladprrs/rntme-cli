@@ -11,21 +11,22 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
 
   beforeAll(async () => {
     env = await bootE2e();
-    const o = await env.deps.poolRepos.organizations.upsertFromWorkos({
+    const o = await env.seedRepos.organizations.upsertFromWorkos({
       workosOrganizationId: 'org_tok',
       slug: 'tok-org',
       displayName: 'Tok Org',
     });
-    const a = await env.deps.poolRepos.accounts.upsertFromWorkos({
+    const a = await env.seedRepos.accounts.upsertFromWorkos({
       workosUserId: 'user_tok',
       email: 'tok@example.com',
       displayName: 'Tok User',
     });
     if (!o.ok || !a.ok) throw new Error('seed failed');
-    await env.deps.poolRepos.memberships.upsert({ orgId: o.value.id, accountId: a.value.id, role: 'admin' });
+    const membership = await env.seedRepos.memberships.upsert({ orgId: o.value.id, accountId: a.value.id, role: 'admin' });
+    if (!membership.ok) throw new Error('membership seed failed');
 
     const admin = 'rntme_pat_' + 'c'.repeat(22);
-    await env.deps.poolRepos.tokens.create({
+    const adminToken = await env.seedRepos.tokens.create({
       id: randomUUID(),
       orgId: o.value.id,
       accountId: a.value.id,
@@ -35,10 +36,11 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
       scopes: ['project:read', 'project:write', 'version:publish', 'member:read', 'token:manage'],
       expiresAt: null,
     });
+    if (!adminToken.ok) throw new Error('admin token seed failed');
     bearer = admin;
 
     const ro = 'rntme_pat_' + 'd'.repeat(22);
-    await env.deps.poolRepos.tokens.create({
+    const readOnlyToken = await env.seedRepos.tokens.create({
       id: randomUUID(),
       orgId: o.value.id,
       accountId: a.value.id,
@@ -48,6 +50,7 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
       scopes: ['project:read'],
       expiresAt: null,
     });
+    if (!readOnlyToken.ok) throw new Error('read-only token seed failed');
     readOnlyBearer = ro;
     orgSlug = o.value.slug;
   }, 300_000);

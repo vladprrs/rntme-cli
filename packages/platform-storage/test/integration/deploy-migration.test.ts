@@ -57,12 +57,20 @@ d('deploy migrations', () => {
       ORDER BY tablename, policyname
     `);
     expect(policies.rows).toEqual([
-      { tablename: 'deploy_target', policyname: 'tenant_insert', cmd: 'INSERT' },
-      { tablename: 'deploy_target', policyname: 'tenant_isolation', cmd: 'ALL' },
-      { tablename: 'deployment', policyname: 'tenant_insert', cmd: 'INSERT' },
-      { tablename: 'deployment', policyname: 'tenant_isolation', cmd: 'ALL' },
-      { tablename: 'deployment_log_line', policyname: 'tenant_insert', cmd: 'INSERT' },
-      { tablename: 'deployment_log_line', policyname: 'tenant_isolation', cmd: 'ALL' },
+      { tablename: 'deploy_target', policyname: 'tenant_insert_deploy_target', cmd: 'INSERT' },
+      { tablename: 'deploy_target', policyname: 'tenant_isolation_deploy_target', cmd: 'ALL' },
+      { tablename: 'deployment', policyname: 'tenant_insert_deployment', cmd: 'INSERT' },
+      { tablename: 'deployment', policyname: 'tenant_isolation_deployment', cmd: 'ALL' },
+      {
+        tablename: 'deployment_log_line',
+        policyname: 'tenant_insert_deployment_log_line',
+        cmd: 'INSERT',
+      },
+      {
+        tablename: 'deployment_log_line',
+        policyname: 'tenant_isolation_deployment_log_line',
+        cmd: 'ALL',
+      },
     ]);
 
     const defaultIndex = await h.pool.query<{ indexdef: string }>(`
