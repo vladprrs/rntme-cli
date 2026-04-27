@@ -1,9 +1,13 @@
 import { Hono } from 'hono';
-import type { DokployApplication } from '@rntme-cli/deploy-dokploy';
+
+type MockDokployApplication = Record<string, unknown> & {
+  applicationId: string;
+  name: string;
+};
 
 export function createMockDokployApp() {
   const app = new Hono();
-  const applications = new Map<string, any>();
+  const applications = new Map<string, MockDokployApplication>();
   const projectId = 'mock-project';
   const environmentId = 'mock-env';
 
@@ -38,16 +42,19 @@ export function createMockDokployApp() {
   });
 
   app.post('/api/application.create', async (c) => {
-    const body = await c.req.json<any>();
-    const application = { ...body, applicationId: `app-${applications.size + 1}` };
+    const body = await c.req.json<Record<string, unknown>>();
+    const name = typeof body.name === 'string' ? body.name : `app-${applications.size + 1}`;
+    const application = { ...body, applicationId: `app-${applications.size + 1}`, name };
     applications.set(application.name, application);
     return c.json(application);
   });
 
   app.post('/api/application.update', async (c) => {
-    const body = await c.req.json<any>();
+    const body = await c.req.json<Record<string, unknown>>();
     const existing = Array.from(applications.values()).find((app) => app.applicationId === body.applicationId);
-    const application = { ...existing, ...body, applicationId: body.applicationId, name: body.name ?? existing?.name ?? body.applicationId };
+    const applicationId = typeof body.applicationId === 'string' ? body.applicationId : existing?.applicationId ?? `app-${applications.size + 1}`;
+    const name = typeof body.name === 'string' ? body.name : existing?.name ?? applicationId;
+    const application = { ...existing, ...body, applicationId, name };
     applications.set(application.name, application);
     return c.json(application);
   });

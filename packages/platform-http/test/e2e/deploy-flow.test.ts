@@ -80,7 +80,14 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
           mode: 'external',
           brokers: ['redpanda:9092'],
         },
-        policyValues: {},
+        policyValues: {
+          requestContext: {
+            default: {
+              requestIdHeader: 'x-request-id',
+              correlationIdHeader: 'x-correlation-id',
+            },
+          },
+        },
         isDefault: true,
       }),
     });
@@ -209,8 +216,32 @@ function buildBundle(root: string): { bytes: string; digest: string } {
   for (const relPath of collectJsonFiles(root)) {
     files[relPath] = JSON.parse(readFileSync(resolve(root, relPath), 'utf8'));
   }
+  files['project.json'] = deployableProjectJson(files['project.json']);
   const bundle: CanonicalBundle = { version: 1, files };
   return { bytes: canonicalize(bundle), digest: canonicalBundleDigest(bundle) };
+}
+
+function deployableProjectJson(input: unknown): unknown {
+  if (!isRecord(input)) return input;
+  const middleware = isRecord(input.middleware)
+    ? Object.fromEntries(Object.entries(input.middleware).filter(([, value]) => {
+      return !isRecord(value) || value.kind !== 'auth';
+    }))
+    : input.middleware;
+  const mounts = Array.isArray(input.mounts)
+    ? input.mounts.map((mount) => {
+      if (!isRecord(mount) || !Array.isArray(mount.use)) return mount;
+      return {
+        ...mount,
+        use: mount.use.filter((name) => name !== 'auth'),
+      };
+    })
+    : input.mounts;
+  return { ...input, middleware, mounts };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function collectJsonFiles(root: string): string[] {
