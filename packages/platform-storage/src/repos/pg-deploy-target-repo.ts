@@ -333,8 +333,15 @@ async function audit(
 ): Promise<void> {
   await db.query(
     `INSERT INTO audit_log (org_id, actor_account_id, actor_token_id, action, resource_kind, resource_id, payload)
-     VALUES ($1,$2,$3,$4,'deploy_target',$5,$6)`,
-    [args.orgId, args.actorAccountId, args.actorTokenId, args.action, args.resourceId, args.payload],
+     VALUES ($1,$2,$3,$4,'deploy_target',$5,$6::jsonb)`,
+    [
+      args.orgId,
+      args.actorAccountId,
+      args.actorTokenId,
+      args.action,
+      args.resourceId,
+      JSON.stringify(args.payload),
+    ],
   );
 }
 
@@ -367,7 +374,7 @@ async function withOptionalTransaction<T>(
 }
 
 function isPool(db: PgQueryable): db is Pool {
-  return typeof (db as Pool).connect === 'function';
+  return typeof (db as { release?: unknown }).release !== 'function';
 }
 
 function notFound(slug: string): Result<never, PlatformError> {

@@ -12,12 +12,12 @@ describe.skipIf(!e2eContainersAvailable())('UI tokens page', () => {
 
   beforeAll(async () => {
     env = await bootE2e();
-    const o = await env.deps.poolRepos.organizations.upsertFromWorkos({
+    const o = await env.seedRepos.organizations.upsertFromWorkos({
       workosOrganizationId: 'org_tok',
       slug: 'tok-org',
       displayName: 'Tok Org',
     });
-    const a = await env.deps.poolRepos.accounts.upsertFromWorkos({
+    const a = await env.seedRepos.accounts.upsertFromWorkos({
       workosUserId: 'user_tok',
       email: 'tok@example.com',
       displayName: 'Tok User',

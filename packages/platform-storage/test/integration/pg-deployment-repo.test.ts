@@ -188,6 +188,8 @@ d('PgDeploymentRepo', () => {
       });
     });
 
+    if (!isOk(result))
+      throw new Error(result.errors.map((e) => e.message).join(', '));
     expect(isOk(result)).toBe(true);
     const finalized = await getDeployment(deploymentId);
     expect(finalized).toMatchObject({
@@ -231,6 +233,8 @@ d('PgDeploymentRepo', () => {
       warnings: ['second'],
     });
 
+    if (!isOk(second))
+      throw new Error(second.errors.map((e) => e.message).join(', '));
     expect(isOk(second)).toBe(true);
     const unchanged = await getDeployment(deploymentId);
     expect(unchanged).toMatchObject({
@@ -393,9 +397,9 @@ d('PgDeploymentRepo', () => {
         auditActorTokenId: null,
       });
     });
-    expect(isOk(result)).toBe(true);
     if (!isOk(result))
       throw new Error(result.errors.map((e) => e.message).join(', '));
+    expect(isOk(result)).toBe(true);
     return result.value;
   }
 
@@ -404,9 +408,9 @@ d('PgDeploymentRepo', () => {
       const repo = new PgDeploymentRepo(client);
       return repo.getById(id);
     });
-    expect(isOk(result)).toBe(true);
     if (!isOk(result) || !result.value)
       throw new Error(`deployment not found: ${id}`);
+    expect(isOk(result)).toBe(true);
     return result.value;
   }
 
@@ -429,9 +433,9 @@ d('PgDeploymentRepo', () => {
       const repo = new PgDeploymentRepo(client);
       return repo.readLogs({ deploymentId, sinceLineId, limit });
     });
-    expect(isOk(result)).toBe(true);
     if (!isOk(result))
       throw new Error(result.errors.map((e) => e.message).join(', '));
+    expect(isOk(result)).toBe(true);
     return result.value;
   }
 

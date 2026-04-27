@@ -61,7 +61,7 @@ describe('applyDokployPlan', () => {
     expect(r.value.urls.publicRoutes[0]?.url).toBe('https://commerce.example.com/api/catalog');
     expect(client.createCalls).toEqual([
       {
-        projectId: 'project_123',
+        environmentId: 'env_default',
         resource: expect.objectContaining({
           name: 'rntme-acme-commerce-catalog',
           labels: { 'rntme.workload': 'catalog' },
@@ -375,8 +375,8 @@ describe('applyDokployPlan', () => {
     }
   });
 
-  it('returns project initialization failures with a sanitized cause', async () => {
-    const client = new FakeDokployClient([], { failProject: true });
+  it('returns environment initialization failures with a sanitized cause', async () => {
+    const client = new FakeDokployClient([], { failEnvironment: true });
     const r = await applyDokployPlan(rendered, client);
 
     expect(r.ok).toBe(false);
@@ -392,7 +392,7 @@ describe('applyDokployPlan', () => {
 
   it('redacts arbitrary client error messages instead of returning bearer or API token text', async () => {
     const client = new FakeDokployClient([], {
-      failProject: true,
+      failEnvironment: true,
       failMessage: 'request failed with Bearer bearer-secret and apiToken=api-secret',
     });
     const r = await applyDokployPlan(rendered, client);
@@ -411,7 +411,7 @@ describe('applyDokployPlan', () => {
 class FakeDokployClient implements DokployClient {
   private readonly apps = new Map<string, DokployApplication>();
   readonly createCalls: Array<{
-    readonly projectId: string;
+    readonly environmentId: string;
     readonly resource: RenderedDokployResource;
   }> = [];
   readonly updateCalls: Array<{
@@ -424,7 +424,7 @@ class FakeDokployClient implements DokployClient {
   constructor(
     existing: DokployApplication[] = [],
     private readonly failures: {
-      readonly failProject?: boolean;
+      readonly failEnvironment?: boolean;
       readonly failFindFor?: string;
       readonly failCreateFor?: string;
       readonly failUpdateFor?: string;
@@ -434,27 +434,32 @@ class FakeDokployClient implements DokployClient {
     for (const app of existing) this.apps.set(app.name, app);
   }
 
-  async ensureProject(ref: DokployProjectRef): Promise<{ projectId: string }> {
-    if (this.failures.failProject === true) throw secretError(this.failures.failMessage ?? 'project failed');
-    if (ref.mode === 'existing') return { projectId: ref.projectId };
-    return { projectId: 'project_created' };
+  async ensureEnvironment(
+    ref: DokployProjectRef,
+    environmentName: string,
+  ): Promise<{ environmentId: string }> {
+    void ref;
+    if (this.failures.failEnvironment === true) {
+      throw secretError(this.failures.failMessage ?? 'environment failed');
+    }
+    return { environmentId: `env_${environmentName}` };
   }
 
   async findApplicationByName(
-    projectId: string,
+    environmentId: string,
     name: string,
   ): Promise<DokployApplication | null> {
-    void projectId;
+    void environmentId;
     if (this.failures.failFindFor === name) throw secretError('find failed');
     return this.apps.get(name) ?? null;
   }
 
   async createApplication(
-    projectId: string,
+    environmentId: string,
     input: RenderedDokployResource,
   ): Promise<{ id: string; name: string }> {
     if (this.failures.failCreateFor === input.name) throw secretError('create failed');
-    this.createCalls.push({ projectId, resource: input });
+    this.createCalls.push({ environmentId, resource: input });
     const app = { id: `app_${this.next++}`, name: input.name };
     this.apps.set(app.name, app);
     return app;

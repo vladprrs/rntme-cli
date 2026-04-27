@@ -61,8 +61,9 @@ d('PgDeployTargetRepo', () => {
       });
     });
 
+    if (!isOk(created))
+      throw new Error(created.errors.map((e) => e.message).join(', '));
     expect(isOk(created)).toBe(true);
-    if (!isOk(created)) return;
     expect(created.value).toMatchObject({
       id: targetId,
       orgId,
@@ -267,8 +268,8 @@ d('PgDeployTargetRepo', () => {
         auditActorTokenId: null,
       });
     });
-    expect(isOk(result)).toBe(true);
     if (!isOk(result)) throw new Error(result.errors.map((e) => e.message).join(', '));
+    expect(isOk(result)).toBe(true);
     return result.value;
   }
 

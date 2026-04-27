@@ -8,12 +8,12 @@ describe.skipIf(!e2eContainersAvailable())('tenant isolation', () => {
   let env: E2eEnv;
 
   async function seedOrgWithToken(slug: string, workosId: string, workosUser: string) {
-    const org = await env.deps.poolRepos.organizations.upsertFromWorkos({
+    const org = await env.seedRepos.organizations.upsertFromWorkos({
       workosOrganizationId: workosId,
       slug,
       displayName: slug,
     });
-    const acc = await env.deps.poolRepos.accounts.upsertFromWorkos({
+    const acc = await env.seedRepos.accounts.upsertFromWorkos({
       workosUserId: workosUser,
       email: null,
       displayName: workosUser,
