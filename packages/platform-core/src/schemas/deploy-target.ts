@@ -37,7 +37,7 @@ export const CreateDeployTargetRequestSchema = z
     displayName: z.string().min(1).max(120),
     kind: DeployTargetKindSchema,
     dokployUrl: HttpUrlSchema,
-    publicBaseUrl: HttpUrlSchema,
+    publicBaseUrl: HttpUrlSchema.optional(),
     dokployProjectId: z.string().min(1).optional(),
     dokployProjectName: z.string().min(1).optional(),
     allowCreateProject: z.boolean().default(false),

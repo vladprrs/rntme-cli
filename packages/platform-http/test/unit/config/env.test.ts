@@ -23,6 +23,11 @@ describe('parseEnv', () => {
     const r = parseEnv(baseEnv);
     expect(r.PORT).toBe(3000);
     expect(r.LOG_LEVEL).toBe('info');
+    expect(r.PLATFORM_PUBLIC_DEPLOY_DOMAIN).toBe('rntme.com');
+  });
+  it('accepts an explicit wildcard public deploy domain', () => {
+    const r = parseEnv({ ...baseEnv, PLATFORM_PUBLIC_DEPLOY_DOMAIN: '*.rntme.com' });
+    expect(r.PLATFORM_PUBLIC_DEPLOY_DOMAIN).toBe('*.rntme.com');
   });
   it('throws on missing DATABASE_URL', () => {
     const { DATABASE_URL: _, ...rest } = baseEnv;

@@ -35,7 +35,7 @@ export async function createDeployTarget(
       displayName: input.req.displayName,
       kind: input.req.kind,
       dokployUrl: input.req.dokployUrl,
-      publicBaseUrl: input.req.publicBaseUrl,
+      publicBaseUrl: input.req.publicBaseUrl ?? null,
       dokployProjectId: input.req.dokployProjectId ?? null,
       dokployProjectName: input.req.dokployProjectName ?? null,
       allowCreateProject: input.req.allowCreateProject,

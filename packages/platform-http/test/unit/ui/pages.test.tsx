@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { LoginPage } from '../../../src/ui/pages/login.js';
 import { NoOrgPage } from '../../../src/ui/pages/no-org.js';
 import { ErrorPage } from '../../../src/ui/pages/error.js';
+import { DeployTargetsPage } from '../../../src/ui/pages/deploy-targets.js';
 
 describe('LoginPage', () => {
   it('renders a Sign in link to /v1/auth/login', () => {
@@ -34,3 +35,48 @@ describe('ErrorPage', () => {
     expect(html).toContain('No such project');
   });
 });
+
+describe('DeployTargetsPage', () => {
+  it('shows wildcard auto URL mode instead of not configured for null public URLs', () => {
+    const html = String(
+      <DeployTargetsPage
+        subject={subject()}
+        otherOrgs={[]}
+        publicDeployDomain="*.rntme.com"
+        targets={[
+          {
+            id: 'target-1',
+            orgId: 'org-1',
+            slug: 'dokploy-demos',
+            displayName: 'Dokploy demos',
+            kind: 'dokploy',
+            dokployUrl: 'https://dokploy.example.test',
+            publicBaseUrl: null,
+            dokployProjectId: 'project-1',
+            dokployProjectName: null,
+            allowCreateProject: false,
+            apiTokenRedacted: '***',
+            eventBus: { kind: 'kafka', brokers: ['redpanda:9092'] },
+            policyValues: {},
+            isDefault: true,
+            createdAt: new Date('2026-01-01T00:00:00Z'),
+            updatedAt: new Date('2026-01-01T00:00:00Z'),
+          },
+        ]}
+      />,
+    );
+
+    expect(html).toContain('Auto (*.rntme.com)');
+    expect(html).not.toContain('Public URL</th><td>Not configured');
+  });
+});
+
+function subject() {
+  return {
+    account: { id: 'account-1', email: 'test@example.com' },
+    org: { id: 'org-1', slug: 'acme', displayName: 'Acme' },
+    role: 'admin',
+    scopes: [],
+    tokenId: null,
+  } as never;
+}

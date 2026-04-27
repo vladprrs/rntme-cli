@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { DokployTargetConfig } from '@rntme-cli/deploy-dokploy';
 import type {
   DeploymentPolicyConfig,
@@ -12,6 +13,13 @@ type DeployConfigOverrides = {
   readonly policyOverrides?: Record<string, unknown>;
   readonly publicBaseUrl?: string;
   readonly runtimeImage?: string;
+};
+
+type PublicBaseUrlContext = {
+  readonly orgSlug: string;
+  readonly projectSlug: string;
+  readonly environment: string;
+  readonly publicDeployDomain?: string;
 };
 
 export function buildProjectDeploymentConfig(
@@ -59,9 +67,13 @@ export function buildProjectDeploymentConfig(
 export function buildDokployTargetConfig(
   target: DeployTarget,
   configOverrides: Record<string, unknown>,
+  publicBaseUrlContext?: PublicBaseUrlContext,
 ): DokployTargetConfig {
   const overrides = configOverrides as DeployConfigOverrides;
-  const publicBaseUrl = overrides.publicBaseUrl ?? target.publicBaseUrl;
+  const publicBaseUrl =
+    overrides.publicBaseUrl ??
+    target.publicBaseUrl ??
+    (publicBaseUrlContext === undefined ? undefined : derivePublicBaseUrl(publicBaseUrlContext));
   if (publicBaseUrl === null || publicBaseUrl === undefined || publicBaseUrl === '') {
     throw new Error('DEPLOY_TARGET_PUBLIC_BASE_URL_REQUIRED');
   }
@@ -72,4 +84,33 @@ export function buildDokployTargetConfig(
     ...(target.dokployProjectId === null ? {} : { projectId: target.dokployProjectId }),
     ...(target.dokployProjectName === null ? {} : { projectName: target.dokployProjectName }),
   };
+}
+
+export function derivePublicBaseUrl(input: PublicBaseUrlContext): string {
+  const label = compactDnsLabel([input.orgSlug, input.projectSlug, input.environment]);
+  return `https://${label}.${normalizePublicDeployDomain(input.publicDeployDomain ?? 'rntme.com')}`;
+}
+
+function compactDnsLabel(parts: readonly string[]): string {
+  const label = parts.map(normalizeDnsPart).join('-');
+  if (label.length <= 63) return label;
+  const hash = createHash('sha256').update(label).digest('hex').slice(0, 12);
+  return `${label.slice(0, 50).replace(/-+$/g, '')}-${hash}`;
+}
+
+function normalizeDnsPart(value: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized.length === 0 ? 'unknown' : normalized;
+}
+
+function normalizePublicDeployDomain(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^\*\./, '')
+    .replace(/\.$/, '');
 }

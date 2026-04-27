@@ -47,6 +47,7 @@ export type ExecutorDeps = {
   readonly renderPlan?: typeof renderDokployPlan;
   readonly applyPlan?: typeof applyDokployPlan;
   readonly heartbeatMs?: number;
+  readonly publicDeployDomain?: string;
 };
 
 type DeploymentContext = {
@@ -114,7 +115,12 @@ export async function runDeployment(
     await appendLog(deps, deploymentId, orgId, 'info', 'render', 'Rendering Dokploy plan');
     const rendered = (deps.renderPlan ?? renderDokployPlan)(
       plan.value as ProjectDeploymentPlan,
-      buildDokployTargetConfig(redactedTarget, ctx.configOverrides),
+      buildDokployTargetConfig(redactedTarget, ctx.configOverrides, {
+        orgSlug,
+        projectSlug: plan.value.project.projectSlug,
+        environment: plan.value.project.environment,
+        ...(deps.publicDeployDomain === undefined ? {} : { publicDeployDomain: deps.publicDeployDomain }),
+      }),
     );
     if (!rendered.ok) {
       await finalize(deps, deploymentId, orgId, 'failed', {

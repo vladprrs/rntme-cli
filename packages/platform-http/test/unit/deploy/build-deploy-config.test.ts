@@ -46,6 +46,16 @@ describe('buildDokployTargetConfig', () => {
     });
   });
 
+  it('derives a wildcard public app URL for legacy targets without a configured URL', () => {
+    expect(
+      buildDokployTargetConfig(
+        { ...target(), publicBaseUrl: null },
+        {},
+        { orgSlug: 'acme', projectSlug: 'notes-demo', environment: 'default', publicDeployDomain: '*.rntme.com' },
+      ).publicBaseUrl,
+    ).toBe('https://acme-notes-demo-default.rntme.com');
+  });
+
   it('rejects legacy targets without a public app base URL unless an override is provided', () => {
     expect(() =>
       buildDokployTargetConfig({ ...target(), publicBaseUrl: null }, {}),

@@ -22,7 +22,7 @@ describe('CreateDeployTargetRequestSchema', () => {
     expect(r.success).toBe(true);
   });
 
-  it('requires a public app base URL on create', () => {
+  it('allows omitting public app base URL on create for wildcard-derived deploy URLs', () => {
     const r = CreateDeployTargetRequestSchema.safeParse({
       slug: 'dokploy-staging',
       displayName: 'Staging',
@@ -34,7 +34,7 @@ describe('CreateDeployTargetRequestSchema', () => {
       policyValues: {},
       isDefault: false,
     });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
   });
 
   it('leaves omitted policyValues undefined on patch', () => {

@@ -13,7 +13,7 @@ export type DeployTargetInsertRow = {
   readonly displayName: string;
   readonly kind: 'dokploy';
   readonly dokployUrl: string;
-  readonly publicBaseUrl: string;
+  readonly publicBaseUrl: string | null;
   readonly dokployProjectId: string | null;
   readonly dokployProjectName: string | null;
   readonly allowCreateProject: boolean;

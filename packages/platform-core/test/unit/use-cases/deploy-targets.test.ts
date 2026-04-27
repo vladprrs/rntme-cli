@@ -42,6 +42,24 @@ describe('deploy target use-cases', () => {
     );
   });
 
+  it('stores null publicBaseUrl when create omits an exact public app URL', async () => {
+    const { deps, repo } = setup();
+    const { publicBaseUrl: _publicBaseUrl, ...req } = createRequest();
+
+    await createDeployTarget(deps, {
+      orgId: '11111111-1111-4111-8111-111111111111',
+      accountId: '22222222-2222-4222-8222-222222222222',
+      tokenId: null,
+      req,
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        row: expect.objectContaining({ publicBaseUrl: null }),
+      }),
+    );
+  });
+
   it('returns an error before touching the repo when encryption fails', async () => {
     const { deps, repo } = setup({
       cipher: { encrypt: vi.fn(() => { throw new Error('boom'); }), decrypt: vi.fn() },
