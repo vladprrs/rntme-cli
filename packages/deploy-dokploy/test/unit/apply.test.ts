@@ -472,20 +472,94 @@ describe('applyDokployPlan', () => {
     }
   });
 
-  it('redacts arbitrary client error messages instead of returning bearer or API token text', async () => {
+  it('preserves benign client error messages in serialized apply errors', async () => {
     const client = new FakeDokployClient([], {
       failEnvironment: true,
-      failMessage: 'request failed with Bearer bearer-secret and apiToken=api-secret',
+      failMessage: 'Dokploy returned 502 while ensuring environment',
+      includeSecretFixture: false,
     });
     const r = await applyDokployPlan(rendered, client);
 
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(JSON.stringify(r.errors)).toContain('redacted client error');
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          cause: {
+            message: 'Dokploy returned 502 while ensuring environment',
+          },
+        }),
+      );
+    }
+  });
+
+  it('redacts sensitive bearer and API token text while preserving diagnostic context', async () => {
+    const client = new FakeDokployClient([], {
+      failEnvironment: true,
+      failMessage:
+        'request failed with Bearer bearer-secret and apiToken=api-secret at https://dokploy.example.com/hook?apiToken=query-secret&ok=true password=pw-secret secret: sec-secret token=generic-secret while ensuring environment',
+      includeSecretFixture: false,
+    });
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(JSON.stringify(r.errors)).toContain('request failed with');
+      expect(JSON.stringify(r.errors)).toContain('ok=true');
+      expect(JSON.stringify(r.errors)).toContain('while ensuring environment');
+      expect(JSON.stringify(r.errors)).toContain('[redacted]');
       expect(JSON.stringify(r.errors)).not.toContain('bearer-secret');
       expect(JSON.stringify(r.errors)).not.toContain('api-secret');
-      expect(JSON.stringify(r.errors)).not.toContain('Bearer');
-      expect(JSON.stringify(r.errors)).not.toContain('apiToken');
+      expect(JSON.stringify(r.errors)).not.toContain('query-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('pw-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('sec-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('generic-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('Bearer bearer-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('apiToken=api-secret');
+      expect(JSON.stringify(r.errors)).not.toContain('apiToken=query-secret');
+    }
+  });
+
+  it('redacts the existing token fixture value without dropping benign context', async () => {
+    const client = new FakeDokployClient([], {
+      failEnvironment: true,
+      failMessage: 'environment failed after Dokploy timeout',
+    });
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(JSON.stringify(r.errors)).toContain('environment failed after Dokploy timeout');
+      expect(JSON.stringify(r.errors)).toContain('[redacted]');
+      expect(JSON.stringify(r.errors)).not.toContain('dokploy-token-secret');
+    }
+  });
+
+  it('redacts JSON-style credential keys while preserving surrounding diagnostic context', async () => {
+    const client = new FakeDokployClient([], {
+      failEnvironment: true,
+      failMessage:
+        'Dokploy response body {"apiToken":"json-secret","password":"pw-secret",' +
+        '"access_token":"access-secret","refresh_token":"refresh-secret",' +
+        '"client_secret":"client-secret","DOKPLOY_TOKEN":"env-secret","status":"denied"} ' +
+        'while configuring app',
+      includeSecretFixture: false,
+    });
+    const r = await applyDokployPlan(rendered, client);
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      const errors = JSON.stringify(r.errors);
+      expect(errors).toContain('Dokploy response body');
+      expect(errors).toContain('status');
+      expect(errors).toContain('denied');
+      expect(errors).toContain('while configuring app');
+      expect(errors).toContain('[redacted]');
+      expect(errors).not.toContain('json-secret');
+      expect(errors).not.toContain('pw-secret');
+      expect(errors).not.toContain('access-secret');
+      expect(errors).not.toContain('refresh-secret');
+      expect(errors).not.toContain('client-secret');
+      expect(errors).not.toContain('env-secret');
     }
   });
 });
@@ -521,6 +595,7 @@ class FakeDokployClient implements DokployClient {
       readonly failDeployFor?: string;
       readonly failStartFor?: string;
       readonly failMessage?: string;
+      readonly includeSecretFixture?: boolean;
     } = {},
   ) {
     for (const app of existing) this.apps.set(app.name, app);
@@ -532,7 +607,9 @@ class FakeDokployClient implements DokployClient {
   ): Promise<{ environmentId: string }> {
     void ref;
     if (this.failures.failEnvironment === true) {
-      throw secretError(this.failures.failMessage ?? 'environment failed');
+      throw clientError(this.failures.failMessage ?? 'environment failed', {
+        includeSecretFixture: this.failures.includeSecretFixture ?? true,
+      });
     }
     return { environmentId: `env_${environmentName}` };
   }
@@ -598,7 +675,15 @@ function resource(overrides: Partial<RenderedDokployResource>): RenderedDokployR
 }
 
 function secretError(message: string): Error & { readonly token: string } {
-  return Object.assign(new Error(`${message}: dokploy-token-secret`), {
+  return clientError(message, { includeSecretFixture: true });
+}
+
+function clientError(
+  message: string,
+  options: { readonly includeSecretFixture: boolean },
+): Error & { readonly token: string } {
+  const errorMessage = options.includeSecretFixture ? `${message}: dokploy-token-secret` : message;
+  return Object.assign(new Error(errorMessage), {
     token: 'dokploy-token-secret',
   });
 }

@@ -36,4 +36,6 @@ redacted target configuration and the injected client seam.
 Rendered plans and apply results must not contain secret values. The package
 never accepts secret values as input: secrets are closed over inside the
 injected `DokployClient` implementation and never enter render or apply
-argument surfaces. Leak-prevention is structural, not detector-based.
+argument surfaces. Leak-prevention is structural for render/apply inputs; apply
+error cause serialization also redacts common credential-bearing fragments from
+client error messages while preserving non-secret diagnostic context.
