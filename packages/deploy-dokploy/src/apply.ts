@@ -265,12 +265,39 @@ function joinUrl(base: string, path: string): string {
   return new URL(path, normalizedBase).toString();
 }
 
+const REDACTED_CAUSE_VALUE = '[redacted]';
+const CREDENTIAL_KEY_PATTERN =
+  'api[-_]?token|apiToken|[a-z0-9_]*token|access_token|refresh_token|client_secret|password|secret';
+const SECRET_VALUE_PATTERN = /dokploy-token-secret/g;
+const BEARER_TOKEN_PATTERN = /\b(Bearer\s+)[^\s,;'"`]+/gi;
+const QUERY_CREDENTIAL_PATTERN = new RegExp(
+  `([?&](?:${CREDENTIAL_KEY_PATTERN})=)[^&\\s,;'"'"\`]+`,
+  'gi',
+);
+const JSON_CREDENTIAL_PATTERN = new RegExp(
+  `((["'])(?:${CREDENTIAL_KEY_PATTERN})\\2\\s*:\\s*)(?:"[^"]*"|'[^']*'|[^\\s,}\\]]+)`,
+  'gi',
+);
+const ASSIGNED_CREDENTIAL_PATTERN = new RegExp(
+  `\\b((?:${CREDENTIAL_KEY_PATTERN})\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^\\s&?,;'"'\`}]+)`,
+  'gi',
+);
+
 function sanitizeCause(cause: unknown): { readonly name?: string; readonly message: string } | string {
   if (cause instanceof Error) {
-    const message = 'redacted client error';
+    const message = redactSensitiveCauseMessage(cause.message);
     if (cause.name === '' || cause.name === 'Error') return { message };
     return { name: cause.name, message };
   }
 
   return 'non-error thrown';
+}
+
+function redactSensitiveCauseMessage(message: string): string {
+  return message
+    .replace(SECRET_VALUE_PATTERN, REDACTED_CAUSE_VALUE)
+    .replace(BEARER_TOKEN_PATTERN, `$1${REDACTED_CAUSE_VALUE}`)
+    .replace(QUERY_CREDENTIAL_PATTERN, `$1${REDACTED_CAUSE_VALUE}`)
+    .replace(JSON_CREDENTIAL_PATTERN, `$1"${REDACTED_CAUSE_VALUE}"`)
+    .replace(ASSIGNED_CREDENTIAL_PATTERN, `$1${REDACTED_CAUSE_VALUE}`);
 }
