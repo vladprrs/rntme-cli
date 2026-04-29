@@ -304,6 +304,131 @@ describe('renderDokployPlan', () => {
     });
   });
 
+  it('renders SASL event bus env, auth env, and public Auth0 config for authed domain workloads', () => {
+    const authPlan: ProjectDeploymentPlan = {
+      ...plan,
+      infrastructure: {
+        eventBus: {
+          kind: 'kafka',
+          mode: 'external',
+          brokers: ['redpanda.example.com:9092'],
+          topicPrefix: 'rntme.notes',
+          security: {
+            protocol: 'sasl_ssl',
+            mechanism: 'scram-sha-512',
+            secretRefs: {
+              username: 'RNTME_EVENT_BUS_USERNAME',
+              password: 'RNTME_EVENT_BUS_PASSWORD',
+            },
+          },
+        },
+        auth: {
+          auth0: {
+            clientId: 'auth0-public-client-id',
+          },
+        },
+      },
+      workloads: [
+        {
+          kind: 'domain-service',
+          slug: 'app',
+          serviceSlug: 'app',
+          resourceName: 'rntme-acme-commerce-app',
+          runtime: { image: 'rntme-runtime' },
+          artifact: { source: 'composed-project', serviceSlug: 'app' },
+          runtimeFiles: { 'manifest.json': '{"service":{"name":"app"}}' },
+          persistence: { mode: 'ephemeral' },
+        },
+        {
+          kind: 'integration-module',
+          slug: 'identity-auth0',
+          serviceSlug: 'identity-auth0',
+          resourceName: 'rntme-acme-commerce-identity-auth0',
+          image: 'identity-auth0:latest',
+          expose: false,
+          env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+          secretRefs: {},
+        },
+        {
+          kind: 'edge-gateway',
+          slug: 'edge',
+          resourceName: 'rntme-acme-commerce-edge',
+          image: 'nginx:1.27-alpine',
+        },
+      ],
+      edge: {
+        routes: [
+          {
+            id: 'ui:/',
+            kind: 'ui',
+            path: '/',
+            targetService: 'app',
+            targetWorkload: 'app',
+          },
+          {
+            id: 'http:/api',
+            kind: 'http',
+            path: '/api',
+            targetService: 'app',
+            targetWorkload: 'app',
+          },
+        ],
+        middleware: [
+          {
+            mountTarget: 'http:/api',
+            name: 'auth',
+            kind: 'auth',
+            provider: 'auth0',
+            audience: 'https://commerce.example.com/api',
+            moduleSlug: 'identity-auth0',
+          },
+        ],
+      },
+    };
+
+    const r = renderDokployPlan(authPlan, {
+      endpoint: 'https://dokploy.example.com',
+      projectId: 'project_123',
+      publicBaseUrl: 'https://commerce.example.com',
+    });
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    const app = r.value.resources.find((resource) => resource.workloadSlug === 'app');
+    expect(app?.env).toEqual(
+      expect.arrayContaining([
+        { name: 'RNTME_EVENT_BUS_PROTOCOL', value: 'sasl_ssl', secret: false },
+        { name: 'RNTME_EVENT_BUS_MECHANISM', value: 'scram-sha-512', secret: false },
+        { name: 'RNTME_EVENT_BUS_USERNAME', value: 'RNTME_EVENT_BUS_USERNAME', secret: true },
+        { name: 'RNTME_EVENT_BUS_PASSWORD', value: 'RNTME_EVENT_BUS_PASSWORD', secret: true },
+        { name: 'RNTME_EVENT_BUS_TOPIC_PREFIX', value: 'rntme.notes', secret: false },
+        { name: 'RNTME_AUTH_PROVIDER', value: 'auth0', secret: false },
+        { name: 'RNTME_AUTH_AUDIENCE', value: 'https://commerce.example.com/api', secret: false },
+        { name: 'RNTME_AUTH_MODULE_SLUG', value: 'identity-auth0', secret: false },
+        {
+          name: 'RNTME_AUTH_MODULE_ENDPOINT',
+          value: 'rntme-acme-commerce-identity-auth0:50051',
+          secret: false,
+        },
+      ]),
+    );
+    expect(JSON.stringify(app?.env)).not.toContain('scram-password');
+
+    expect(app?.files?.['/srv/config.json']).toBeDefined();
+    expect(JSON.parse(app?.files?.['/srv/config.json'] ?? '{}')).toEqual({
+      auth0: {
+        domain: 'tenant.us.auth0.com',
+        clientId: 'auth0-public-client-id',
+        audience: 'https://commerce.example.com/api',
+        redirectUri: 'https://commerce.example.com',
+      },
+      runtime: {
+        manifestUrl: '/api/manifest',
+      },
+    });
+  });
+
   it('rejects target resource name collisions after normalization', () => {
     const r = renderDokployPlan(
       {

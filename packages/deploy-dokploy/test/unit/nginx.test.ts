@@ -85,6 +85,38 @@ describe('renderNginxConfig', () => {
     expect(rendered).toContain('proxy_send_timeout 3s;');
   });
 
+  it('renders auth middleware as comments only', () => {
+    const edge: EdgePlan = {
+      routes: [
+        {
+          id: 'http:/api',
+          kind: 'http',
+          path: '/api',
+          targetService: 'app',
+          targetWorkload: 'app',
+        },
+      ],
+      middleware: [
+        {
+          mountTarget: 'http:/api',
+          name: 'auth',
+          kind: 'auth',
+          provider: 'auth0',
+          audience: 'https://commerce.example.com/api',
+          moduleSlug: 'identity-auth0',
+        },
+      ],
+    };
+
+    const rendered = renderNginxConfig(edge, {
+      app: 'http://app:3000',
+    });
+
+    expect(rendered).toContain('# auth middleware: provider=auth0, audience=https://commerce.example.com/api');
+    expect(rendered).toContain('# - delegated to runtime via identity module RPC; edge does not validate JWT');
+    expect(rendered).not.toContain('auth_request');
+  });
+
   it('rejects unsafe route paths before rendering locations', () => {
     const edge: EdgePlan = {
       routes: [

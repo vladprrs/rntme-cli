@@ -2,6 +2,7 @@ import type { ComposedProjectInput } from './composed-project.js';
 import type {
   DeploymentMode,
   ExternalEventBusConfig,
+  ProjectAuthConfig,
   ProjectDeploymentConfig,
 } from './config.js';
 import { planEdge, type EdgeMiddleware, type EdgeRoute } from './edge.js';
@@ -63,6 +64,7 @@ export type ProjectDeploymentPlan = {
   readonly project: PlannedProject;
   readonly infrastructure: {
     readonly eventBus: ExternalEventBusConfig;
+    readonly auth?: ProjectAuthConfig;
   };
   readonly workloads: readonly DeploymentWorkload[];
   readonly edge: EdgePlan;
@@ -107,6 +109,8 @@ export function buildProjectDeploymentPlan(
       message: 'preview deployments require one project-level external Kafka/Redpanda endpoint',
       path: 'eventBus',
     });
+  } else {
+    validateEventBusSecurity(config.eventBus, errors);
   }
 
   const workloads = buildWorkloads(project, config, errors);
@@ -124,6 +128,7 @@ export function buildProjectDeploymentPlan(
     },
     infrastructure: {
       eventBus: config.eventBus,
+      ...(config.auth !== undefined ? { auth: config.auth } : {}),
     },
     workloads,
     edge,
@@ -189,4 +194,33 @@ function buildWorkloads(
 
 function resourceName(orgSlug: string, projectSlug: string, workloadSlug: string): string {
   return `rntme-${orgSlug}-${projectSlug}-${workloadSlug}`;
+}
+
+function validateEventBusSecurity(
+  eventBus: ExternalEventBusConfig,
+  errors: DeploymentPlanError[],
+): void {
+  const security = eventBus.security;
+  if (security?.protocol !== 'sasl_ssl') return;
+
+  if (security.mechanism !== 'scram-sha-256' && security.mechanism !== 'scram-sha-512') {
+    errors.push({
+      code: 'DEPLOY_PLAN_EVENT_BUS_SASL_MECHANISM_UNSUPPORTED',
+      message: `unsupported SASL mechanism "${security.mechanism}"`,
+      path: 'eventBus.security.mechanism',
+    });
+  }
+
+  const secretRefs = security.secretRefs;
+  if (!isNonEmptyString(secretRefs?.username) || !isNonEmptyString(secretRefs?.password)) {
+    errors.push({
+      code: 'DEPLOY_PLAN_EVENT_BUS_SASL_INCOMPLETE',
+      message: 'sasl_ssl requires secretRefs.username and secretRefs.password',
+      path: 'eventBus.security.secretRefs',
+    });
+  }
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
 }

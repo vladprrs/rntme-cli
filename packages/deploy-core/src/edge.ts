@@ -39,6 +39,16 @@ export type EdgeMiddleware =
       readonly kind: 'timeout';
       readonly policy: string;
       readonly config: NonNullable<DeploymentPolicyConfig['timeout']>[string];
+    }
+  | {
+      readonly mountTarget: string;
+      readonly name: string;
+      readonly kind: 'auth';
+      readonly provider: string;
+      readonly audience: string;
+      readonly moduleSlug: string;
+      readonly policy?: string;
+      readonly config?: unknown;
     };
 
 export type PlannedEdge = {
@@ -53,6 +63,7 @@ type MiddlewarePolicyByKind = {
   readonly 'rate-limit': NonNullable<DeploymentPolicyConfig['rateLimit']>[string];
   readonly 'body-limit': NonNullable<DeploymentPolicyConfig['bodyLimit']>[string];
   readonly timeout: NonNullable<DeploymentPolicyConfig['timeout']>[string];
+  readonly auth: never;
 };
 
 const supportedMiddlewareKinds = new Set<SupportedMiddlewareKind>([
@@ -60,6 +71,7 @@ const supportedMiddlewareKinds = new Set<SupportedMiddlewareKind>([
   'rate-limit',
   'body-limit',
   'timeout',
+  'auth',
 ]);
 
 export function planEdge(
@@ -85,7 +97,13 @@ export function planEdge(
     addRoute('http', path, service);
   }
 
-  const middleware = planMiddleware(project, config, new Set(routes.map((route) => route.id)), errors);
+  const middleware = planMiddleware(
+    project,
+    config,
+    new Set(routes.map((route) => route.id)),
+    workloads,
+    errors,
+  );
 
   return { edge: { routes, middleware }, errors };
 
@@ -124,10 +142,16 @@ function planMiddleware(
   project: ComposedProjectInput,
   config: ProjectDeploymentConfig,
   routeIds: ReadonlySet<string>,
+  workloads: readonly DeploymentWorkload[],
   errors: DeploymentPlanError[],
 ): EdgeMiddleware[] {
   const planned: EdgeMiddleware[] = [];
   const declarations = project.middleware ?? {};
+  const integrationWorkloads = new Map(
+    workloads
+      .filter((workload) => workload.kind === 'integration-module')
+      .map((workload) => [workload.slug, workload]),
+  );
 
   for (const [name, decl] of Object.entries(declarations)) {
     if (!isSupportedMiddlewareKind(decl.kind)) {
@@ -163,6 +187,61 @@ function planMiddleware(
       }
       if (!isSupportedMiddlewareKind(decl.kind)) continue;
       const policy = decl.policy ?? 'default';
+
+      if (decl.kind === 'auth') {
+        if (!isNonEmptyString(decl.provider) || !isNonEmptyString(decl.audience) || !isNonEmptyString(decl.moduleSlug)) {
+          errors.push({
+            code: 'DEPLOY_PLAN_AUTH_MIDDLEWARE_INCOMPLETE',
+            message: `auth middleware "${middlewareName}" requires provider, audience, and moduleSlug`,
+            middleware: middlewareName,
+          });
+          continue;
+        }
+
+        const moduleWorkload = integrationWorkloads.get(decl.moduleSlug);
+        if (moduleWorkload === undefined) {
+          errors.push({
+            code: 'DEPLOY_PLAN_AUTH_MODULE_WORKLOAD_MISSING',
+            message: `auth middleware "${middlewareName}" references missing integration module workload "${decl.moduleSlug}"`,
+            middleware: middlewareName,
+            service: decl.moduleSlug,
+          });
+          continue;
+        }
+
+        if (decl.provider === 'auth0') {
+          if (!isNonEmptyString(moduleWorkload.env.AUTH0_DOMAIN)) {
+            errors.push({
+              code: 'DEPLOY_PLAN_AUTH_MODULE_ENV_INCOMPLETE',
+              message: `auth module workload "${decl.moduleSlug}" missing AUTH0_DOMAIN env`,
+              service: decl.moduleSlug,
+              path: `modules.${decl.moduleSlug}.env.AUTH0_DOMAIN`,
+            });
+            continue;
+          }
+          if (!isNonEmptyString(config.auth?.auth0?.clientId)) {
+            errors.push({
+              code: 'DEPLOY_PLAN_AUTH_CLIENT_ID_MISSING',
+              message: 'auth0 middleware requires auth.auth0.clientId for generated public config',
+              middleware: middlewareName,
+              path: 'auth.auth0.clientId',
+            });
+            continue;
+          }
+        }
+
+        planned.push({
+          mountTarget: mount.target,
+          name: middlewareName,
+          kind: decl.kind,
+          provider: decl.provider,
+          audience: decl.audience,
+          moduleSlug: decl.moduleSlug,
+          ...(decl.policy !== undefined ? { policy: decl.policy } : {}),
+          ...(decl.config !== undefined ? { config: decl.config } : {}),
+        });
+        continue;
+      }
 
       if (decl.kind === 'request-context') {
         const resolved = resolvePolicy(decl.kind, middlewareName, policy, config.policies, errors);
@@ -260,5 +339,11 @@ function policyTable<K extends SupportedMiddlewareKind>(
       return policies?.bodyLimit as Readonly<Record<string, MiddlewarePolicyByKind[K]>> | undefined;
     case 'timeout':
       return policies?.timeout as Readonly<Record<string, MiddlewarePolicyByKind[K]>> | undefined;
+    case 'auth':
+      return undefined;
   }
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
 }
