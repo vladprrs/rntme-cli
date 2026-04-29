@@ -134,4 +134,89 @@ describe('buildProjectDeploymentPlan', () => {
       ]);
     }
   });
+
+  it('accepts complete SASL_SSL/SCRAM event bus security config', () => {
+    const r = buildProjectDeploymentPlan(project, {
+      ...previewConfig,
+      eventBus: {
+        kind: 'kafka',
+        mode: 'external',
+        brokers: ['redpanda.example.com:9092'],
+        security: {
+          protocol: 'sasl_ssl',
+          mechanism: 'scram-sha-512',
+          secretRefs: {
+            username: 'RNTME_EVENT_BUS_USERNAME',
+            password: 'RNTME_EVENT_BUS_PASSWORD',
+          },
+        },
+      },
+    });
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.infrastructure.eventBus.security).toEqual({
+      protocol: 'sasl_ssl',
+      mechanism: 'scram-sha-512',
+      secretRefs: {
+        username: 'RNTME_EVENT_BUS_USERNAME',
+        password: 'RNTME_EVENT_BUS_PASSWORD',
+      },
+    });
+  });
+
+  it('rejects unsupported SASL mechanisms', () => {
+    const r = buildProjectDeploymentPlan(project, {
+      ...previewConfig,
+      eventBus: {
+        kind: 'kafka',
+        mode: 'external',
+        brokers: ['redpanda.example.com:9092'],
+        security: {
+          protocol: 'sasl_ssl',
+          mechanism: 'plain',
+          secretRefs: {
+            username: 'RNTME_EVENT_BUS_USERNAME',
+            password: 'RNTME_EVENT_BUS_PASSWORD',
+          },
+        },
+      } as ProjectDeploymentConfig['eventBus'],
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_PLAN_EVENT_BUS_SASL_MECHANISM_UNSUPPORTED',
+          path: 'eventBus.security.mechanism',
+        }),
+      );
+    }
+  });
+
+  it('rejects incomplete SASL secret refs', () => {
+    const r = buildProjectDeploymentPlan(project, {
+      ...previewConfig,
+      eventBus: {
+        kind: 'kafka',
+        mode: 'external',
+        brokers: ['redpanda.example.com:9092'],
+        security: {
+          protocol: 'sasl_ssl',
+          mechanism: 'scram-sha-256',
+          secretRefs: { username: 'RNTME_EVENT_BUS_USERNAME' },
+        },
+      } as ProjectDeploymentConfig['eventBus'],
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_PLAN_EVENT_BUS_SASL_INCOMPLETE',
+          path: 'eventBus.security.secretRefs',
+        }),
+      );
+    }
+  });
 });

@@ -27,9 +27,34 @@ redacted target configuration and the injected client seam.
 - `src/apply.ts` — idempotent apply flow through an injected client.
 - `src/client.ts` — narrow Dokploy client seam.
 
+## Auth and external event bus rendering
+
+Domain-service workloads always receive `RNTME_EVENT_BUS_BROKERS` and
+`RNTME_EVENT_BUS_PROTOCOL`. When the deployment plan uses
+`security.protocol: "sasl_ssl"`, render adds:
+
+- `RNTME_EVENT_BUS_MECHANISM`
+- `RNTME_EVENT_BUS_USERNAME` with `secret: true`
+- `RNTME_EVENT_BUS_PASSWORD` with `secret: true`
+- optional `RNTME_EVENT_BUS_TOPIC_PREFIX`
+
+The username/password values are secret references, not plaintext credentials.
+
+When `kind: "auth"` middleware is mounted on a domain-service route, render
+adds `RNTME_AUTH_PROVIDER`, `RNTME_AUTH_AUDIENCE`, `RNTME_AUTH_MODULE_SLUG`,
+and `RNTME_AUTH_MODULE_ENDPOINT=<module-resource>:50051` to that domain
+service. It also generates public `/srv/config.json` with Auth0 `domain`,
+`clientId`, `audience`, `redirectUri`, and runtime `manifestUrl`. The file must
+contain only public SPA values.
+
+Nginx deliberately does not validate JWTs. Auth middleware renders comments in
+the location block only; enforcement is delegated to runtime pre-step calls into
+the identity module.
+
 ## Specs
 
 - `docs/superpowers/specs/2026-04-24-project-deployment-pipeline-design.md`
+- `docs/superpowers/specs/2026-04-29-notes-demo-auth0-design.md`
 
 ## Security
 

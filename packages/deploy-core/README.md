@@ -18,9 +18,33 @@ to a target adapter.
 - `buildProjectDeploymentPlan(project, config)` — creates a preview deployment
   plan or returns `DEPLOY_PLAN_*` errors.
 - `ProjectDeploymentConfig` — org/environment/mode, external event bus,
-  integration module image config, and policy values.
+  integration module image config, auth public config, and policy values.
 - `ComposedProjectInput` — deploy-relevant structural subset of the composed
   project model.
+
+### Auth and SASL
+
+`ExternalEventBusConfig.security` is a discriminated union:
+
+- `{ protocol: "plaintext" }` for unauthenticated Kafka-compatible endpoints.
+- `{ protocol: "sasl_ssl", mechanism, secretRefs }` for managed Redpanda/Kafka.
+  `mechanism` must be `scram-sha-256` or `scram-sha-512`; `secretRefs.username`
+  and `secretRefs.password` are required and are secret names, not secret values.
+
+Edge middleware supports `kind: "auth"` as a runtime marker:
+
+```json
+{
+  "kind": "auth",
+  "provider": "auth0",
+  "audience": "https://notes.example.com/api",
+  "moduleSlug": "identity-auth0"
+}
+```
+
+The matching integration module workload must exist, and Auth0 modules must
+carry non-empty `AUTH0_DOMAIN` env. Auth0 middleware also requires
+`config.auth.auth0.clientId` so target renderers can generate public SPA config.
 
 ## Where to look first
 
@@ -31,11 +55,12 @@ to a target adapter.
 ## Specs
 
 - `docs/superpowers/specs/2026-04-24-project-deployment-pipeline-design.md`
+- `docs/superpowers/specs/2026-04-29-notes-demo-auth0-design.md`
 
 ## MVP limits
 
 - Only `mode: "preview"` is supported.
 - Only `environment: "default"` is supported.
-- Production mode is rejected until Kafka/Redpanda runtime bus support,
-  persistence, auth middleware, and deployment records are designed.
+- Production mode is rejected until persistence and deployment records are
+  designed for the production path.
 - Integration modules require explicit image config.

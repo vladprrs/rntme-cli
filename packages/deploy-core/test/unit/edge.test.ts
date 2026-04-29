@@ -20,7 +20,12 @@ const baseProject: ComposedProjectInput = {
   middleware: {
     requestContext: { kind: 'request-context', policy: 'default' },
     rateLimit: { kind: 'rate-limit', policy: 'default' },
-    auth: { kind: 'auth', provider: 'mod-workos' },
+    auth: {
+      kind: 'auth',
+      provider: 'auth0',
+      audience: 'https://commerce.example.com/api',
+      moduleSlug: 'mod-workos',
+    },
   },
   mounts: [
     { target: 'ui:/', use: ['requestContext'] },
@@ -41,6 +46,12 @@ const config: ProjectDeploymentConfig = {
     'mod-workos': {
       image: 'ghcr.io/acme/mod-workos:2026-04-24',
       expose: true,
+      env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+    },
+  },
+  auth: {
+    auth0: {
+      clientId: 'public-spa-client-id',
     },
   },
   policies: {
@@ -104,15 +115,136 @@ describe('edge planning', () => {
     ]);
   });
 
-  it('rejects unsupported auth middleware', () => {
-    const r = buildProjectDeploymentPlan(baseProject, config);
+  it('plans auth middleware as a runtime marker when the module workload is valid', () => {
+    const project = {
+      ...baseProject,
+      routes: {
+        ui: { '/': 'app' },
+        http: { '/api/catalog': 'catalog' },
+      },
+      mounts: [{ target: 'http:/api/catalog', use: ['auth'] }],
+    };
+
+    const r = buildProjectDeploymentPlan(project, config);
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.edge.middleware).toEqual([
+      {
+        mountTarget: 'http:/api/catalog',
+        name: 'auth',
+        kind: 'auth',
+        provider: 'auth0',
+        audience: 'https://commerce.example.com/api',
+        moduleSlug: 'mod-workos',
+      },
+    ]);
+  });
+
+  it('rejects auth middleware without required provider, audience, and moduleSlug', () => {
+    const project = {
+      ...baseProject,
+      middleware: {
+        auth: { kind: 'auth', provider: 'auth0' },
+      },
+      mounts: [{ target: 'http:/api/catalog', use: ['auth'] }],
+    };
+
+    const r = buildProjectDeploymentPlan(project, config);
 
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.errors).toContainEqual(
         expect.objectContaining({
-          code: 'DEPLOY_PLAN_UNSUPPORTED_MIDDLEWARE',
+          code: 'DEPLOY_PLAN_AUTH_MIDDLEWARE_INCOMPLETE',
           middleware: 'auth',
+        }),
+      );
+    }
+  });
+
+  it('rejects auth middleware referencing a missing module workload', () => {
+    const project = {
+      ...baseProject,
+      middleware: {
+        auth: {
+          kind: 'auth',
+          provider: 'auth0',
+          audience: 'https://commerce.example.com/api',
+          moduleSlug: 'identity-auth0',
+        },
+      },
+      mounts: [{ target: 'http:/api/catalog', use: ['auth'] }],
+    };
+
+    const r = buildProjectDeploymentPlan(project, config);
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_PLAN_AUTH_MODULE_WORKLOAD_MISSING',
+          middleware: 'auth',
+          service: 'identity-auth0',
+        }),
+      );
+    }
+  });
+
+  it('rejects Auth0 module workloads without AUTH0_DOMAIN env', () => {
+    const project = {
+      ...baseProject,
+      routes: {
+        ui: { '/': 'app' },
+        http: { '/api/catalog': 'catalog' },
+      },
+      mounts: [{ target: 'http:/api/catalog', use: ['auth'] }],
+    };
+
+    const r = buildProjectDeploymentPlan(project, {
+      ...config,
+      modules: {
+        'mod-workos': {
+          image: 'ghcr.io/acme/mod-workos:2026-04-24',
+          expose: true,
+        },
+      },
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_PLAN_AUTH_MODULE_ENV_INCOMPLETE',
+          service: 'mod-workos',
+          path: 'modules.mod-workos.env.AUTH0_DOMAIN',
+        }),
+      );
+    }
+  });
+
+  it('rejects auth middleware when Auth0 SPA client id is missing', () => {
+    const project = {
+      ...baseProject,
+      routes: {
+        ui: { '/': 'app' },
+        http: { '/api/catalog': 'catalog' },
+      },
+      mounts: [{ target: 'http:/api/catalog', use: ['auth'] }],
+    };
+
+    const r = buildProjectDeploymentPlan(project, {
+      ...config,
+      auth: undefined,
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DEPLOY_PLAN_AUTH_CLIENT_ID_MISSING',
+          path: 'auth.auth0.clientId',
         }),
       );
     }

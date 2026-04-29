@@ -14,7 +14,10 @@ export type ProjectRouteMap = {
 export type ProjectMiddlewareDecl = {
   readonly kind: string;
   readonly provider?: string;
+  readonly audience?: string;
+  readonly moduleSlug?: string;
   readonly policy?: string;
+  readonly config?: unknown;
 };
 
 export type ProjectMountDecl = {

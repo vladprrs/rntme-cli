@@ -2,15 +2,23 @@ export type DeploymentMode = 'preview' | 'production';
 
 export type DeploymentEnvironment = 'default';
 
+export type ExternalEventBusSecurity =
+  | { readonly protocol: 'plaintext' }
+  | {
+      readonly protocol: 'sasl_ssl';
+      readonly mechanism: 'scram-sha-256' | 'scram-sha-512';
+      readonly secretRefs: {
+        readonly username: string;
+        readonly password: string;
+      };
+    };
+
 export type ExternalEventBusConfig = {
   readonly kind: 'kafka';
   readonly mode: 'external';
   readonly brokers: readonly string[];
   readonly topicPrefix?: string;
-  readonly security?: {
-    readonly protocol: 'plaintext' | 'sasl_ssl';
-    readonly secretRefs?: Readonly<Record<string, string>>;
-  };
+  readonly security?: ExternalEventBusSecurity;
 };
 
 export type IntegrationModuleDeploymentConfig = {
@@ -45,6 +53,12 @@ export type DeploymentPolicyConfig = {
   readonly requestContext?: Readonly<Record<string, RequestContextPolicyConfig>>;
 };
 
+export type ProjectAuthConfig = {
+  readonly auth0?: {
+    readonly clientId: string;
+  };
+};
+
 export type ProjectDeploymentConfig = {
   readonly orgSlug: string;
   readonly environment: DeploymentEnvironment;
@@ -52,5 +66,6 @@ export type ProjectDeploymentConfig = {
   readonly eventBus?: ExternalEventBusConfig;
   readonly modules?: Readonly<Record<string, IntegrationModuleDeploymentConfig>>;
   readonly policies?: DeploymentPolicyConfig;
+  readonly auth?: ProjectAuthConfig;
   readonly runtimeImage?: string;
 };

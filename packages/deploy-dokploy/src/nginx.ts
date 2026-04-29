@@ -67,6 +67,10 @@ function renderLocation(
         `      proxy_set_header ${correlationHeader} $http_${headerVariable(correlationHeader)};`,
       );
     }
+    if (m.kind === 'auth') {
+      lines.push(`      # auth middleware: provider=${commentValue(m.provider)}, audience=${commentValue(m.audience)}`);
+      lines.push('      # - delegated to runtime via identity module RPC; edge does not validate JWT');
+    }
   }
 
   lines.push('      proxy_set_header Host $host;');
@@ -82,6 +86,10 @@ function zoneName(target: string): string {
 
 function headerVariable(header: string): string {
   return header.toLowerCase().replace(/-/g, '_');
+}
+
+function commentValue(value: string): string {
+  return value.replace(/[\r\n]/g, ' ').replace(/\*\//g, '* /');
 }
 
 function assertSafeLocationPath(path: string): void {

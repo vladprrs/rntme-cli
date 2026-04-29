@@ -122,7 +122,7 @@ export function renderDokployPlan(
   }
 
   const resources = plan.workloads.map((workload) =>
-    renderResource(plan, workload, nginxConfig.value),
+    renderResource(plan, workload, nginxConfig.value, config.publicBaseUrl),
   );
   const uiRoute = plan.edge.routes.find((route) => route.kind === 'ui');
   const publicRoutes = plan.edge.routes.map((route) => ({
@@ -216,6 +216,7 @@ function renderResource(
   plan: ProjectDeploymentPlan,
   workload: DeploymentWorkload,
   nginxConfig: string,
+  publicBaseUrl: string,
 ): RenderedDokployResource {
   const name = dokployResourceName(plan.project.orgSlug, plan.project.projectSlug, workload.slug);
   const labels = dokployLabels(
@@ -264,6 +265,32 @@ function renderResource(
   }
 
   if (workload.kind === 'domain-service') {
+    const authMiddleware = authMiddlewareForWorkload(plan, workload);
+    const moduleWorkload =
+      authMiddleware === undefined ? undefined : integrationWorkload(plan, authMiddleware.moduleSlug);
+    const files = {
+      ...runtimeFileMounts(workload.runtimeFiles),
+      ...(authMiddleware !== undefined && moduleWorkload !== undefined
+        ? {
+            '/srv/config.json': JSON.stringify(
+              {
+                auth0: {
+                  domain: moduleWorkload.env.AUTH0_DOMAIN ?? '',
+                  clientId: plan.infrastructure.auth?.auth0?.clientId ?? '',
+                  audience: authMiddleware.audience,
+                  redirectUri: publicBaseUrl,
+                },
+                runtime: {
+                  manifestUrl: '/api/manifest',
+                },
+              },
+              null,
+              2,
+            ),
+          }
+        : {}),
+    };
+
     return {
       logicalId: workload.slug,
       kind: 'application',
@@ -277,6 +304,7 @@ function renderResource(
           value: plan.infrastructure.eventBus.brokers.join(','),
           secret: false,
         },
+        ...eventBusSecurityEnv(plan.infrastructure.eventBus),
         {
           name: 'RNTME_PERSISTENCE_MODE',
           value: workload.persistence.mode,
@@ -287,9 +315,25 @@ function renderResource(
           value: '/srv/artifacts',
           secret: false,
         },
+        ...(authMiddleware === undefined
+          ? []
+          : [
+              { name: 'RNTME_AUTH_PROVIDER', value: authMiddleware.provider, secret: false },
+              { name: 'RNTME_AUTH_AUDIENCE', value: authMiddleware.audience, secret: false },
+              { name: 'RNTME_AUTH_MODULE_SLUG', value: authMiddleware.moduleSlug, secret: false },
+              {
+                name: 'RNTME_AUTH_MODULE_ENDPOINT',
+                value: `${dokployResourceName(
+                  plan.project.orgSlug,
+                  plan.project.projectSlug,
+                  authMiddleware.moduleSlug,
+                )}:50051`,
+                secret: false,
+              },
+            ]),
       ],
       labels,
-      files: runtimeFileMounts(workload.runtimeFiles),
+      files,
     };
   }
 
@@ -300,6 +344,58 @@ function runtimeFileMounts(files: Readonly<Record<string, string>>): Readonly<Re
   return Object.fromEntries(
     sortedEntries(files).map(([path, content]) => [`/srv/artifacts/${path.replace(/^\/+/, '')}`, content]),
   );
+}
+
+function eventBusSecurityEnv(
+  eventBus: ProjectDeploymentPlan['infrastructure']['eventBus'],
+): RenderedEnvVar[] {
+  const env: RenderedEnvVar[] = [];
+  if (eventBus.security?.protocol === 'sasl_ssl') {
+    env.push(
+      { name: 'RNTME_EVENT_BUS_PROTOCOL', value: 'sasl_ssl', secret: false },
+      { name: 'RNTME_EVENT_BUS_MECHANISM', value: eventBus.security.mechanism, secret: false },
+      { name: 'RNTME_EVENT_BUS_USERNAME', value: eventBus.security.secretRefs.username, secret: true },
+      { name: 'RNTME_EVENT_BUS_PASSWORD', value: eventBus.security.secretRefs.password, secret: true },
+    );
+  } else {
+    env.push({ name: 'RNTME_EVENT_BUS_PROTOCOL', value: 'plaintext', secret: false });
+  }
+  if (eventBus.topicPrefix !== undefined && eventBus.topicPrefix !== '') {
+    env.push({ name: 'RNTME_EVENT_BUS_TOPIC_PREFIX', value: eventBus.topicPrefix, secret: false });
+  }
+  return env;
+}
+
+function authMiddlewareForWorkload(
+  plan: ProjectDeploymentPlan,
+  workload: Extract<DeploymentWorkload, { kind: 'domain-service' }>,
+): Extract<ProjectDeploymentPlan['edge']['middleware'][number], { kind: 'auth' }> | undefined {
+  return plan.edge.middleware.find((middleware) => {
+    if (middleware.kind !== 'auth') return false;
+    return routesMountedOnTarget(middleware.mountTarget, workload, plan.edge.routes);
+  }) as Extract<ProjectDeploymentPlan['edge']['middleware'][number], { kind: 'auth' }> | undefined;
+}
+
+function routesMountedOnTarget(
+  mountTarget: string,
+  workload: Extract<DeploymentWorkload, { kind: 'domain-service' }>,
+  routes: ProjectDeploymentPlan['edge']['routes'],
+): boolean {
+  return routes.some(
+    (route) =>
+      route.targetService === workload.serviceSlug &&
+      route.targetWorkload === workload.slug &&
+      route.id === mountTarget,
+  );
+}
+
+function integrationWorkload(
+  plan: ProjectDeploymentPlan,
+  slug: string,
+): Extract<DeploymentWorkload, { kind: 'integration-module' }> | undefined {
+  return plan.workloads.find((workload) => workload.kind === 'integration-module' && workload.slug === slug) as
+    | Extract<DeploymentWorkload, { kind: 'integration-module' }>
+    | undefined;
 }
 
 function findNameCollision(resources: readonly RenderedDokployResource[]): string | null {
