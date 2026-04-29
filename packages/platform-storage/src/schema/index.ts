@@ -6,3 +6,4 @@ export * from './deployment.js';
 export * from './deployment-log-line.js';
 export * from './tokens.js';
 export * from './audit.js';
+export * from './rate-limit.js';

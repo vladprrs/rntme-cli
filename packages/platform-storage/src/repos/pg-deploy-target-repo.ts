@@ -265,7 +265,21 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
 
   async getWithSecretById(id: string): Promise<Result<DeployTargetWithSecret | null, PlatformError>> {
     try {
-      const row = await this.db.query(`SELECT * FROM deploy_target WHERE id=$1 LIMIT 1`, [id]);
+      const context = await this.db.query<{ org_id: string | null }>(
+        `SELECT NULLIF(current_setting('app.org_id', true), '') AS org_id`,
+      );
+      const orgId = context.rows[0]?.org_id;
+      if (!orgId) {
+        return err([
+          {
+            code: 'PLATFORM_STORAGE_RLS_CONTEXT_REQUIRED',
+            message: 'app.org_id is required before reading deploy target secrets',
+            stage: 'storage',
+          },
+        ]);
+      }
+
+      const row = await this.db.query(`SELECT * FROM deploy_target WHERE id=$1 AND org_id=$2 LIMIT 1`, [id, orgId]);
       return ok(row.rows[0] ? rowToTargetWithSecret(row.rows[0] as DbRow) : null);
     } catch (cause) {
       return dbErr(cause);
