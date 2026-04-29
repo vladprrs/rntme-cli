@@ -29,6 +29,36 @@ export type EventBusConfig = z.infer<typeof EventBusConfigSchema>;
 export const PolicyValuesSchema = z.record(z.string(), z.record(z.string(), z.unknown())).default({});
 export type PolicyValues = z.infer<typeof PolicyValuesSchema>;
 const PatchPolicyValuesSchema = z.record(z.string(), z.record(z.string(), z.unknown()));
+
+export const IntegrationModuleDeploymentConfigSchema = z.object({
+  image: z.string().min(1),
+  expose: z.boolean().optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  secretRefs: z.record(z.string(), z.string()).optional(),
+});
+export type IntegrationModuleDeploymentConfig = z.infer<typeof IntegrationModuleDeploymentConfigSchema>;
+
+export const DeployTargetModulesSchema = z.record(z.string(), IntegrationModuleDeploymentConfigSchema).default({});
+export type DeployTargetModules = z.infer<typeof DeployTargetModulesSchema>;
+const PatchDeployTargetModulesSchema = z.record(z.string(), IntegrationModuleDeploymentConfigSchema);
+
+export const DeployTargetAuthConfigSchema = z
+  .object({
+    auth0: z
+      .object({
+        clientId: z.string().min(1),
+      })
+      .optional(),
+  })
+  .default({});
+export type DeployTargetAuthConfig = z.infer<typeof DeployTargetAuthConfigSchema>;
+const PatchDeployTargetAuthConfigSchema = z.object({
+  auth0: z
+    .object({
+      clientId: z.string().min(1),
+    })
+    .optional(),
+});
 const HttpUrlSchema = z.string().url().refine(
   (value) => {
     const protocol = new URL(value).protocol;
@@ -52,6 +82,8 @@ export const CreateDeployTargetRequestSchema = z
     allowCreateProject: z.boolean().default(false),
     apiToken: z.string().min(1),
     eventBus: EventBusConfigSchema,
+    modules: DeployTargetModulesSchema,
+    auth: DeployTargetAuthConfigSchema,
     policyValues: PolicyValuesSchema,
     isDefault: z.boolean().default(false),
   })
@@ -74,6 +106,8 @@ export const UpdateDeployTargetRequestSchema = z
     dokployProjectName: z.string().min(1).nullable().optional(),
     allowCreateProject: z.boolean().optional(),
     eventBus: EventBusConfigSchema.optional(),
+    modules: PatchDeployTargetModulesSchema.optional(),
+    auth: PatchDeployTargetAuthConfigSchema.optional(),
     policyValues: PatchPolicyValuesSchema.optional(),
     isDefault: z.boolean().optional(),
   })
@@ -96,6 +130,8 @@ export const DeployTargetSchema = z.object({
   allowCreateProject: z.boolean(),
   apiTokenRedacted: z.literal('***'),
   eventBus: EventBusConfigSchema,
+  modules: DeployTargetModulesSchema,
+  auth: DeployTargetAuthConfigSchema,
   policyValues: PolicyValuesSchema,
   isDefault: z.boolean(),
   createdAt: z.date(),

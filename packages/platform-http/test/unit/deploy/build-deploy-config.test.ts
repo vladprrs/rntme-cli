@@ -46,13 +46,29 @@ describe('buildProjectDeploymentConfig', () => {
     });
   });
 
-  it('maps integrationModuleImages to module image config and merges policy overrides', () => {
-    const config = buildProjectDeploymentConfig(target(), 'acme', {
+  it('maps deploy target modules, override images, auth, and policy overrides', () => {
+    const config = buildProjectDeploymentConfig({
+      ...target(),
+      modules: {
+        'identity-auth0': {
+          image: 'registry/identity-auth0:1',
+          env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+        },
+      },
+      auth: { auth0: { clientId: 'public-client-id' } },
+    }, 'acme', {
       integrationModuleImages: { stripe: 'registry/stripe:1' },
       policyOverrides: { timeout: { edge: { upstreamTimeoutMs: 1000 } } },
     });
 
-    expect(config.modules).toEqual({ stripe: { image: 'registry/stripe:1' } });
+    expect(config.modules).toEqual({
+      'identity-auth0': {
+        image: 'registry/identity-auth0:1',
+        env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+      },
+      stripe: { image: 'registry/stripe:1' },
+    });
+    expect(config.auth).toEqual({ auth0: { clientId: 'public-client-id' } });
     expect(config.policies).toEqual({
       rateLimit: { edge: { requestsPerMinute: 60, burst: 10 } },
       timeout: { edge: { upstreamTimeoutMs: 1000 } },
@@ -115,6 +131,8 @@ function target(): DeployTarget {
     allowCreateProject: false,
     apiTokenRedacted: '***',
     eventBus: { kind: 'kafka', brokers: ['redpanda:9092'] },
+    modules: {},
+    auth: {},
     policyValues: { rateLimit: { edge: { requestsPerMinute: 60, burst: 10 } } },
     isDefault: true,
     createdAt: new Date('2026-01-01T00:00:00Z'),

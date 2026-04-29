@@ -219,6 +219,8 @@ function setup(
         dokployProjectName: null,
         allowCreateProject: false,
         eventBus: { kind: 'kafka' as const, brokers: ['redpanda:9092'] },
+        modules: {},
+        auth: {},
         policyValues: {},
         isDefault: true,
         createdAt: new Date(),

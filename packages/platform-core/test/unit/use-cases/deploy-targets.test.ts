@@ -37,6 +37,13 @@ describe('deploy target use-cases', () => {
           apiTokenNonce: Buffer.from('nonce'),
           apiTokenKeyVersion: 7,
           publicBaseUrl: 'https://notes.example.test',
+          modules: {
+            'identity-auth0': {
+              image: 'identity-auth0:test',
+              env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+            },
+          },
+          auth: { auth0: { clientId: 'public-client-id' } },
         }),
       }),
     );
@@ -197,6 +204,13 @@ function createRequest() {
     allowCreateProject: false,
     apiToken: 'dkp_secret',
     eventBus: { kind: 'kafka' as const, brokers: ['redpanda:9092'] },
+    modules: {
+      'identity-auth0': {
+        image: 'identity-auth0:test',
+        env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+      },
+    },
+    auth: { auth0: { clientId: 'public-client-id' } },
     policyValues: {},
     isDefault: false,
   };
@@ -216,6 +230,13 @@ function deployTarget(): DeployTarget {
     allowCreateProject: false,
     apiTokenRedacted: '***',
     eventBus: { kind: 'kafka', brokers: ['redpanda:9092'] },
+    modules: {
+      'identity-auth0': {
+        image: 'identity-auth0:test',
+        env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+      },
+    },
+    auth: { auth0: { clientId: 'public-client-id' } },
     policyValues: {},
     isDefault: false,
     createdAt: new Date('2026-01-01T00:00:00Z'),

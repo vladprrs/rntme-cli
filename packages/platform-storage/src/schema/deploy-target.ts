@@ -39,6 +39,8 @@ export const deployTarget = pgTable(
     apiTokenNonce: bytea('api_token_nonce').notNull(),
     apiTokenKeyVersion: smallint('api_token_key_version').notNull(),
     eventBusConfig: jsonb('event_bus_config').$type<Record<string, unknown>>().notNull(),
+    moduleConfig: jsonb('module_config').$type<Record<string, unknown>>().notNull().default({}),
+    authConfig: jsonb('auth_config').$type<Record<string, unknown>>().notNull().default({}),
     policyValues: jsonb('policy_values').$type<Record<string, unknown>>().notNull(),
     isDefault: boolean('is_default').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

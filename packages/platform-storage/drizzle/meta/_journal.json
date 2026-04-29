@@ -43,6 +43,13 @@
       "when": 1777300000000,
       "tag": "0005_platform_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777473000000,
+      "tag": "0006_deploy_target_auth_modules",
+      "breakpoints": true
     }
   ]
 }

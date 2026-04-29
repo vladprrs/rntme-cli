@@ -4,6 +4,8 @@ import {
   err,
   ok,
   type DeployTarget,
+  type DeployTargetAuthConfig,
+  type DeployTargetModules,
   type DeployTargetRepo,
   type DeployTargetWithSecret,
   type EventBusConfig,
@@ -34,9 +36,9 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
              id, org_id, slug, display_name, kind, dokploy_url, public_base_url,
              dokploy_project_id, dokploy_project_name, allow_create_project,
              api_token_ciphertext, api_token_nonce, api_token_key_version,
-             event_bus_config, policy_values, is_default
+             event_bus_config, module_config, auth_config, policy_values, is_default
            )
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
            RETURNING *`,
           [
             args.row.id,
@@ -53,6 +55,8 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
             args.row.apiTokenNonce,
             args.row.apiTokenKeyVersion,
             args.row.eventBusConfig,
+            args.row.modules,
+            args.row.auth,
             args.row.policyValues,
             args.row.isDefault,
           ],
@@ -101,6 +105,8 @@ export class PgDeployTargetRepo implements DeployTargetRepo {
         addSet(sets, values, 'dokploy_project_name', args.patch.dokployProjectName);
         addSet(sets, values, 'allow_create_project', args.patch.allowCreateProject);
         addSet(sets, values, 'event_bus_config', args.patch.eventBusConfig);
+        addSet(sets, values, 'module_config', args.patch.modules);
+        addSet(sets, values, 'auth_config', args.patch.auth);
         addSet(sets, values, 'policy_values', args.patch.policyValues);
         addSet(sets, values, 'is_default', args.patch.isDefault);
         values.push(targetId);
@@ -301,6 +307,8 @@ function rowToTarget(r: DbRow): DeployTarget {
     allowCreateProject: r['allow_create_project'] as boolean,
     apiTokenRedacted: '***',
     eventBus: r['event_bus_config'] as EventBusConfig,
+    modules: (r['module_config'] ?? {}) as DeployTargetModules,
+    auth: (r['auth_config'] ?? {}) as DeployTargetAuthConfig,
     policyValues: r['policy_values'] as PolicyValues,
     isDefault: r['is_default'] as boolean,
     createdAt: r['created_at'] as Date,
@@ -322,6 +330,8 @@ function rowToTargetWithSecret(r: DbRow): DeployTargetWithSecret {
     dokployProjectName: target.dokployProjectName,
     allowCreateProject: target.allowCreateProject,
     eventBus: target.eventBus,
+    modules: target.modules,
+    auth: target.auth,
     policyValues: target.policyValues,
     isDefault: target.isDefault,
     createdAt: target.createdAt,

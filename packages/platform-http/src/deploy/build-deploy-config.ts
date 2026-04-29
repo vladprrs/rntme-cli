@@ -29,6 +29,9 @@ export function buildProjectDeploymentConfig(
 ): ProjectDeploymentConfig {
   const overrides = configOverrides as DeployConfigOverrides;
   const modules: Record<string, IntegrationModuleDeploymentConfig> = {};
+  for (const [slug, moduleConfig] of Object.entries(target.modules)) {
+    modules[slug] = cleanModuleConfig(moduleConfig);
+  }
   for (const [slug, image] of Object.entries(overrides.integrationModuleImages ?? {})) {
     modules[slug] = { image };
   }
@@ -51,8 +54,22 @@ export function buildProjectDeploymentConfig(
       ...(target.policyValues as DeploymentPolicyConfig),
       ...((overrides.policyOverrides ?? {}) as DeploymentPolicyConfig),
     },
+    auth: cleanAuthConfig(target.auth),
     ...(overrides.runtimeImage ? { runtimeImage: overrides.runtimeImage } : {}),
   };
+}
+
+function cleanModuleConfig(input: DeployTarget['modules'][string]): IntegrationModuleDeploymentConfig {
+  return {
+    image: input.image,
+    ...(input.expose === undefined ? {} : { expose: input.expose }),
+    ...(input.env === undefined ? {} : { env: input.env }),
+    ...(input.secretRefs === undefined ? {} : { secretRefs: input.secretRefs }),
+  };
+}
+
+function cleanAuthConfig(input: DeployTarget['auth']): NonNullable<ProjectDeploymentConfig['auth']> {
+  return input.auth0 === undefined ? {} : { auth0: input.auth0 };
 }
 
 export function buildDokployTargetConfig(
