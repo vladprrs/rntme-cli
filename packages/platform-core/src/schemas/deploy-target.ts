@@ -2,10 +2,19 @@ import { z } from 'zod';
 import { SlugSchema, UuidSchema } from './primitives.js';
 
 const KafkaSecuritySchema = z
-  .object({
-    protocol: z.enum(['plaintext', 'sasl_ssl']),
-    secretRefs: z.record(z.string(), z.string()).optional(),
-  })
+  .discriminatedUnion('protocol', [
+    z.object({
+      protocol: z.literal('plaintext'),
+    }),
+    z.object({
+      protocol: z.literal('sasl_ssl'),
+      mechanism: z.enum(['scram-sha-256', 'scram-sha-512']),
+      secretRefs: z.object({
+        username: z.string().min(1),
+        password: z.string().min(1),
+      }),
+    }),
+  ])
   .optional();
 
 export const EventBusConfigSchema = z.object({

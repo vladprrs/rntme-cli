@@ -14,6 +14,38 @@ describe('buildProjectDeploymentConfig', () => {
     });
   });
 
+  it('preserves sasl_ssl security mechanism and secret refs', () => {
+    const config = buildProjectDeploymentConfig(
+      {
+        ...target(),
+        eventBus: {
+          kind: 'kafka',
+          mode: 'external',
+          brokers: ['redpanda.example.com:9092'],
+          security: {
+            protocol: 'sasl_ssl',
+            mechanism: 'scram-sha-512',
+            secretRefs: {
+              username: 'redpanda-username',
+              password: 'redpanda-password',
+            },
+          },
+        },
+      },
+      'acme',
+      {},
+    );
+
+    expect(config.eventBus?.security).toEqual({
+      protocol: 'sasl_ssl',
+      mechanism: 'scram-sha-512',
+      secretRefs: {
+        username: 'redpanda-username',
+        password: 'redpanda-password',
+      },
+    });
+  });
+
   it('maps integrationModuleImages to module image config and merges policy overrides', () => {
     const config = buildProjectDeploymentConfig(target(), 'acme', {
       integrationModuleImages: { stripe: 'registry/stripe:1' },

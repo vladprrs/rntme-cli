@@ -38,16 +38,7 @@ export function buildProjectDeploymentConfig(
     mode: target.eventBus.mode ?? 'external',
     brokers: target.eventBus.brokers,
     ...(target.eventBus.topicPrefix === undefined ? {} : { topicPrefix: target.eventBus.topicPrefix }),
-    ...(target.eventBus.security === undefined
-      ? {}
-      : {
-          security: {
-            protocol: target.eventBus.security.protocol,
-            ...(target.eventBus.security.secretRefs === undefined
-              ? {}
-              : { secretRefs: target.eventBus.security.secretRefs }),
-          },
-        }),
+    ...(target.eventBus.security === undefined ? {} : { security: target.eventBus.security }),
   };
 
   return {
