@@ -5,7 +5,7 @@ import { requestId } from './middleware/request-id.js';
 import { loggerMiddleware } from './middleware/logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { corsMiddleware } from './middleware/cors.js';
-import { rateLimit, InMemoryRateLimiter } from './middleware/rate-limit.js';
+import { rateLimit, PostgresRateLimiter } from './middleware/rate-limit.js';
 import { bodyLimit } from './middleware/body-limit.js';
 import { requireAuth } from './middleware/auth.js';
 import { openOrgScopedTx } from './middleware/tx.js';
@@ -183,7 +183,7 @@ export function createApp(deps: AppDeps): Hono {
     }),
   );
 
-  const rateLimiter = new InMemoryRateLimiter({ windowMs: 60_000, max: 1000 });
+  const rateLimiter = new PostgresRateLimiter({ db: deps.pool, windowMs: 60_000, max: 1000 });
   const authed = new Hono()
     .use('*', requireAuth([apiTokenProvider, workosProvider], { sessionCookieDomain: deps.env.PLATFORM_SESSION_COOKIE_DOMAIN }))
     .use('*', rateLimit(rateLimiter, (c) => c.get('subject').tokenId ?? c.get('subject').account.id))

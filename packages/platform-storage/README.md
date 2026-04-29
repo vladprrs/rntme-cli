@@ -16,3 +16,17 @@ Deploy targets and deployment records live in Postgres with tenant RLS:
 `AesGcmSecretCipher.fromEnv(env)` reads `PLATFORM_SECRET_ENCRYPTION_KEY`
 (64 hex chars) and implements the `SecretCipher` seam from
 `@rntme-cli/platform-core`.
+
+For key rotation, construct a key ring with the new current key and any retained
+previous keys:
+
+```ts
+const cipher = AesGcmSecretCipher.fromKeyRing({
+  current: { version: 2, keyHex: process.env.PLATFORM_SECRET_ENCRYPTION_KEY_V2! },
+  previous: [{ version: 1, keyHex: process.env.PLATFORM_SECRET_ENCRYPTION_KEY_V1! }],
+});
+```
+
+New secrets are encrypted with `current.version`; decrypt selects the key by the
+stored `keyVersion`. Keep previous keys configured until every stored secret has
+been re-encrypted with the current version.
