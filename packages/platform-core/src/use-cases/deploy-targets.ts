@@ -43,6 +43,8 @@ export async function createDeployTarget(
       apiTokenNonce: encrypted.value.nonce,
       apiTokenKeyVersion: encrypted.value.keyVersion,
       eventBusConfig: input.req.eventBus,
+      modules: input.req.modules,
+      auth: input.req.auth,
       policyValues: input.req.policyValues,
       isDefault: input.req.isDefault,
     },
@@ -69,6 +71,8 @@ export async function updateDeployTarget(
     patch.allowCreateProject = input.patch.allowCreateProject;
   }
   if (input.patch.eventBus !== undefined) patch.eventBusConfig = input.patch.eventBus;
+  if (input.patch.modules !== undefined) patch.modules = input.patch.modules;
+  if (input.patch.auth !== undefined) patch.auth = input.patch.auth;
   if (input.patch.policyValues !== undefined) patch.policyValues = input.patch.policyValues;
   if (input.patch.isDefault !== undefined) patch.isDefault = input.patch.isDefault;
 

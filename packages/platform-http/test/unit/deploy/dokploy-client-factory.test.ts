@@ -237,6 +237,8 @@ function target(): DeployTargetWithSecret {
     dokployProjectName: null,
     allowCreateProject: false,
     eventBus: { kind: 'kafka', brokers: ['redpanda:9092'] },
+    modules: {},
+    auth: {},
     policyValues: {},
     isDefault: true,
     createdAt: new Date('2026-01-01T00:00:00Z'),

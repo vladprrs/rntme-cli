@@ -74,6 +74,13 @@ d('PgDeployTargetRepo', () => {
       apiTokenRedacted: '***',
       isDefault: true,
       eventBus: EVENT_BUS,
+      modules: {
+        'identity-auth0': {
+          image: 'identity-auth0:test',
+          env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+        },
+      },
+      auth: { auth0: { clientId: 'public-client-id' } },
       policyValues: POLICY_VALUES,
     });
     expect(Object.keys(created.value)).not.toContain('apiTokenCiphertext');
@@ -107,6 +114,8 @@ d('PgDeployTargetRepo', () => {
           dokployProjectName: null,
           allowCreateProject: false,
           eventBusConfig: { ...EVENT_BUS, topicPrefix: 'eu' },
+          modules: { stripe: { image: 'stripe:test' } },
+          auth: { auth0: { clientId: 'updated-public-client-id' } },
           policyValues: { deploy: { maxServices: 20 } },
         },
         auditActorAccountId: accountId,
@@ -125,6 +134,8 @@ d('PgDeployTargetRepo', () => {
       allowCreateProject: false,
       apiTokenRedacted: '***',
       eventBus: { ...EVENT_BUS, topicPrefix: 'eu' },
+      modules: { stripe: { image: 'stripe:test' } },
+      auth: { auth0: { clientId: 'updated-public-client-id' } },
       policyValues: { deploy: { maxServices: 20 } },
     });
 
@@ -340,6 +351,13 @@ d('PgDeployTargetRepo', () => {
       apiTokenNonce: Buffer.from('nonce-v1'),
       apiTokenKeyVersion: 1,
       eventBusConfig: EVENT_BUS,
+      modules: {
+        'identity-auth0': {
+          image: 'identity-auth0:test',
+          env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+        },
+      },
+      auth: { auth0: { clientId: 'public-client-id' } },
       policyValues: POLICY_VALUES,
       isDefault: overrides.isDefault ?? false,
     };

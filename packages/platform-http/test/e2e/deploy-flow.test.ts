@@ -81,6 +81,13 @@ describe.skipIf(!e2eContainersAvailable())('deploy flow', () => {
           mode: 'external',
           brokers: ['redpanda:9092'],
         },
+        modules: {
+          'identity-auth0': {
+            image: 'identity-auth0:test',
+            env: { AUTH0_DOMAIN: 'tenant.us.auth0.com' },
+          },
+        },
+        auth: { auth0: { clientId: 'public-client-id' } },
         policyValues: {
           requestContext: {
             default: {
