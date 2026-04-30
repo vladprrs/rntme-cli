@@ -132,10 +132,10 @@ describe('runDeployment', () => {
       {
         name: 'identity-auth0',
         grpc: { address: 'identity-auth0:50051' },
-        protoPath: 'protos/identity-auth0.proto',
+        protoPath: 'identity-auth0.proto',
       },
     ]);
-    expect(input.services.api.runtimeFiles['protos/identity-auth0.proto']).toContain(
+    expect(input.services.api.runtimeFiles['identity-auth0.proto']).toContain(
       'rpc IntrospectSession(IntrospectSessionRequest) returns (Session);',
     );
   });

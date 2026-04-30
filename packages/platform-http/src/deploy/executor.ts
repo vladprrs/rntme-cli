@@ -375,7 +375,7 @@ function runtimeModulesForService(
   return [...slugs].sort().map((slug) => ({
     name: slug,
     grpc: { address: `${slug}:50051` },
-    protoPath: `protos/${slug}.proto`,
+    protoPath: `${slug}.proto`,
   }));
 }
 
