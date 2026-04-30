@@ -103,6 +103,40 @@ describe('runDeployment', () => {
     );
   });
 
+  it('declares auth module manifests and proto files for mounted domain services', async () => {
+    const planProject = vi.fn(() =>
+      ok({
+        project: { orgSlug: 'acme', projectSlug: 'shop', environment: 'default' as const, mode: 'preview' as const },
+        infrastructure: { eventBus: { kind: 'kafka' as const, mode: 'external' as const, brokers: ['redpanda:9092'] } },
+        workloads: [],
+        edge: { routes: [], middleware: [] },
+        diagnostics: { warnings: [] },
+      }),
+    );
+    const { deps } = setup({
+      loadComposed: () => ({ ok: true, value: composedBlueprintWithAuthModule() }),
+      planProject: planProject as never,
+    });
+
+    await runDeployment('deployment-1', 'org-1', deps);
+
+    const input = planProject.mock.calls[0]![0] as { services: { api: { runtimeFiles: Record<string, string> } } };
+    const manifest = JSON.parse(input.services.api.runtimeFiles['manifest.json']!) as {
+      modules?: Array<{ name: string; grpc: { address: string }; protoPath: string }>;
+    };
+
+    expect(manifest.modules).toEqual([
+      {
+        name: 'identity-auth0',
+        grpc: { address: 'identity-auth0:50051' },
+        protoPath: 'protos/identity-auth0.proto',
+      },
+    ]);
+    expect(input.services.api.runtimeFiles['protos/identity-auth0.proto']).toContain(
+      'rpc IntrospectSession(IntrospectSessionRequest) returns (Session);',
+    );
+  });
+
   it('derives a wildcard public app URL from org, project, and environment for legacy targets', async () => {
     const renderPlan = vi.fn(() =>
       ok({
@@ -290,6 +324,42 @@ function composedBlueprint(): ComposedBlueprint {
         qsmValidated: { projections: {}, relations: {} } as never,
         bindings: { artifact: { version: '1.0', bindings: {} }, resolved: {} } as never,
         seed: { events: [] } as never,
+        compiledUi: null,
+        eventTypes: [],
+      },
+    },
+  };
+}
+
+function composedBlueprintWithAuthModule(): ComposedBlueprint {
+  const base = composedBlueprint();
+  return {
+    ...base,
+    project: {
+      name: 'shop',
+      services: ['api', 'identity-auth0'],
+      routes: { http: { '/api': 'api' }, ui: { '/': 'api' } },
+      middleware: {
+        auth: {
+          kind: 'auth',
+          provider: 'auth0',
+          audience: 'https://shop.example.test/api',
+          moduleSlug: 'identity-auth0',
+        },
+      },
+      mounts: [{ target: 'http:/api', use: ['auth'] }],
+    },
+    services: {
+      ...base.services,
+      'identity-auth0': {
+        slug: 'identity-auth0',
+        kind: 'integration-module',
+        qsm: null,
+        artifacts: { hasGraphs: false, hasBindings: false, hasUi: false, hasSeed: false, hasQsm: false },
+        graphSpec: null,
+        qsmValidated: null,
+        bindings: null,
+        seed: null,
         compiledUi: null,
         eventTypes: [],
       },
