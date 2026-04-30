@@ -9,6 +9,7 @@ export type DokployProjectRef = RenderedDokployProject;
 export type DokployApplication = {
   readonly id: string;
   readonly name: string;
+  readonly appName?: string;
   readonly image?: string;
   readonly build?: RenderedDokployResource['build'];
   readonly ports?: RenderedDokployResource['ports'];

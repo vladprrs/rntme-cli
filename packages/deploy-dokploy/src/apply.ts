@@ -38,6 +38,11 @@ export async function applyDokployPlan(
   client: DokployClient,
 ): Promise<Result<DeploymentApplyResult, DokployDeploymentError>> {
   const applied: DeploymentApplyResource[] = [];
+  const prepared: Array<{
+    readonly resource: RenderedDokployResource;
+    readonly target: DokployApplication;
+    readonly created: boolean;
+  }> = [];
 
   try {
     const { environmentId } = await client.ensureEnvironment(rendered.targetProject, rendered.deployment.environment);
@@ -48,25 +53,38 @@ export async function applyDokployPlan(
 
       const existing = existingResult.value;
       if (existing === null) {
-        const createResult = await createApplication(client, environmentId, resource, applied);
+        const createResult = await createApplicationTarget(client, environmentId, resource, applied);
         if (!createResult.ok) return createResult;
-        const lifecycleResult = await runApplicationLifecycle(client, createResult.value, resource, [
-          ...applied,
-          createResult.value,
-        ]);
-        if (!lifecycleResult.ok) return lifecycleResult;
-        applied.push(createResult.value);
-      } else if (resourceMatches(existing, resource)) {
-        applied.push(appliedResource(resource, existing, 'unchanged'));
+        prepared.push({ resource, target: createResult.value, created: true });
       } else {
-        const updateResult = await updateApplication(client, existing.id, resource, applied);
-        if (!updateResult.ok) return updateResult;
-        const lifecycleResult = await runApplicationLifecycle(client, updateResult.value, resource, [
+        prepared.push({ resource, target: existing, created: false });
+      }
+    }
+
+    const networkNames = networkNameMap(prepared);
+
+    for (const item of prepared) {
+      const resource = resolveNetworkReferences(item.resource, networkNames);
+      if (item.created) {
+        const created = appliedResource(resource, item.target, 'created');
+        const lifecycleResult = await runApplicationLifecycle(client, created, resource, [
           ...applied,
-          updateResult.value,
+          created,
         ]);
         if (!lifecycleResult.ok) return lifecycleResult;
-        applied.push(updateResult.value);
+        applied.push(created);
+      } else if (resourceMatches(item.target, resource)) {
+        applied.push(appliedResource(resource, item.target, 'unchanged'));
+      } else {
+        const updateResult = await updateApplicationTarget(client, item.target.id, resource, applied);
+        if (!updateResult.ok) return updateResult;
+        const updated = appliedResource(resource, updateResult.value, 'updated');
+        const lifecycleResult = await runApplicationLifecycle(client, updated, resource, [
+          ...applied,
+          updated,
+        ]);
+        if (!lifecycleResult.ok) return lifecycleResult;
+        applied.push(updated);
       }
     }
 
@@ -103,29 +121,27 @@ async function findExistingApplication(
   }
 }
 
-async function createApplication(
+async function createApplicationTarget(
   client: DokployClient,
   environmentId: string,
   resource: RenderedDokployResource,
   applied: readonly DeploymentApplyResource[],
-): Promise<Result<DeploymentApplyResource, DokployDeploymentError>> {
+): Promise<Result<DokployApplication, DokployDeploymentError>> {
   try {
-    const target = await client.createApplication(environmentId, resource);
-    return ok(appliedResource(resource, target, 'created'));
+    return ok(await client.createApplication(environmentId, resource));
   } catch (cause) {
     return partialFailure(cause, resource, applied, 'create');
   }
 }
 
-async function updateApplication(
+async function updateApplicationTarget(
   client: DokployClient,
   applicationId: string,
   resource: RenderedDokployResource,
   applied: readonly DeploymentApplyResource[],
-): Promise<Result<DeploymentApplyResource, DokployDeploymentError>> {
+): Promise<Result<DokployApplication, DokployDeploymentError>> {
   try {
-    const target = await client.updateApplication(applicationId, resource);
-    return ok(appliedResource(resource, target, 'updated'));
+    return ok(await client.updateApplication(applicationId, resource));
   } catch (cause) {
     return partialFailure(cause, resource, applied, 'update');
   }
@@ -165,6 +181,53 @@ function appliedResource(
     targetResourceName: target.name,
     action,
   };
+}
+
+function networkNameMap(
+  prepared: readonly {
+    readonly resource: RenderedDokployResource;
+    readonly target: DokployApplication;
+  }[],
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    prepared.map(({ resource, target }) => [resource.name, target.appName ?? target.name]),
+  );
+}
+
+function resolveNetworkReferences(
+  resource: RenderedDokployResource,
+  networkNames: Readonly<Record<string, string>>,
+): RenderedDokployResource {
+  return {
+    ...resource,
+    env: resource.env.map((item) => ({
+      ...item,
+      value: replaceNetworkNames(item.value, networkNames),
+    })),
+    ...(resource.files === undefined
+      ? {}
+      : {
+          files: Object.fromEntries(
+            Object.entries(resource.files).map(([path, content]) => [
+              path,
+              replaceNetworkNames(content, networkNames),
+            ]),
+          ),
+        }),
+  };
+}
+
+function replaceNetworkNames(
+  input: string,
+  networkNames: Readonly<Record<string, string>>,
+): string {
+  let output = input;
+  for (const [resourceName, networkName] of Object.entries(networkNames).sort(
+    ([a], [b]) => b.length - a.length,
+  )) {
+    output = output.split(resourceName).join(networkName);
+  }
+  return output;
 }
 
 function partialFailure(
