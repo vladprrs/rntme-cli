@@ -120,7 +120,10 @@ describe('runDeployment', () => {
 
     await runDeployment('deployment-1', 'org-1', deps);
 
-    const input = planProject.mock.calls[0]![0] as { services: { api: { runtimeFiles: Record<string, string> } } };
+    const calls = planProject.mock.calls as unknown as Array<
+      [{ services: { api: { runtimeFiles: Record<string, string> } } }, unknown]
+    >;
+    const input = calls[0]![0];
     const manifest = JSON.parse(input.services.api.runtimeFiles['manifest.json']!) as {
       modules?: Array<{ name: string; grpc: { address: string }; protoPath: string }>;
     };
