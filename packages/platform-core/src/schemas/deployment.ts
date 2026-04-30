@@ -35,6 +35,7 @@ export const StartDeploymentRequestSchema = z.object({
     .object({
       integrationModuleImages: z.record(z.string(), z.string()).optional(),
       policyOverrides: z.record(z.string(), z.unknown()).optional(),
+      runtimeImage: z.string().min(1).optional(),
     })
     .default({}),
 });

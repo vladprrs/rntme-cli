@@ -59,8 +59,10 @@ describe('buildProjectDeploymentConfig', () => {
     }, 'acme', {
       integrationModuleImages: { stripe: 'registry/stripe:1' },
       policyOverrides: { timeout: { edge: { upstreamTimeoutMs: 1000 } } },
+      runtimeImage: 'ghcr.io/acme/rntme-runtime:rnt-364',
     });
 
+    expect(config.runtimeImage).toBe('ghcr.io/acme/rntme-runtime:rnt-364');
     expect(config.modules).toEqual({
       'identity-auth0': {
         image: 'registry/identity-auth0:1',

@@ -32,8 +32,12 @@ describe('StartDeploymentRequestSchema', () => {
     const parsed = StartDeploymentRequestSchema.safeParse({
       projectVersionSeq: 1,
       targetSlug: 'dokploy-staging',
-      configOverrides: { integrationModuleImages: { 'mod-x': 'r/mod-x:1' } },
+      configOverrides: {
+        integrationModuleImages: { 'mod-x': 'r/mod-x:1' },
+        runtimeImage: 'ghcr.io/acme/rntme-runtime:rnt-364',
+      },
     });
     expect(parsed.success).toBe(true);
+    expect(parsed.data?.configOverrides.runtimeImage).toBe('ghcr.io/acme/rntme-runtime:rnt-364');
   });
 });
