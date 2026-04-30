@@ -24,6 +24,7 @@ export type DomainServiceWorkload = {
   readonly runtime: { readonly image: string };
   readonly artifact: { readonly source: 'composed-project'; readonly serviceSlug: string };
   readonly runtimeFiles: Readonly<Record<string, string>>;
+  readonly publicConfigJson: string;
   readonly persistence: { readonly mode: 'ephemeral' };
 };
 
@@ -154,6 +155,7 @@ function buildWorkloads(
         runtime: { image: runtimeImage },
         artifact: { source: 'composed-project', serviceSlug: service.slug },
         runtimeFiles: service.runtimeFiles ?? {},
+        publicConfigJson: project.publicConfigJson ?? '{}',
         persistence: { mode: 'ephemeral' },
       });
       continue;

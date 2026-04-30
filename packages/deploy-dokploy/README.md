@@ -44,8 +44,10 @@ When `kind: "auth"` middleware is mounted on a domain-service route, render
 adds `RNTME_AUTH_PROVIDER`, `RNTME_AUTH_AUDIENCE`, `RNTME_AUTH_MODULE_SLUG`,
 and `RNTME_AUTH_MODULE_ENDPOINT=<module-resource>:50051` to that domain
 service. It also generates public `/srv/config.json` with Auth0 `domain`,
-`clientId`, `audience`, `redirectUri`, and runtime `manifestUrl`. The file must
-contain only public SPA values.
+`clientId`, `audience`, and `redirectUri` from the composed blueprint
+`publicConfigJson` sidecar, keyed by module package name. The file must contain
+only public SPA values. The same sidecar is mounted into the edge gateway, and
+Nginx serves browser `GET /config.json` directly from that mounted file.
 
 Nginx deliberately does not validate JWTs. Auth middleware renders comments in
 the location block only; enforcement is delegated to runtime pre-step calls into

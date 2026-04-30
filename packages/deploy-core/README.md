@@ -18,7 +18,7 @@ to a target adapter.
 - `buildProjectDeploymentPlan(project, config)` — creates a preview deployment
   plan or returns `DEPLOY_PLAN_*` errors.
 - `ProjectDeploymentConfig` — org/environment/mode, external event bus,
-  integration module image config, auth public config, and policy values.
+  integration module image config, backend auth config, and policy values.
 - `ComposedProjectInput` — deploy-relevant structural subset of the composed
   project model.
 
@@ -43,8 +43,8 @@ Edge middleware supports `kind: "auth"` as a runtime marker:
 ```
 
 The matching integration module workload must exist, and Auth0 modules must
-carry non-empty `AUTH0_DOMAIN` env. Auth0 middleware also requires
-`config.auth.auth0.clientId` so target renderers can generate public SPA config.
+carry non-empty `AUTH0_DOMAIN` env. Public SPA config comes from the composed
+project `publicConfigJson` sidecar, not from deployment auth settings.
 
 ## Where to look first
 

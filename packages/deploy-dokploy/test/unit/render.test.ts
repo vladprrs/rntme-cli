@@ -19,6 +19,7 @@ const plan: ProjectDeploymentPlan = {
         'manifest.json': '{"service":{"name":"catalog"}}',
         'graphs/listCatalog.json': '{"id":"listCatalog"}',
       },
+      publicConfigJson: '{}',
       persistence: { mode: 'ephemeral' },
     },
     {
@@ -72,6 +73,7 @@ describe('renderDokployPlan', () => {
       files: {
         '/srv/artifacts/graphs/listCatalog.json': '{"id":"listCatalog"}',
         '/srv/artifacts/manifest.json': '{"service":{"name":"catalog"}}',
+        '/srv/config.json': '{}',
       },
     });
     expect(r.value.resources[0]).not.toHaveProperty('build');
@@ -102,6 +104,9 @@ describe('renderDokployPlan', () => {
     expect(r.value.resources[1]).toMatchObject({
       kind: 'application',
       workloadKind: 'edge-gateway',
+      files: {
+        '/srv/config.json': '{}',
+      },
       ports: [{ containerPort: 8080, protocol: 'http' }],
       ingress: {
         publicBaseUrl: 'https://commerce.example.com',
@@ -177,6 +182,7 @@ describe('renderDokployPlan', () => {
             runtime: { image: 'rntme-runtime' },
             artifact: { source: 'composed-project', serviceSlug: 'catalog' },
             runtimeFiles: {},
+            publicConfigJson: '{}',
             persistence: { mode: 'ephemeral' },
           },
           {
@@ -304,7 +310,15 @@ describe('renderDokployPlan', () => {
     });
   });
 
-  it('renders SASL event bus env, auth env, and public Auth0 config for authed domain workloads', () => {
+  it('renders SASL event bus env, auth env, and composed public config for authed domain workloads', () => {
+    const publicConfig = {
+      '@rntme/identity-auth0': {
+        domain: 'tenant.us.auth0.com',
+        clientId: 'auth0-public-client-id',
+        audience: 'https://commerce.example.com/api',
+        redirectUri: 'https://commerce.example.com',
+      },
+    };
     const authPlan: ProjectDeploymentPlan = {
       ...plan,
       infrastructure: {
@@ -337,6 +351,7 @@ describe('renderDokployPlan', () => {
           runtime: { image: 'rntme-runtime' },
           artifact: { source: 'composed-project', serviceSlug: 'app' },
           runtimeFiles: { 'manifest.json': '{"service":{"name":"app"}}' },
+          publicConfigJson: JSON.stringify(publicConfig),
           persistence: { mode: 'ephemeral' },
         },
         {
@@ -416,17 +431,12 @@ describe('renderDokployPlan', () => {
     expect(JSON.stringify(app?.env)).not.toContain('scram-password');
 
     expect(app?.files?.['/srv/config.json']).toBeDefined();
-    expect(JSON.parse(app?.files?.['/srv/config.json'] ?? '{}')).toEqual({
-      auth0: {
-        domain: 'tenant.us.auth0.com',
-        clientId: 'auth0-public-client-id',
-        audience: 'https://commerce.example.com/api',
-        redirectUri: 'https://commerce.example.com',
-      },
-      runtime: {
-        manifestUrl: '/api/manifest',
-      },
-    });
+    expect(JSON.parse(app?.files?.['/srv/config.json'] ?? '{}')).toEqual(publicConfig);
+    expect(JSON.parse(app?.files?.['/srv/config.json'] ?? '{}')).not.toHaveProperty('auth0');
+    expect(JSON.parse(app?.files?.['/srv/config.json'] ?? '{}')).not.toHaveProperty('runtime');
+
+    const edge = r.value.resources.find((resource) => resource.workloadKind === 'edge-gateway');
+    expect(JSON.parse(edge?.files?.['/srv/config.json'] ?? '{}')).toEqual(publicConfig);
   });
 
   it('rejects target resource name collisions after normalization', () => {
@@ -442,6 +452,7 @@ describe('renderDokployPlan', () => {
             runtime: { image: 'rntme-runtime' },
             artifact: { source: 'composed-project', serviceSlug: 'billing-api' },
             runtimeFiles: { 'manifest.json': '{}' },
+            publicConfigJson: '{}',
             persistence: { mode: 'ephemeral' },
           },
           {
@@ -452,6 +463,7 @@ describe('renderDokployPlan', () => {
             runtime: { image: 'rntme-runtime' },
             artifact: { source: 'composed-project', serviceSlug: 'billing_api' },
             runtimeFiles: { 'manifest.json': '{}' },
+            publicConfigJson: '{}',
             persistence: { mode: 'ephemeral' },
           },
           {

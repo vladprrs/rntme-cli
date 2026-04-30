@@ -80,27 +80,41 @@ describe('runDeployment', () => {
 
     await runDeployment('deployment-1', 'org-1', deps);
 
-    expect(planProject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        services: {
-          api: expect.objectContaining({
-            slug: 'api',
-            kind: 'domain',
-            runtimeFiles: expect.objectContaining({
-              'bindings.json': expect.stringContaining('"bindings"'),
-              'graphs/listNotes.json': expect.stringContaining('"listNotes"'),
-              'manifest.json': expect.stringContaining('"service"'),
-              'pdm.json': expect.stringContaining('"entities"'),
-              'qsm.json': expect.stringContaining('"projections"'),
-              'seed.json': expect.stringContaining('"seed-1"'),
-              'shapes.json': expect.stringContaining('"NoteView"'),
-              'ui/manifest.json': expect.stringContaining('"2.0"'),
-            }),
-          }),
-        },
-      }),
-      expect.any(Object),
-    );
+    expect(planProject).toHaveBeenCalledTimes(1);
+    const calls = planProject.mock.calls as unknown as Array<[{
+      publicConfigJson?: string | null;
+      services: { api: { runtimeFiles: Record<string, string> } };
+    }, unknown]>;
+    const input = calls[0]![0];
+    const runtimeFiles = input.services.api.runtimeFiles;
+    expect(input.publicConfigJson).toContain('"clientId":"target-spa-client"');
+    expect(input.publicConfigJson).not.toContain('${AUTH0_SPA_CLIENT_ID}');
+    expect(runtimeFiles['bindings.json']).toContain('"bindings"');
+    expect(runtimeFiles['graphs/listNotes.json']).toContain('"listNotes"');
+    expect(runtimeFiles['manifest.json']).toContain('"service"');
+    expect(runtimeFiles['pdm.json']).toContain('"entities"');
+    expect(runtimeFiles['qsm.json']).toContain('"projections"');
+    expect(runtimeFiles['seed.json']).toContain('"seed-1"');
+    expect(runtimeFiles['shapes.json']).toContain('"NoteView"');
+    expect(runtimeFiles['ui/manifest.json']).toContain('"2.0"');
+    expect(runtimeFiles['ui-build/main.css']).toEqual(expect.any(String));
+    expect(runtimeFiles['ui-build/main.js']).toContain('hydrateApp');
+    expect(runtimeFiles['ui-build/main.js']).toContain('Auth0Client');
+  });
+
+  it('fails deployment when auth0 public config placeholder has no target client id', async () => {
+    const { deps, deployments } = setup({
+      loadComposed: () => ({ ok: true, value: composedBlueprint() }),
+      targetAuth: {},
+    });
+
+    await runDeployment('deployment-1', 'org-1', deps);
+
+    expect(deployments.finalize).toHaveBeenCalledWith('deployment-1', {
+      status: 'failed',
+      errorCode: 'DEPLOY_EXECUTOR_UNCAUGHT',
+      errorMessage: 'AUTH0_SPA_CLIENT_ID deploy target auth.auth0.clientId is required',
+    });
   });
 
   it('declares auth module manifests and proto files for mounted domain services', async () => {
@@ -174,6 +188,7 @@ function setup(
     planProject?: ExecutorDeps['planProject'];
     renderPlan?: ExecutorDeps['renderPlan'];
     targetPublicBaseUrl?: string | null;
+    targetAuth?: { auth0?: { clientId: string } };
     verificationReport?: { checks: never[] | [{ name: string; url: string; status: number; latencyMs: number; ok: boolean }]; ok: boolean; partialOk: boolean };
   } = {},
 ) {
@@ -257,7 +272,7 @@ function setup(
         allowCreateProject: false,
         eventBus: { kind: 'kafka' as const, brokers: ['redpanda:9092'] },
         modules: {},
-        auth: {},
+        auth: overrides.targetAuth ?? { auth0: { clientId: 'target-spa-client' } },
         policyValues: {},
         isDefault: true,
         createdAt: new Date(),
@@ -310,6 +325,13 @@ function setup(
 function composedBlueprint(): ComposedBlueprint {
   return {
     project: { name: 'shop', services: ['api'], routes: { ui: { '/': 'api' } } },
+    publicConfigJson: '{"@rntme/identity-auth0":{"domain":"tenant.us.auth0.com","clientId":"${AUTH0_SPA_CLIENT_ID}","audience":"https://shop.example.test/api","redirectUri":"https://shop.example.test/"}}',
+    virtualEntrySource: [
+      '// test virtual entry',
+      "import { hydrateApp } from '@rntme/ui-runtime/client';",
+      "import * as identityAuth0 from '@rntme/identity-auth0/client';",
+      "void hydrateApp({ rootSelector: '#root', modules: [{ name: '@rntme/identity-auth0', boot: identityAuth0.boot }] });",
+    ].join('\n'),
     pdm: { entities: {} } as never,
     routing: { httpBaseByService: {}, uiPathsByService: {} },
     bindingRegistry: {},

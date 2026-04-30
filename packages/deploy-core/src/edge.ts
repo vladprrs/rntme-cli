@@ -219,15 +219,6 @@ function planMiddleware(
             });
             continue;
           }
-          if (!isNonEmptyString(config.auth?.auth0?.clientId)) {
-            errors.push({
-              code: 'DEPLOY_PLAN_AUTH_CLIENT_ID_MISSING',
-              message: 'auth0 middleware requires auth.auth0.clientId for generated public config',
-              middleware: middlewareName,
-              path: 'auth.auth0.clientId',
-            });
-            continue;
-          }
         }
 
         planned.push({
