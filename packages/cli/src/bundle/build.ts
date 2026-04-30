@@ -28,9 +28,7 @@ export function buildProjectBundle(folder: string): Result<BuiltProjectBundle, C
 
   const bundleFiles: Record<string, unknown> = {};
   for (const relPath of files.value) {
-    if (!relPath.endsWith('.json')) {
-      return err(cliError('CLI_CONFIG_INVALID', `project bundles may only contain JSON files: ${relPath}`));
-    }
+    if (!relPath.endsWith('.json')) continue;
     try {
       bundleFiles[relPath] = JSON.parse(readFileSync(resolve(root, relPath), 'utf8'));
     } catch (cause) {
