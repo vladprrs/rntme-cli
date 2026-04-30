@@ -51,15 +51,16 @@ describe('buildProjectBundle', () => {
     });
   });
 
-  it('rejects non-JSON files inside the project folder', () => {
+  it('ignores non-JSON support files inside the project folder', () => {
     withTmp((dir) => {
-      writeFileSync(join(dir, 'project.json'), '{}');
+      writeFileSync(join(dir, 'project.json'), JSON.stringify({ services: [], name: 'demo' }));
       writeFileSync(join(dir, 'README.md'), '# demo');
 
       const result = buildProjectBundle(dir);
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error.message).toContain('README.md');
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(Object.keys(result.value.bundle.files)).toEqual(['project.json']);
     });
   });
 });

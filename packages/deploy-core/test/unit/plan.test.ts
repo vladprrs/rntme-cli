@@ -57,7 +57,7 @@ describe('buildProjectDeploymentPlan', () => {
       'edge',
     ]);
     expect(r.value.workloads.find((w) => w.kind === 'domain-service' && w.slug === 'catalog')).toMatchObject({
-      runtime: { image: 'rntme-runtime' },
+      runtime: { image: 'ghcr.io/vladprrs/rntme-runtime:latest' },
       runtimeFiles: { 'manifest.json': '{}' },
       persistence: { mode: 'ephemeral' },
     });
