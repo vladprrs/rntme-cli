@@ -114,12 +114,16 @@ export function createDokployClientFactory(
         return toDokployApplication(app);
       },
       updateApplication: async (applicationId: string, resource: RenderedDokployResource) => {
-        const app = await request<DokployApiApplication>('POST', '/api/application.update', {
+        const app = await request<DokployApiApplication | boolean>('POST', '/api/application.update', {
           applicationId,
           name: resource.name,
           appName: resource.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 63),
           description: `Managed by rntme-cli`,
         });
+        if (typeof app !== 'object' || app === null || app.applicationId === undefined || app.applicationId === '') {
+          const updated = await request<DokployApiApplication>('GET', '/api/application.one', { applicationId });
+          return toDokployApplication(updated);
+        }
         return toDokployApplication(app);
       },
       configureApplication: async (applicationId: string, resource: RenderedDokployResource) => {

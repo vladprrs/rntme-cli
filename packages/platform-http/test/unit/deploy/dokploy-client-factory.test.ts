@@ -187,6 +187,28 @@ describe('createDokployClientFactory', () => {
     });
   });
 
+  it('looks up updated applications when Dokploy update returns a boolean ack', async () => {
+    const fetcher = vi.fn(async (url: string | URL | Request) => {
+      if (String(url).includes('/api/application.update')) return jsonResponse(true);
+      if (String(url).includes('/api/application.one')) {
+        return jsonResponse({ applicationId: 'app-1', name: 'rntme-acme-notes-edge', dockerImage: 'nginx' });
+      }
+      return jsonResponse({});
+    });
+    const cipher: SecretCipher = {
+      encrypt: vi.fn(),
+      decrypt: vi.fn(() => 'plain-token'),
+    };
+
+    const client = createDokployClientFactory(cipher, fetcher as typeof globalThis.fetch)(target());
+    await expect(client.updateApplication('app-1', renderedEdgeResource())).resolves.toMatchObject({
+      id: 'app-1',
+      name: 'rntme-acme-notes-edge',
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(String(fetcher.mock.calls[1]?.[0])).toContain('/api/application.one?applicationId=app-1');
+  });
+
   it('runs the configure/deploy/start lifecycle against the e2e Dokploy mock', async () => {
     const mock = createMockDokployApp();
     const cipher: SecretCipher = {
