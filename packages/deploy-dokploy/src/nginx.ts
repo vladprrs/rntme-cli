@@ -26,11 +26,21 @@ export function renderNginxConfig(
     '  server {',
     '    listen 8080;',
     '    location = /health { return 200 "ok\\n"; }',
+    ...renderConfigLocation(),
     ...locations,
     '  }',
     '}',
     '',
   ].join('\n');
+}
+
+function renderConfigLocation(): string[] {
+  return [
+    '    location = /config.json {',
+    '      default_type application/json;',
+    '      alias /srv/config.json;',
+    '    }',
+  ];
 }
 
 function renderLocation(

@@ -28,6 +28,7 @@ export type ProjectMountDecl = {
 export type ComposedProjectInput = {
   readonly name: string;
   readonly services: Readonly<Record<string, ComposedProjectService>>;
+  readonly publicConfigJson?: string | null;
   readonly routes?: ProjectRouteMap;
   readonly middleware?: Readonly<Record<string, ProjectMiddlewareDecl>>;
   readonly mounts?: readonly ProjectMountDecl[];

@@ -38,7 +38,14 @@ const previewConfig: ProjectDeploymentConfig = {
 
 describe('buildProjectDeploymentPlan', () => {
   it('builds preview workloads for domain services, integration modules, and edge', () => {
-    const r = buildProjectDeploymentPlan(project, previewConfig);
+    const r = buildProjectDeploymentPlan(
+      {
+        ...project,
+        publicConfigJson:
+          '{"@rntme/identity-auth0":{"domain":"tenant.us.auth0.com","clientId":"spa-client","audience":"https://commerce.example.com/api","redirectUri":"https://commerce.example.com"}}',
+      },
+      previewConfig,
+    );
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -59,12 +66,31 @@ describe('buildProjectDeploymentPlan', () => {
     expect(r.value.workloads.find((w) => w.kind === 'domain-service' && w.slug === 'catalog')).toMatchObject({
       runtime: { image: 'ghcr.io/vladprrs/rntme-runtime:latest' },
       runtimeFiles: { 'manifest.json': '{}' },
+      publicConfigJson:
+        '{"@rntme/identity-auth0":{"domain":"tenant.us.auth0.com","clientId":"spa-client","audience":"https://commerce.example.com/api","redirectUri":"https://commerce.example.com"}}',
       persistence: { mode: 'ephemeral' },
     });
     expect(r.value.workloads.find((w) => w.kind === 'integration-module')).toMatchObject({
       slug: 'mod-workos',
       image: 'ghcr.io/acme/mod-workos:2026-04-24',
       expose: false,
+    });
+  });
+
+  it('defaults the public config sidecar to an empty object when the composed project has none', () => {
+    const r = buildProjectDeploymentPlan(
+      {
+        ...project,
+        publicConfigJson: null,
+      },
+      previewConfig,
+    );
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.workloads.find((w) => w.kind === 'domain-service' && w.slug === 'app')).toMatchObject({
+      publicConfigJson: '{}',
     });
   });
 

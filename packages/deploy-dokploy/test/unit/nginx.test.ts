@@ -41,6 +41,7 @@ describe('renderNginxConfig', () => {
     expect(rendered).toContain(
       'limit_req_zone $binary_remote_addr zone=http_api_catalog:10m rate=60r/m;',
     );
+    expect(rendered).toContain('location = /config.json');
     expect(rendered).toContain('proxy_pass http://rntme-acme-commerce-catalog:3000;');
     expect(rendered).toContain('proxy_set_header x-request-id $request_id;');
     expect(rendered).toContain('location /api/catalog');
@@ -246,6 +247,10 @@ describe('renderNginxConfig', () => {
       '  server {',
       '    listen 8080;',
       '    location = /health { return 200 "ok\\n"; }',
+      '    location = /config.json {',
+      '      default_type application/json;',
+      '      alias /srv/config.json;',
+      '    }',
       '    location / {',
       '      proxy_set_header x-request-id $request_id;',
       '      proxy_set_header x-correlation-id $http_x_correlation_id;',

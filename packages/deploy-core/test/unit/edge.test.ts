@@ -224,7 +224,7 @@ describe('edge planning', () => {
     }
   });
 
-  it('rejects auth middleware when Auth0 SPA client id is missing', () => {
+  it('accepts auth middleware without Auth0 SPA client id because public config comes from the composed project', () => {
     const project = {
       ...baseProject,
       routes: {
@@ -239,15 +239,17 @@ describe('edge planning', () => {
       auth: undefined,
     });
 
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.errors).toContainEqual(
-        expect.objectContaining({
-          code: 'DEPLOY_PLAN_AUTH_CLIENT_ID_MISSING',
-          path: 'auth.auth0.clientId',
-        }),
-      );
-    }
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    expect(r.value.edge.middleware).toContainEqual(
+      expect.objectContaining({
+        kind: 'auth',
+        provider: 'auth0',
+        audience: 'https://commerce.example.com/api',
+        moduleSlug: 'mod-workos',
+      }),
+    );
   });
 
   it('rejects a public integration route when the module is not explicitly exposed', () => {

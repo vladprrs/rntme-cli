@@ -122,7 +122,7 @@ export function renderDokployPlan(
   }
 
   const resources = plan.workloads.map((workload) =>
-    renderResource(plan, workload, nginxConfig.value, config.publicBaseUrl),
+    renderResource(plan, workload, nginxConfig.value),
   );
   const uiRoute = plan.edge.routes.find((route) => route.kind === 'ui');
   const publicRoutes = plan.edge.routes.map((route) => ({
@@ -216,7 +216,6 @@ function renderResource(
   plan: ProjectDeploymentPlan,
   workload: DeploymentWorkload,
   nginxConfig: string,
-  publicBaseUrl: string,
 ): RenderedDokployResource {
   const name = dokployResourceName(plan.project.orgSlug, plan.project.projectSlug, workload.slug);
   const labels = dokployLabels(
@@ -227,6 +226,7 @@ function renderResource(
   );
 
   if (workload.kind === 'edge-gateway') {
+    const publicConfigJson = firstDomainPublicConfig(plan.workloads);
     return {
       logicalId: workload.slug,
       kind: 'application',
@@ -236,7 +236,7 @@ function renderResource(
       image: workload.image,
       env: [],
       labels,
-      files: { '/etc/nginx/nginx.conf': nginxConfig },
+      files: { '/etc/nginx/nginx.conf': nginxConfig, '/srv/config.json': publicConfigJson },
     };
   }
 
@@ -266,29 +266,9 @@ function renderResource(
 
   if (workload.kind === 'domain-service') {
     const authMiddleware = authMiddlewareForWorkload(plan, workload);
-    const moduleWorkload =
-      authMiddleware === undefined ? undefined : integrationWorkload(plan, authMiddleware.moduleSlug);
     const files = {
       ...runtimeFileMounts(workload.runtimeFiles),
-      ...(authMiddleware !== undefined && moduleWorkload !== undefined
-        ? {
-            '/srv/config.json': JSON.stringify(
-              {
-                auth0: {
-                  domain: moduleWorkload.env.AUTH0_DOMAIN ?? '',
-                  clientId: plan.infrastructure.auth?.auth0?.clientId ?? '',
-                  audience: authMiddleware.audience,
-                  redirectUri: publicBaseUrl,
-                },
-                runtime: {
-                  manifestUrl: '/api/manifest',
-                },
-              },
-              null,
-              2,
-            ),
-          }
-        : {}),
+      '/srv/config.json': workload.publicConfigJson,
     };
 
     return {
@@ -346,6 +326,10 @@ function runtimeFileMounts(files: Readonly<Record<string, string>>): Readonly<Re
   );
 }
 
+function firstDomainPublicConfig(workloads: readonly DeploymentWorkload[]): string {
+  return workloads.find((workload) => workload.kind === 'domain-service')?.publicConfigJson ?? '{}';
+}
+
 function eventBusSecurityEnv(
   eventBus: ProjectDeploymentPlan['infrastructure']['eventBus'],
 ): RenderedEnvVar[] {
@@ -387,15 +371,6 @@ function routesMountedOnTarget(
       route.targetWorkload === workload.slug &&
       route.id === mountTarget,
   );
-}
-
-function integrationWorkload(
-  plan: ProjectDeploymentPlan,
-  slug: string,
-): Extract<DeploymentWorkload, { kind: 'integration-module' }> | undefined {
-  return plan.workloads.find((workload) => workload.kind === 'integration-module' && workload.slug === slug) as
-    | Extract<DeploymentWorkload, { kind: 'integration-module' }>
-    | undefined;
 }
 
 function findNameCollision(resources: readonly RenderedDokployResource[]): string | null {

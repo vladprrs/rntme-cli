@@ -82,6 +82,7 @@ describe('runDeployment', () => {
 
     expect(planProject).toHaveBeenCalledWith(
       expect.objectContaining({
+        publicConfigJson: expect.stringContaining('@rntme/identity-auth0'),
         services: {
           api: expect.objectContaining({
             slug: 'api',
@@ -310,6 +311,7 @@ function setup(
 function composedBlueprint(): ComposedBlueprint {
   return {
     project: { name: 'shop', services: ['api'], routes: { ui: { '/': 'api' } } },
+    publicConfigJson: '{"@rntme/identity-auth0":{"domain":"tenant.us.auth0.com","clientId":"spa-client","audience":"https://shop.example.test/api","redirectUri":"https://shop.example.test/"}}',
     pdm: { entities: {} } as never,
     routing: { httpBaseByService: {}, uiPathsByService: {} },
     bindingRegistry: {},

@@ -302,6 +302,7 @@ async function toDeployCoreInput(value: LoadedDeployProject, rootDir: string): P
 
   return {
     name: value.project.name,
+    publicConfigJson: value.publicConfigJson ?? null,
     services: Object.fromEntries(
       await Promise.all(
         value.project.services.map(async (slug) => [
