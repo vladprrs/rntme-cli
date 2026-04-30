@@ -269,6 +269,59 @@ describe('applyDokployPlan', () => {
     expect(client.updateCalls).toHaveLength(1);
   });
 
+  it('configures service-to-service references with Dokploy app names', async () => {
+    const client = new FakeDokployClient();
+    const app = resource({
+      logicalId: 'app',
+      workloadSlug: 'app',
+      name: 'rntme-acme-commerce-app',
+      env: [
+        {
+          name: 'RNTME_AUTH_MODULE_ENDPOINT',
+          value: 'rntme-acme-commerce-identity-auth0:50051',
+          secret: false,
+        },
+      ],
+    });
+    const auth = resource({
+      logicalId: 'identity-auth0',
+      workloadKind: 'integration-module',
+      workloadSlug: 'identity-auth0',
+      name: 'rntme-acme-commerce-identity-auth0',
+      image: 'ghcr.io/acme/identity-auth0:latest',
+      env: [],
+    });
+    const edge = resource({
+      logicalId: 'edge',
+      workloadKind: 'edge-gateway',
+      workloadSlug: 'edge',
+      name: 'rntme-acme-commerce-edge',
+      image: 'nginx:1.27-alpine',
+      env: [],
+      files: {
+        '/etc/nginx/nginx.conf':
+          'proxy_pass http://rntme-acme-commerce-app:3000; grpc_pass grpc://rntme-acme-commerce-identity-auth0:50051;',
+      },
+    });
+
+    const r = await applyDokployPlan({ ...rendered, resources: [app, auth, edge] }, client);
+
+    expect(r.ok).toBe(true);
+    const appConfigure = client.configureCalls.find((call) => call.resource.name === 'rntme-acme-commerce-app');
+    const edgeConfigure = client.configureCalls.find((call) => call.resource.name === 'rntme-acme-commerce-edge');
+    expect(appConfigure?.resource.env).toContainEqual({
+      name: 'RNTME_AUTH_MODULE_ENDPOINT',
+      value: 'rntme-acme-commerce-identity-auth0-dns:50051',
+      secret: false,
+    });
+    expect(edgeConfigure?.resource.files?.['/etc/nginx/nginx.conf']).toContain(
+      'http://rntme-acme-commerce-app-dns:3000',
+    );
+    expect(edgeConfigure?.resource.files?.['/etc/nginx/nginx.conf']).toContain(
+      'grpc://rntme-acme-commerce-identity-auth0-dns:50051',
+    );
+  });
+
   it('leaves existing resources unchanged when rendered build, ports, and ingress metadata matches', async () => {
     const resourceWithMetadata = resource({
       build: {
@@ -343,26 +396,8 @@ describe('applyDokployPlan', () => {
           message: 'failed while applying resource "rntme-acme-commerce-search"',
           resource: 'rntme-acme-commerce-search',
           partialFailure: {
-            createdResources: [
-              {
-                logicalId: 'catalog',
-                workloadSlug: 'catalog',
-                kind: 'domain-service',
-                targetResourceId: 'app_1',
-                targetResourceName: 'rntme-acme-commerce-catalog',
-                action: 'created',
-              },
-            ],
-            updatedResources: [
-              {
-                logicalId: 'billing',
-                workloadSlug: 'billing',
-                kind: 'domain-service',
-                targetResourceId: 'app_existing',
-                targetResourceName: 'rntme-acme-commerce-billing',
-                action: 'updated',
-              },
-            ],
+            createdResources: [],
+            updatedResources: [],
             failedStep: {
               action: 'find',
               resourceName: 'rntme-acme-commerce-search',
@@ -628,7 +663,7 @@ class FakeDokployClient implements DokployClient {
     if (this.failures.failCreateFor === input.name) throw secretError('create failed');
     this.lifecycleCalls.push(`create:${input.name}`);
     this.createCalls.push({ environmentId, resource: input });
-    const app = { id: `app_${this.next++}`, name: input.name };
+    const app = { id: `app_${this.next++}`, name: input.name, appName: `${input.name}-dns` };
     this.apps.set(app.name, app);
     return app;
   }
@@ -640,7 +675,7 @@ class FakeDokployClient implements DokployClient {
     if (this.failures.failUpdateFor === input.name) throw secretError('update failed');
     this.lifecycleCalls.push(`update:${id}:${input.name}`);
     this.updateCalls.push({ applicationId: id, resource: input });
-    const app = { id, name: input.name };
+    const app = { id, name: input.name, appName: `${input.name}-dns` };
     this.apps.set(input.name, app);
     return app;
   }

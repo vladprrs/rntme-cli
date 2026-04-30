@@ -14,6 +14,7 @@ type DokployApiApplicationSummary = {
 };
 
 type DokployApiApplication = DokployApiApplicationSummary & {
+  appName?: string;
   dockerImage?: string;
   env?: string;
 };
@@ -262,6 +263,7 @@ function toDokployApplication(details: DokployApiApplication): DokployApplicatio
   return {
     id: details.applicationId,
     name: details.name,
+    ...(details.appName ? { appName: details.appName } : {}),
     ...(details.dockerImage ? { image: details.dockerImage } : {}),
     env: parseEnvBlock(details.env),
   };
