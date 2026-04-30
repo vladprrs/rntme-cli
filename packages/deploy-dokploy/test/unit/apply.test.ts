@@ -73,7 +73,7 @@ describe('applyDokployPlan', () => {
     expect(JSON.stringify(r.value)).not.toContain('token');
   });
 
-  it('configures, deploys, and starts created applications before returning success', async () => {
+  it('configures and deploys created applications before returning success', async () => {
     const client = new FakeDokployClient();
     const resourceWithRuntimeConfig = resource({
       build: {
@@ -111,7 +111,6 @@ describe('applyDokployPlan', () => {
       'create:rntme-acme-commerce-catalog',
       'configure:app_1:rntme-acme-commerce-catalog',
       'deploy:app_1',
-      'start:app_1',
     ]);
     expect(client.configureCalls).toEqual([
       {
@@ -429,7 +428,7 @@ describe('applyDokployPlan', () => {
   });
 
   it('reports lifecycle failures after resource apply as partial failures', async () => {
-    const client = new FakeDokployClient([], { failStartFor: 'app_1' });
+    const client = new FakeDokployClient([], { failDeployFor: 'app_1' });
     const r = await applyDokployPlan(rendered, client);
 
     expect(r.ok).toBe(false);
@@ -440,7 +439,7 @@ describe('applyDokployPlan', () => {
           resource: 'rntme-acme-commerce-catalog',
           partialFailure: expect.objectContaining({
             failedStep: {
-              action: 'start',
+              action: 'deploy',
               resourceName: 'rntme-acme-commerce-catalog',
               workloadSlug: 'catalog',
             },
@@ -452,7 +451,6 @@ describe('applyDokployPlan', () => {
         'create:rntme-acme-commerce-catalog',
         'configure:app_1:rntme-acme-commerce-catalog',
         'deploy:app_1',
-        'start:app_1',
       ]);
     }
   });
