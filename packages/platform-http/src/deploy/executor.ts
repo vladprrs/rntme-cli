@@ -1,13 +1,16 @@
 import { clearInterval, setInterval } from 'node:timers';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { loadComposedBlueprint, type ComposedBlueprint } from '@rntme/blueprint';
-import type { ComposedProjectInput, ProjectDeploymentPlan } from '@rntme-cli/deploy-core';
+import type { ComposedProjectInput, ProjectDeploymentConfig, ProjectDeploymentPlan } from '@rntme-cli/deploy-core';
 import { buildProjectDeploymentPlan } from '@rntme-cli/deploy-core';
 import type { DeploymentApplyResult, RenderedDokployPlan } from '@rntme-cli/deploy-dokploy';
 import { applyDokployPlan, renderDokployPlan } from '@rntme-cli/deploy-dokploy';
+import { build, type Plugin } from 'esbuild';
 import {
   isOk,
   type BlobStore,
@@ -128,7 +131,7 @@ export async function runDeployment(
     const orgSlug = await deps.orgSlugFor(orgId);
     const redactedTarget = redactTarget(target);
     const config = buildProjectDeploymentConfig(redactedTarget, orgSlug, ctx.configOverrides);
-    const deployInput = await toDeployCoreInput(composed.value, tmpDir);
+    const deployInput = await toDeployCoreInput(composed.value, tmpDir, config);
     const plan = (deps.planProject ?? buildProjectDeploymentPlan)(deployInput, config);
     if (!plan.ok) {
       await finalize(deps, deploymentId, orgId, 'failed', {
@@ -297,12 +300,22 @@ function defaultLoadComposed(dir: string): ResultLike<LoadedDeployProject> {
   return result as ResultLike<LoadedDeployProject>;
 }
 
-async function toDeployCoreInput(value: LoadedDeployProject, rootDir: string): Promise<ComposedProjectInput> {
+async function toDeployCoreInput(
+  value: LoadedDeployProject,
+  rootDir: string,
+  config: ProjectDeploymentConfig,
+): Promise<ComposedProjectInput> {
   if (!isComposedBlueprint(value)) return value;
+
+  const publicConfigJson = resolvePublicConfigPlaceholders(value.publicConfigJson ?? null, config);
+  const uiBuildFiles =
+    value.virtualEntrySource === null || value.virtualEntrySource === undefined
+      ? {}
+      : await bundleVirtualEntrySource(value.virtualEntrySource, rootDir);
 
   return {
     name: value.project.name,
-    publicConfigJson: value.publicConfigJson ?? null,
+    publicConfigJson,
     services: Object.fromEntries(
       await Promise.all(
         value.project.services.map(async (slug) => [
@@ -311,7 +324,7 @@ async function toDeployCoreInput(value: LoadedDeployProject, rootDir: string): P
             slug,
             kind: value.services[slug]?.kind ?? 'domain',
             ...(value.services[slug]?.kind === 'domain'
-              ? { runtimeFiles: await buildRuntimeArtifactFiles(value, rootDir, slug) }
+              ? { runtimeFiles: await buildRuntimeArtifactFiles(value, rootDir, slug, uiBuildFiles) }
               : {}),
           },
         ]),
@@ -327,6 +340,7 @@ async function buildRuntimeArtifactFiles(
   project: ComposedBlueprint,
   rootDir: string,
   serviceSlug: string,
+  uiBuildFiles: Record<string, string>,
 ): Promise<Record<string, string>> {
   const service = project.services[serviceSlug];
   if (service === undefined) throw new Error(`DEPLOY_EXECUTOR_SERVICE_ARTIFACTS_NOT_FOUND:${serviceSlug}`);
@@ -356,11 +370,199 @@ async function buildRuntimeArtifactFiles(
   }
 
   await addOptionalDirectoryFiles(files, rootDir, `services/${serviceSlug}/ui`, 'ui');
+  Object.assign(files, uiBuildFiles);
   if (service.seed !== null) {
     await addOptionalTextFile(files, rootDir, `services/${serviceSlug}/seed/seed.json`, 'seed.json');
   }
 
   return files;
+}
+
+function resolvePublicConfigPlaceholders(
+  publicConfigJson: string | null,
+  config: ProjectDeploymentConfig,
+): string | null {
+  if (publicConfigJson === null) return null;
+  const placeholder = '${AUTH0_SPA_CLIENT_ID}';
+  if (!publicConfigJson.includes(placeholder)) return publicConfigJson;
+  const clientId = config.auth?.auth0?.clientId;
+  if (clientId === undefined || clientId.length === 0) {
+    throw new Error('AUTH0_SPA_CLIENT_ID deploy target auth.auth0.clientId is required');
+  }
+  return publicConfigJson.split(placeholder).join(clientId);
+}
+
+async function bundleVirtualEntrySource(
+  virtualEntrySource: string,
+  rootDir: string,
+): Promise<Record<string, string>> {
+  const workspaceRoot = findWorkspaceRoot();
+  const result = await build({
+    stdin: {
+      contents: virtualEntrySource,
+      sourcefile: '__rntme_ui_entry.tsx',
+      resolveDir: workspaceRoot,
+      loader: 'tsx',
+    },
+    absWorkingDir: workspaceRoot,
+    bundle: true,
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
+    sourcemap: true,
+    write: false,
+    outfile: join(rootDir, '.rntme-ui-build', 'main.js'),
+    loader: { '.css': 'empty' },
+    plugins: [workspacePackageResolver(workspaceRoot)],
+  });
+
+  const js = result.outputFiles.find((file) => file.path.endsWith('/main.js') || file.path.endsWith('\\main.js'));
+  const map = result.outputFiles.find(
+    (file) => file.path.endsWith('/main.js.map') || file.path.endsWith('\\main.js.map'),
+  );
+  if (js === undefined) throw new Error('DEPLOY_EXECUTOR_UI_BUNDLE_MISSING_MAIN_JS');
+
+  return {
+    'ui-build/main.js': js.text,
+    ...(map === undefined ? {} : { 'ui-build/main.js.map': map.text }),
+    'ui-build/main.css': readUiRuntimeCss(workspaceRoot),
+  };
+}
+
+function workspacePackageResolver(workspaceRoot: string): Plugin {
+  const packageDirs = discoverWorkspacePackageDirs(workspaceRoot);
+  return {
+    name: 'rntme-workspace-package-resolver',
+    setup(buildApi) {
+      buildApi.onResolve({ filter: /^@rntme\// }, (args) => {
+        const packageName = packageNameFromImport(args.path);
+        const packageDir = packageDirs.get(packageName);
+        if (packageDir === undefined) return undefined;
+        const subpath = args.path.slice(packageName.length);
+        return { path: resolveWorkspaceExport(packageDir, subpath.length === 0 ? '.' : `.${subpath}`) };
+      });
+      buildApi.onResolve({ filter: /^\..*\.js$/ }, (args) => {
+        const jsPath = join(args.resolveDir, args.path);
+        if (existsSync(jsPath)) return undefined;
+        const withoutJs = jsPath.slice(0, -'.js'.length);
+        for (const candidate of [`${withoutJs}.ts`, `${withoutJs}.tsx`]) {
+          if (existsSync(candidate)) return { path: candidate };
+        }
+        return undefined;
+      });
+    },
+  };
+}
+
+function discoverWorkspacePackageDirs(workspaceRoot: string): Map<string, string> {
+  const dirs = new Map<string, string>();
+  for (const parent of ['packages', 'modules']) {
+    collectPackageDirs(join(workspaceRoot, parent), dirs);
+  }
+  return dirs;
+}
+
+function collectPackageDirs(dir: string, output: Map<string, string>): void {
+  if (!existsSync(dir)) return;
+  const entries = readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const path = join(dir, entry.name);
+    const packageJsonPath = join(path, 'package.json');
+    if (existsSync(packageJsonPath)) {
+      const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { name?: unknown };
+      if (typeof pkg.name === 'string') output.set(pkg.name, path);
+      continue;
+    }
+    collectPackageDirs(path, output);
+  }
+}
+
+function packageNameFromImport(value: string): string {
+  const [scope, name] = value.split('/');
+  return `${scope}/${name}`;
+}
+
+function resolveWorkspaceExport(packageDir: string, subpath: string): string {
+  const packageJsonPath = join(packageDir, 'package.json');
+  const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+    exports?: unknown;
+    main?: unknown;
+  };
+  const target = exportTargetForSubpath(pkg.exports, subpath) ?? (subpath === '.' ? pkg.main : undefined);
+  if (typeof target === 'string') return resolveWorkspaceTarget(packageDir, target);
+  return join(packageDir, subpath === '.' ? 'index.js' : subpath.slice(2));
+}
+
+function resolveWorkspaceTarget(packageDir: string, target: string): string {
+  const normalized = target.replace(/^\.\//, '');
+  const direct = join(packageDir, normalized);
+  if (existsSync(direct)) return direct;
+
+  for (const candidate of sourceFallbacks(packageDir, normalized)) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  return direct;
+}
+
+function sourceFallbacks(packageDir: string, normalized: string): string[] {
+  const withoutJs = normalized.endsWith('.js') ? normalized.slice(0, -'.js'.length) : normalized;
+  const candidates: string[] = [];
+
+  if (withoutJs.startsWith('dist/client/')) {
+    const rest = withoutJs.slice('dist/client/'.length);
+    candidates.push(join(packageDir, 'client', `${rest}.ts`));
+    candidates.push(join(packageDir, 'client', `${rest}.tsx`));
+    candidates.push(join(packageDir, 'src', 'client', `${rest}.ts`));
+    candidates.push(join(packageDir, 'src', 'client', `${rest}.tsx`));
+  }
+
+  if (withoutJs.startsWith('dist/')) {
+    const rest = withoutJs.slice('dist/'.length);
+    candidates.push(join(packageDir, 'src', `${rest}.ts`));
+    candidates.push(join(packageDir, 'src', `${rest}.tsx`));
+  }
+
+  return candidates;
+}
+
+function exportTargetForSubpath(exportsField: unknown, subpath: string): string | undefined {
+  if (typeof exportsField === 'string' && subpath === '.') return exportsField;
+  if (typeof exportsField !== 'object' || exportsField === null) return undefined;
+  const exportsMap = exportsField as Record<string, unknown>;
+  const value = exportsMap[subpath];
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null) {
+    const conditionMap = value as Record<string, unknown>;
+    if (typeof conditionMap.import === 'string') return conditionMap.import;
+    if (typeof conditionMap.default === 'string') return conditionMap.default;
+  }
+  return undefined;
+}
+
+function findWorkspaceRoot(): string {
+  for (const start of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
+    let current = start;
+    while (true) {
+      if (
+        existsSync(join(current, 'packages', 'ui-runtime', 'package.json')) &&
+        existsSync(join(current, 'modules'))
+      ) {
+        return current;
+      }
+      const parent = dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+  }
+  return process.cwd();
+}
+
+function readUiRuntimeCss(workspaceRoot: string): string {
+  const cssPath = join(workspaceRoot, 'packages', 'ui-runtime', 'build', 'main.css');
+  if (existsSync(cssPath)) return readFileSync(cssPath, 'utf8');
+  return '/* rntme ui runtime styles unavailable at deploy bundle time */\n';
 }
 
 function runtimeModulesForService(

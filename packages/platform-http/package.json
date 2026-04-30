@@ -37,6 +37,7 @@
     "@rntme-cli/platform-core": "workspace:*",
     "@rntme-cli/platform-storage": "workspace:*",
     "@workos-inc/node": "^7.32.0",
+    "esbuild": "^0.27.7",
     "hono": "^4.6.3",
     "pg": "^8.12.0",
     "pino": "^9.4.0",
