@@ -59,6 +59,32 @@ type DeploymentContext = {
 
 type LoadedDeployProject = ComposedProjectInput | ComposedBlueprint;
 
+const IDENTITY_INTROSPECTION_PROTO = `syntax = "proto3";
+package rntme.contracts.identity.v1;
+
+message IntrospectSessionRequest {
+  string token = 1;
+  string audience = 2;
+}
+
+message Session {
+  string session_id = 2;
+  string user_id = 3;
+  string organization_id = 4;
+  int32 token_type = 5;
+  repeated string roles = 6;
+  repeated string permissions = 7;
+  repeated string verified_factors = 8;
+  int32 status = 9;
+  string ip_address = 10;
+  string user_agent = 11;
+}
+
+service IdentityModule {
+  rpc IntrospectSession(IntrospectSessionRequest) returns (Session);
+}
+`;
+
 export async function runDeployment(
   deploymentId: string,
   orgId: string,
@@ -308,12 +334,17 @@ async function buildRuntimeArtifactFiles(
   if (service.bindings === null) throw new Error(`DEPLOY_EXECUTOR_SERVICE_BINDINGS_NOT_FOUND:${serviceSlug}`);
 
   const files: Record<string, string> = {};
+  const modules = runtimeModulesForService(project, serviceSlug);
   addJsonFile(files, 'manifest.json', {
     rntmeVersion: '1.0',
     service: { name: serviceSlug, version: '1.0.0' },
     surface: { http: { enabled: true, port: 3000 } },
     seed: { enabled: service.seed !== null, path: 'seed.json' },
+    modules,
   });
+  for (const module of modules) {
+    files[module.protoPath] = IDENTITY_INTROSPECTION_PROTO;
+  }
   addJsonFile(files, 'pdm.json', project.pdm);
   addJsonFile(files, 'qsm.json', service.qsmValidated);
   addJsonFile(files, 'bindings.json', service.bindings.artifact);
@@ -329,6 +360,41 @@ async function buildRuntimeArtifactFiles(
   }
 
   return files;
+}
+
+function runtimeModulesForService(
+  project: ComposedBlueprint,
+  serviceSlug: string,
+): Array<{ name: string; grpc: { address: string }; protoPath: string }> {
+  const slugs = new Set<string>();
+  for (const [middlewareName, declaration] of Object.entries(project.project.middleware ?? {})) {
+    if (declaration.kind !== 'auth' || declaration.moduleSlug === undefined) continue;
+    if (!middlewareAppliesToService(project.project, middlewareName, serviceSlug)) continue;
+    slugs.add(declaration.moduleSlug);
+  }
+  return [...slugs].sort().map((slug) => ({
+    name: slug,
+    grpc: { address: `${slug}:50051` },
+    protoPath: `protos/${slug}.proto`,
+  }));
+}
+
+function middlewareAppliesToService(
+  project: ComposedBlueprint['project'],
+  middlewareName: string,
+  serviceSlug: string,
+): boolean {
+  for (const mount of project.mounts ?? []) {
+    if (!mount.use.includes(middlewareName)) continue;
+    if (serviceForMountTarget(project, mount.target) === serviceSlug) return true;
+  }
+  return false;
+}
+
+function serviceForMountTarget(project: ComposedBlueprint['project'], target: string): string | undefined {
+  if (target.startsWith('http:')) return project.routes?.http?.[target.slice('http:'.length)];
+  if (target.startsWith('ui:')) return project.routes?.ui?.[target.slice('ui:'.length)];
+  return undefined;
 }
 
 async function addOptionalDirectoryFiles(
