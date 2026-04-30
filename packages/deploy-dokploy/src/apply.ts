@@ -149,12 +149,6 @@ async function runApplicationLifecycle(
     return partialFailure(cause, resource, applied, 'deploy');
   }
 
-  try {
-    await client.startApplication(target.targetResourceId);
-  } catch (cause) {
-    return partialFailure(cause, resource, applied, 'start');
-  }
-
   return ok(undefined);
 }
 
